@@ -1,0 +1,412 @@
+//
+// Copyright (c) 2024 Kris Jusiak (kris at jusiak dot net)
+//
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at
+// http://www.boost.org/LICENSE_1_0.txt)
+//
+#if __cplusplus < 202002L
+#error "MPH requires C++20!"
+#else
+#ifndef MPH
+#define MPH 1'0'0
+
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <numeric>
+#include <ranges>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+
+#if __has_include(<x86intrin.h>)
+#include <x86intrin.h>
+#endif
+
+namespace mph::inline v_1_0_0 {
+namespace utility {
+/**
+ * https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+ *
+ * DO WHILE m < 64
+ * 	IF mask[m] == 1
+ * 		dst[k] := tmp[m]
+ * 		k := k + 1
+ * 	FI
+ * 	m := m + 1
+ * OD
+ */
+template <class T> [[nodiscard]] constexpr auto pext(const T a, T mask) {
+  T result{};
+  auto k = 0u;
+  auto m = 0u;
+  while (m < sizeof(T) * 8) {
+    if ((mask & 1) == 1) {
+      result |= ((a >> m) & 1) << k++;
+    }
+    mask >>= 1;
+    ++m;
+  }
+  return result;
+}
+
+static_assert(0b00 == pext(0b00, 0b00));
+static_assert(0b00 == pext(0b01, 0b00));
+static_assert(0b01 == pext(0b01, 0b01));
+static_assert(0b01 == pext(0b01, 0b11));
+static_assert(0b00 == pext(0b01, 0b10));
+static_assert(0b01 == pext(0b11, 0b10));
+static_assert(0b01 == pext(0b11, 0b01));
+static_assert(0b11 == pext(0b11, 0b11));
+
+template <class T> [[nodiscard]] constexpr auto as(const auto value) -> T {
+  T result{};
+  for (auto i = 0u; i < std::min(value.size(), sizeof(T)); ++i) {
+    result = (result << 8) |
+             value[std::min(value.size(), sizeof(T)) - 1 - i]; // little-endian
+  }
+  return result;
+}
+
+static_assert(
+    std::is_same_v<std::uint16_t, decltype(as<std::uint16_t>(
+                                      std::array<std::uint8_t, 2>{0, 1}))>);
+static_assert(std::uint32_t(0b00000001'00000000) ==
+              as<std::uint16_t>(std::array<std::uint8_t, 2>{0, 1}));
+static_assert(
+    std::is_same_v<std::uint16_t, decltype(as<std::uint16_t>(
+                                      std::array<std::uint8_t, 2>{1, 0}))>);
+static_assert(std::uint32_t(0b00000000'00000001) ==
+              as<std::uint16_t>(std::array<std::uint8_t, 2>{1, 0}));
+static_assert(std::is_same_v<
+              std::uint8_t, decltype(as<std::uint8_t>(std::string_view{"a"}))>);
+static_assert(std::uint8_t('a') == as<std::uint8_t>(std::string_view{"a"}));
+static_assert(std::is_same_v<std::uint32_t, decltype(as<std::uint32_t>(
+                                                std::array<std::uint8_t, 4>{
+                                                    'a', 'b', 0, 0}))>);
+static_assert(((std::uint32_t('b') << 8) | std::uint32_t('a') << 0) ==
+              as<std::uint32_t>(std::array<std::uint8_t, 4>{'a', 'b', 0, 0}));
+static_assert(std::is_same_v<std::uint32_t, decltype(as<std::uint32_t>(
+                                                std::array<std::uint8_t, 4>{
+                                                    0, 0, 'a', 'b'}))>);
+static_assert(((std::uint32_t('b') << 24) | std::uint32_t('a') << 16) ==
+              as<std::uint32_t>(std::array<std::uint8_t, 4>{0, 0, 'a', 'b'}));
+
+template <std::size_t N>
+  requires(N > 0)
+struct bitset final {
+  constexpr explicit(true) bitset(const auto value) {
+    for (std::size_t i{}; i < N; ++i) {
+      bits[i] = value & (1ull << i);
+    }
+  }
+  constexpr auto set(const auto i, const auto value) { bits[i] = value; }
+  [[nodiscard]] constexpr auto size() const { return bits.size(); }
+  [[nodiscard]] constexpr auto operator[](const auto i) const {
+    return bits[i];
+  }
+  template <class T>
+  [[nodiscard]] constexpr auto to() const -> T
+    requires(sizeof(T) * 8 >= N)
+  {
+    T result{};
+    for (auto i = 0u; i < N; ++i) {
+      result |= static_cast<T>(bits[i]) << i;
+    }
+    return result;
+  }
+  std::array<bool, N> bits{};
+};
+
+static_assert(1 == bitset<1>{1}[0]);
+static_assert(0 == bitset<1>{0}[0]);
+static_assert(1 == bitset<2>{0b01}[0]);
+static_assert(0 == bitset<2>{0b01}[1]);
+static_assert(0b01 == bitset<2>{0b01}.to<int>());
+static_assert(0b10 == bitset<2>{0b10}.to<int>());
+} // namespace utility
+
+namespace detail {
+template <class T> [[nodiscard]] constexpr auto mask(const auto &symbols) {
+  constexpr auto is_unique = [](const auto &symbols, const auto mask) {
+    std::vector<T> v{};
+    for (const auto &symbol : symbols) {
+      const auto value =
+          utility::pext(utility::as<T>(symbol), mask.template to<T>());
+      if (std::find(std::cbegin(v), std::cend(v), value) != std::cend(v)) {
+        return false;
+      }
+      v.push_back(value);
+    }
+    return true;
+  };
+
+  utility::bitset<sizeof(T) * 8> mask(std::numeric_limits<T>::max());
+  for (auto i = 0u; i < mask.size(); ++i) {
+    mask.set(i, 0);
+    if (not is_unique(symbols, mask)) {
+      mask.set(i, 1);
+    }
+  }
+  if (not is_unique(symbols, mask)) {
+    throw; // not a constant
+  }
+  return mask.template to<T>();
+}
+static_assert(0b00000000'00000001 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{1, 0},
+                                         std::array<std::uint8_t, 2>{0, 0}}));
+static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{0, 0},
+                                         std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{1, 0},
+                                         std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{0, 1},
+                                         std::array<std::uint8_t, 2>{1, 0}}));
+static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{1, 1},
+                                         std::array<std::uint8_t, 2>{1, 0}}));
+static_assert(0b00000000'00000001 == mask<std::uint16_t>(std::array{
+                                         std::array<std::uint8_t, 2>{1, 1},
+                                         std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000000'00000001'00000001 ==
+              mask<std::uint16_t>(std::array{
+                  std::array<std::uint8_t, 3>{1, 1, 1},
+                  std::array<std::uint8_t, 3>{0, 0, 0},
+                  std::array<std::uint8_t, 3>{1, 0, 1}}));
+static_assert(0b00000000'00000001'00000001 ==
+              mask<std::uint16_t>(std::array{
+                  std::array<std::uint8_t, 3>{0, 0, 1},
+                  std::array<std::uint8_t, 3>{1, 0, 1},
+                  std::array<std::uint8_t, 3>{1, 1, 0}}));
+static_assert(0b00000000'00000001'00000001 ==
+              mask<std::uint16_t>(std::array{
+                  std::array<std::uint8_t, 3>{0, 0, 0},
+                  std::array<std::uint8_t, 3>{1, 1, 1},
+                  std::array<std::uint8_t, 3>{0, 1, 0}}));
+
+template <class T, const std::invocable auto symbols, const auto offset,
+          const auto cache_line_bytes>
+[[nodiscard]] constexpr auto make_masks() {
+  std::vector<std::string_view> v[32]{}; // TODO max
+  for (const auto &symbol : symbols()) {
+    v[symbol[0] - offset].push_back(symbol);
+  }
+  alignas(cache_line_bytes) std::array<T, 32> masks{}; // TODO max, pad to 64
+  for (auto i = 0u; i < 32; ++i) {                     // TODO max
+    masks[i] = mask<T>(v[i]);
+  }
+  return masks;
+}
+
+template <const std::ranges::range auto masks, const auto symbols,
+          const auto offset, const auto cache_line_bytes>
+[[nodiscard]] constexpr auto make_luts() {
+  std::vector<std::string_view> v[32]{}; // TODO max
+  for (const auto &symbol : symbols()) {
+    v[symbol[0] - offset].push_back(symbol);
+  }
+  alignas(cache_line_bytes) std::array<std::array<std::array<char, 8>, 32>, 32>
+      lut{};
+  for (auto i = 0u; i < 32; ++i) { // TODO max
+    for (auto j = 0u; j < v[i].size(); ++j) {
+      auto &p =
+          lut[i][utility::pext(utility::as<std::uint64_t>(v[i][j]), masks[i])];
+      for (auto k = 0u; k < 8; ++k) { // TODO max
+        p[k] = v[i][j][k];
+      }
+    }
+  }
+  return lut;
+}
+
+template <const auto mask, const auto symbols, const auto cache_line_bytes>
+[[nodiscard]] constexpr auto make_index() {
+  constexpr auto s = symbols();
+  constexpr auto size = [] { // std::pow is not constexpr
+    std::size_t result{1};
+    for (auto i = 0u; i < std::popcount(mask); ++i) {
+      result *= 2;
+    }
+    return result;
+  }();
+
+  alignas(cache_line_bytes) std::array<std::uint8_t, size> index{};
+  auto i = 0;
+  for (const auto &symbol : s) {
+    index[utility::pext(utility::as<std::uint64_t>(symbol), mask)] = ++i;
+  }
+  return index;
+}
+
+template <const std::ranges::range auto masks, const auto symbols,
+          const auto offset, const auto cache_line_bytes>
+[[nodiscard]] constexpr auto make_indexes() {
+  std::vector<std::size_t> idx[32]{};    // TODO max
+  std::vector<std::string_view> v[32]{}; // TODO max
+  auto i = 0;
+  for (const auto &symbol : symbols()) {
+    idx[symbol[0] - offset].push_back(++i);
+    v[symbol[0] - offset].push_back(symbol);
+  }
+  alignas(cache_line_bytes) std::array<std::array<std::uint64_t, 32>, 32>
+      index{}; // TODO max
+  for (auto i = 0u; i < 32; ++i) {
+    for (auto j = 0u; j < v[i].size(); ++j) {
+      index[i][utility::pext(utility::as<std::uint64_t>(v[i][j]), masks[i])] =
+          idx[i][j];
+    }
+  }
+  return index;
+}
+} // namespace detail
+
+// clang-format off
+struct cfg final {
+  std::size_t cache_line_bytes{}; /// cache line size, usually 64 bytes
+  std::size_t split_bits{};       /// number of required bits after pext required to split into seperate buckets
+};
+
+/**
+ * Minimal perfect hash function (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
+ *  - requires symbols to have the same size <= 8 bytes
+ *  - requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+ *
+ * @param symbols compile time list of symbols example: `[] { return std::array{std::string_view("A"), std::string_view("B"); }`
+ * @param cfg configuration example: `{.cache_line_bytes = 64, .split_bits = 5}`
+ * @param data random access input data
+ * @return 0 if string doesn't match, 1..N for matches
+ */
+template<const std::invocable auto symbols, const cfg Cfg = cfg{.cache_line_bytes = 64, .split_bits = 5}>
+  requires ([](auto&& s) {
+      return not s.empty() and
+        std::all_of(std::cbegin(s), std::cend(s), [&s](const auto& symbol) { return symbol.size() == s[0].size(); }) and
+        std::all_of(std::cbegin(s), std::cend(s),   [](const auto& symbol) { return symbol.size() <= sizeof(std::uint64_t); }); }
+  (symbols()))
+[[gnu::target("bmi2")]] [[nodiscard]] auto hash(const auto data) noexcept(true) -> std::size_t {
+  using v8si = std::int8_t  __attribute__ ((vector_size(8)));
+  using m128 = union { std::uint64_t xmm; v8si v8; };
+
+  if constexpr (std::is_pointer_v<decltype(data)>) { assert(data); }
+  if constexpr (requires { data.size(); }) { assert(data.size() > 0u); }
+
+  const auto ptr = [&data] { if constexpr (requires { data.data(); }) { return data.data(); } else { return data; } }();
+  static constexpr auto offset = [](const auto& s) {
+    return (*std::min_element(
+        std::cbegin(s), std::cend(s),
+        [](const auto &lhs, const auto &rhs) { return lhs[0] < rhs[0]; }))[0];
+  }(symbols());
+
+  if constexpr (static constexpr auto mask = detail::mask<std::uint64_t>(symbols()); std::uint32_t(std::popcount(mask)) <= Cfg.split_bits) {
+    static constexpr const auto index = detail::make_index<mask, symbols, Cfg.cache_line_bytes>();
+    return index[_pext_u64(*std::bit_cast<const std::uint64_t*>(ptr), mask)];
+  } else if constexpr(static constexpr const auto masks = detail::make_masks<std::uint64_t, symbols, offset, Cfg.cache_line_bytes>();
+      std::all_of(std::cbegin(masks),std::cend(masks), [](const auto mask) { return std::uint32_t(std::popcount(mask)) <= Cfg.split_bits; })) {
+    static constexpr const auto lut = detail::make_luts<masks, symbols, offset, Cfg.cache_line_bytes>();
+    static constexpr const auto index = detail::make_indexes<masks, symbols, offset, Cfg.cache_line_bytes>();
+    const auto id  = ptr[0] - offset;
+    const auto lhs = *std::bit_cast<const std::uint64_t*>(ptr);
+    const auto ext = _pext_u64(lhs, masks[id]);
+    const auto rhs = std::bit_cast<const v8si*>(lut[id][ext].data());
+    const auto cmp = *std::bit_cast<const v8si*>(ptr) == *rhs;
+    const auto idx = std::bit_cast<const v8si*>(std::addressof(index[id][ext]));
+    const auto res = cmp & *idx;
+    return std::bit_cast<const m128*>(std::addressof(res))->xmm;
+  } else {
+    static_assert([](auto&&) { return false; }(data), "hash can't be constructed!");
+  }
+  return {};
+}
+// clang-format on
+} // namespace mph::inline v_1_0_0
+
+#if defined(MPH_TEST)
+int main() {
+  {
+    constexpr const std::array<std::string_view, 3> symbols{
+        "A",
+        "B",
+        "C",
+    };
+
+    auto expected = 1;
+    for (const auto &symbol : symbols) {
+      assert(expected++ == mph::hash<[] { return symbols; }>(symbol));
+    }
+  }
+
+  {
+    constexpr const std::array<std::string_view, 3> symbols{
+        "A",
+        "B",
+        "C",
+    };
+
+    auto expected = 1;
+    for (const auto &symbol : symbols) {
+      assert(expected++ == mph::hash<[] { return symbols; }>(symbol.data()));
+    }
+  }
+
+  {
+    constexpr const std::array<std::string_view, 3> symbols{
+        "AA ",
+        "BB ",
+        "CC ",
+    };
+
+    auto expected = 1;
+    for (const auto &symbol : symbols) {
+      assert(expected++ == mph::hash<[] { return symbols; }>(symbol.data()));
+    }
+  }
+
+  {
+    constexpr const std::array<std::string_view, 3> symbols{
+        " AA ",
+        " AB ",
+        " AC ",
+    };
+
+    auto expected = 1;
+    for (const auto &symbol : symbols) {
+      assert(expected++ == mph::hash<[] { return symbols; }>(symbol.data()));
+    }
+  }
+
+  {
+    constexpr const std::array<std::string_view, 100> symbols{
+        "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ",
+        "BHK     ", "SIEB    ", "DGBP    ", "INFN    ", "USRT    ", "BCOR    ",
+        "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ",
+        "GLBS    ", "CUBB    ", "LRCX    ", "HTGM    ", "RYN     ", "IPG     ",
+        "PNNTG   ", "ZIG     ", "IVR-A   ", "INVA    ", "MNE     ", "KRA     ",
+        "BRMK    ", "ARKG    ", "FFR     ", "QTRX    ", "XTN     ", "BAC-A   ",
+        "CYBE    ", "ETJ     ", "JHCS    ", "RBCAA   ", "GDS     ", "WTID    ",
+        "TCO     ", "BWA     ", "MIE     ", "GENY    ", "TDOC    ", "MCRO    ",
+        "QFIN    ", "NBTB    ", "PWC     ", "FQAL    ", "NJAN    ", "IWB     ",
+        "GXGXW   ", "EDUC    ", "RETL    ", "VIACA   ", "KLDO    ", "NEE-I   ",
+        "FBC     ", "JW.A    ", "BSMX    ", "FMNB    ", "EXR     ", "TAC     ",
+        "FDL     ", "SWIR    ", "CLWT    ", "LMHB    ", "IRTC    ", "CDMO    ",
+        "HMLP-A  ", "LVUS    ", "UMRX    ", "GJH     ", "FRME    ", "CEIX    ",
+        "IHD     ", "GHSI    ", "DCP-B   ", "SB      ", "DSE     ", "CPRT    ",
+        "NRZ     ", "VLYPO   ", "TDAC    ", "ZXZZT   ", "IWX     ", "NCSM    ",
+        "WIRE    ", "SFST    ", "EWD     ", "DEACW   ", "TRPX    ", "UCTT    ",
+        "ZAZZT   ", "CYD     ", "NURE    ", "WEAT    ",
+    };
+
+    auto expected = 1;
+    for (const auto &symbol : symbols) {
+      assert(expected++ == mph::hash<[] { return symbols; }>(symbol.data()));
+    }
+  }
+}
+#endif // MPH_TEST
+#endif // MPH
+#endif //  __cplusplus
