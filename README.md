@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/v7njeKn7n">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -38,21 +38,21 @@ assert(2 == mph::hash<[] { return symbols; }>("SPY"));
 assert(3 == mph::hash<[] { return symbols; }>("CDC"));
 ```
 
-### x86-64 assembly
+### x86-64 assembly (https://godbolt.org/z/v7njeKn7n)
 
 ```
 main:
-  movq (%rsi), %rax
+  movq 8(%rsi), %rax
   movl $1049600, %edx
   movq (%rax), %rax
   pext %rdx, %rax, %rax
-  movl mph::v_1_0_0::hash<main::{lambda()#1}{}, mph::v_1_0_0::cfg{64ul, 5ul}, char const*>(char const*)::index(,%rax,4), %eax
+  movzbl mph::v_1_0_0::hash<main::{lambda()#1}{}, mph::v_1_0_0::cfg{64ul, 5ul}, char const*>(char const*)::index(%rax), %eax
   ret
 mph::v_1_0_0::hash<main::{lambda()#1}{}, mph::v_1_0_0::cfg{64ul, 5ul}, char const*>(char const*)::index:
-  .long 1
-  .long 3
-  .long 2
-  .zero 4
+  .byte 1
+  .byte 3
+  .byte 2
+  .zero 1
 ```
 
 ### API
