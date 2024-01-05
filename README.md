@@ -6,22 +6,22 @@
 
 ## Branchless minimal perfect hash function
 
-    - https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
+> https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
 ### Features
 
-    - Single header/module
-    - Fast (see #Benchmarks)
+- Single header/module (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+- Fast (see #Benchmarks)
 
 ### Requirements
 
-    - C++20 (gcc-12+, clang-16+)
-    - bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+- C++20 (gcc-12+, clang-16+)
+- bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
 
 ### Limitations
 
-    - Currently strings up to 8 characters are only supported
-    - > 1000 tokens likely not to compile
+- Currently strings up to 8 characters are only supported
+- > 1000 tokens likely not to compile
 
 ### Usage
 
