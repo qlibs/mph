@@ -205,7 +205,7 @@ class pext_direct {
 
 public:
   template <class TSymbols, const auto mask = utility::mask<std::uint64_t>(TSymbols{}())>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const auto& s, const auto ptr, [[maybe_unused]] const auto size, [[maybe_unused]] auto&& ... args) const noexcept(true)
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto ptr, [[maybe_unused]] const auto size, [[maybe_unused]] auto&& ... args) const noexcept(true)
  -> std::size_t
     requires(std::uint32_t(std::popcount(mask)) <= max_bits_size and ([](const auto &symbols) {
                return not symbols.empty() and std::all_of(std::cbegin(symbols), std::cend(symbols), [&symbols](const auto &symbol) {
@@ -293,7 +293,7 @@ class pext_split_first_char {
 public:
   template<class TSymbols, const auto offset = calc_offset(TSymbols{}()), const auto masks = make_masks<std::uint64_t, offset>(TSymbols{})>
   [[nodiscard]] [[gnu::target("bmi2")]]
-  auto operator()(TSymbols s, const auto ptr, [[maybe_unused]] const auto size, [[maybe_unused]] auto&& ... args) const noexcept(true)
+  auto operator()(const TSymbols s, const auto ptr, [[maybe_unused]] const auto size, [[maybe_unused]] auto&& ... args) const noexcept(true)
       -> std::size_t
     requires(std::all_of(std::cbegin(masks), std::cend(masks),
                          [](const auto mask) { return std::uint32_t(std::popcount(mask)) <= max_bits_size; }) and
