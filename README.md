@@ -146,3 +146,17 @@ clang++ -DNDEBUG -fconstexpr-steps=100000000 -stdlib=libc++ -std=c++20 -march=na
 |                5.66 |      176,813,439.22 |    0.5% |           49.00 |           15.16 |  3.232 |           1.00 |    0.0% |      0.07 | `random.gperf`
 |                3.88 |      257,650,783.17 |    0.3% |           33.00 |           10.42 |  3.167 |           0.00 |    0.0% |      0.05 | `random.mph`
 ```
+
+### FAQ
+
+### Can I use it with run-time data?
+
+> Yes, as long as there is a policy to handle run-time data.
+
+#### Ideas for policies?
+
+- radix-tree
+- finite-state-machine
+- gperf
+- mph
+- ....
