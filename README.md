@@ -16,26 +16,34 @@
 ### Requirements
 
 - C++20 (gcc-12+, clang-16+)
-- bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
 
-### Limitations
+### Design
 
-- Currently strings up to 8 characters are only supported
-- > 1000 tokens likely not to compile
+```
+hash<symbols, policies>(data) {
+    for policy in policies:
+        if r = policy<symbols>(data)
+            return r;
+
+    assert "hash can't be constructed with given policies!"
+}
+```
 
 ### Usage
 
 ```cpp
-constexpr const std::array<std::string_view, 3> symbols{
+constexpr std::array<std::string_view, 3> symbols{
   "FBC",
   "SPY",
   "CDC",
 };
 
-assert(0 == mph::hash<[] { return symbols; }>(""));
-assert(1 == mph::hash<[] { return symbols; }>("FBC"));
-assert(2 == mph::hash<[] { return symbols; }>("SPY"));
-assert(3 == mph::hash<[] { return symbols; }>("CDC"));
+constexpr auto hash = mph::hash{[] { return symbols; }};
+
+assert(0 == hash(""));
+assert(1 == hash("FBC"));
+assert(2 == hash("SPY"));
+assert(3 == hash("CDC"));
 ```
 
 ### x86-64 assembly (https://godbolt.org/z/v7njeKn7n)
@@ -60,21 +68,47 @@ mph::v_1_0_0::hash<main::{lambda()#1}{}, mph::v_1_0_0::cfg{64ul, 5ul}, char cons
 ```
 /**
  * Minimal perfect hash function (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
+ *
+ * @tparam TSymbols compile time array of symbols
+ * @tparam TPolicies compile time tuple of policies to be executed in given order
+ */
+template<class TSymbols,
+         class TPolicies = std::tuple<pext_direct<5>, pext_split_first_char<5>>>
+  requires (std::size(TSymbols{}()) > 0 and std::tuple_size_v<TPolicies> > 0)
+class hash final {
+  public:
+    constexpr explicit(true) hash(TSymbols&& symbols, TPolicies&& policies = {})
+      : symbols{std::move(symbols)}, policies{std::move(policies)}
+    { }
+
+    /**
+     * @param data continuous input data
+     * @param args... additonal parameters propagated to policies
+     * @return result from executed policy
+     */
+    [[nodiscard]] constexpr auto operator()(const auto data, auto&&... args) const noexcept(true) -> std::size_t;
+};
+```
+
+```
+/*
+ * Policy based for less than 2^5 elements
+ *
+ * @return 0 if string doesn't match, 1..N for matches
  *  - requires symbols to have the same size <= 8 bytes
  *  - requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
- *
- * @param symbols compile time list of symbols example: `[] { return std::array{std::string_view("A"), std::string_view("B"); }`
- * @param cfg configuration example: `{.cache_line_bytes = 64, .split_bits = 5}`
- * @param data random access input data
- * @return 0 if string doesn't match, 1..N for matches
  */
-template<const std::invocable auto symbols, const cfg Cfg = cfg{.cache_line_bytes = 64, .split_bits = 5}>
-  requires ([](auto&& s) {
-      return not s.empty() and
-        std::all_of(std::cbegin(s), std::cend(s), [&s](const auto& symbol) { return symbol.size() == s[0].size(); }) and
-        std::all_of(std::cbegin(s), std::cend(s),   [](const auto& symbol) { return symbol.size() <= sizeof(std::uint64_t); }); }
-  (symbols()))
-[[gnu::target("bmi2")]] [[nodiscard]] auto hash(const auto data) -> std::size_t;
+template <auto max_bits_size = 5> class pext_direct;
+
+/*
+ * Policy based for more than 2^5 elements
+ * Splits the input based on the first letter
+ *
+ * @return 0 if string doesn't match, 1..N for matches
+ *  - requires symbols to have the same size <= 8 bytes
+ *  - requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+ */
+template <auto max_bits_size = 5> class pext_split_first_char;
 ```
 
 ### Benchmarks
