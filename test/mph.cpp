@@ -19,7 +19,45 @@ int main() {
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, mph::default_policies};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash(""));
+    expect(0_u == hash("D"));
+    expect(0_u == hash("a"));
+    expect(0_u == hash("b"));
+  };
+
+  ""_test = [] {
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
+    };
+
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_direct<5>{}(args...); }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash(""));
+    expect(0_u == hash("D"));
+    expect(0_u == hash("a"));
+    expect(0_u == hash("b"));
+  };
+
+  ""_test = [] {
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
+    };
+
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_first_char<5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));

@@ -20,7 +20,6 @@
 #include <numeric>
 #include <ranges>
 #include <string_view>
-#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -223,31 +222,6 @@ static_assert(not supported_symbols_size<decltype([] { return std::array{std::ar
  */
 template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = MPH_CACHE_LINE_SIZE, class T = std::uint64_t>
 class pext_direct {
- public:
-  template <class TSymbols, const auto mask = utility::mask<T>(TSymbols{}())>
-    requires concepts::required_bits_size<mask, max_bits_size> and
-             concepts::supported_symbols_size<TSymbols, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data, [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t {
-    // using v8si = std::int8_t __attribute__((vector_size(sizeof(std::uint64_t))));
-    // using m128 = union {
-    // std::uint64_t xmm;
-    // v8si v8;
-    //};
-    static constexpr const auto index = make_index<mask>(s);
-    // static constexpr const auto lut = make_lut<mask>(s);
-    const auto lhs = *std::bit_cast<const T *>(data);
-    const auto ext = _pext_u64(lhs, mask);
-    return index[ext];
-
-    // const auto rhs = std::bit_cast<const v8si*>(lut[ext].data());
-    ////const auto idx = std::bit_cast<const v8si*>(std::addressof(index[ext]));
-    // static constexpr auto max = (1ull << std::size(symbols()[0])*8) - 1ull;
-    // const auto cmp = *std::bit_cast<const v8si*>(data) == *rhs;
-    // const auto x = (cmp == max);
-    // return std::bit_cast<const m128*>(std::addressof(x))->xmm==max * idx;
-  }
-
- private:
   template <const auto mask>
   [[nodiscard]] static constexpr auto make_lut(const auto &symbols) {
     alignas(cache_line_size) std::array<std::array<char, 8>, 32> lut{};
@@ -277,38 +251,37 @@ class pext_direct {
     }
     return index;
   }
-};
 
-template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = MPH_CACHE_LINE_SIZE, class T = std::uint64_t>
-class pext_split_first_char {
  public:
-  template <class TSymbols, const auto offset = calc_offset(TSymbols{}()),
-            const auto masks = make_masks<std::uint64_t, offset>(TSymbols{})>
-    requires concepts::required_symbols_bits_size<masks, max_bits_size> and
+  template <class TSymbols, const auto mask = utility::mask<T>(TSymbols{}())>
+    requires concepts::required_bits_size<mask, max_bits_size> and
              concepts::supported_symbols_size<TSymbols, sizeof(T)>
-             [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data,
-                                                                   [[maybe_unused]] const auto size,
-                                                                   [[maybe_unused]] auto &&...args) const noexcept(true)
-                 -> std::size_t {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data, [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t {
     // using v8si = std::int8_t __attribute__((vector_size(sizeof(std::uint64_t))));
     // using m128 = union {
     // std::uint64_t xmm;
     // v8si v8;
     //};
-    // static constexpr const auto lut = make_luts<masks, symbols, offset>();
-    static constexpr const auto index = make_indexes<masks, offset>(s);
-    const auto id = data[0] - offset;
-    const auto lhs = *std::bit_cast<const std::uint64_t *>(data);
-    const auto ext = _pext_u64(lhs, masks[id]);
-    // const auto rhs = std::bit_cast<const v8si *>(lut[id][ext].data());
-    // const auto idx = std::bit_cast<const v8si *>(std::addressof(index[id][ext]));
-    return index[id][ext];
-  }
+    static constexpr const auto index = make_index<mask>(s);
+    // static constexpr const auto lut = make_lut<mask>(s);
+    const auto lhs = *std::bit_cast<const T *>(data);
+    const auto ext = _pext_u64(lhs, mask);
+    return index[ext];
 
- private:
-  static constexpr auto calc_offset = [](const auto &s) {
+    // const auto rhs = std::bit_cast<const v8si*>(std::data(lut[ext]));
+    ////const auto idx = std::bit_cast<const v8si*>(std::addressof(index[ext]));
+    // static constexpr auto max = (1ull << std::size(symbols()[0])*8) - 1ull;
+    // const auto cmp = *std::bit_cast<const v8si*>(data) == *rhs;
+    // const auto x = (cmp == max);
+    // return std::bit_cast<const m128*>(std::addressof(x))->xmm==max * idx;
+  }
+};
+
+template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = MPH_CACHE_LINE_SIZE, class T = std::uint64_t>
+class pext_split_first_char {
+  static constexpr auto calc_offset = [](const auto &symbols) {
     return (
-        *std::min_element(std::cbegin(s), std::cend(s), [](const auto &lhs, const auto &rhs) { return lhs[0] < rhs[0]; }))[0];
+        *std::min_element(std::cbegin(symbols), std::cend(symbols), [](const auto &lhs, const auto &rhs) { return lhs[0] < rhs[0]; }))[0];
   };
 
   template <std::ranges::range auto masks, const auto offset>
@@ -359,16 +332,54 @@ class pext_split_first_char {
     }
     return index;
   }
+
+ public:
+  template <class TSymbols, const auto offset = calc_offset(TSymbols{}()),
+            const auto masks = make_masks<offset>(TSymbols{})>
+    requires concepts::required_symbols_bits_size<masks, max_bits_size> and
+             concepts::supported_symbols_size<TSymbols, sizeof(T)>
+             [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data,
+                                                                   [[maybe_unused]] const auto size,
+                                                                   [[maybe_unused]] auto &&...args) const noexcept(true)
+                 -> std::size_t {
+    // using v8si = std::int8_t __attribute__((vector_size(sizeof(std::uint64_t))));
+    // using m128 = union {
+    // std::uint64_t xmm;
+    // v8si v8;
+    //};
+    // static constexpr const auto lut = make_luts<masks, symbols, offset>();
+    static constexpr const auto index = make_indexes<masks, offset>(s);
+    const auto id = data[0] - offset;
+    const auto lhs = *std::bit_cast<const std::uint64_t *>(data);
+    const auto ext = _pext_u64(lhs, masks[id]);
+    // const auto rhs = std::bit_cast<const v8si *>(std::data(lut[id][ext]));
+    // const auto idx = std::bit_cast<const v8si *>(std::addressof(index[id][ext]));
+    return index[id][ext];
+  }
+};
+
+/**
+ * Default implemention for picking the the policy based on the symbols, available policies and the input data
+ */
+constexpr auto default_policies = [](const auto symbols, const auto data, const auto size, auto&&... args) {
+  constexpr auto max_bits_size = 5;
+  if constexpr (requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+    return pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+    return pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
+  } else {
+    constexpr auto always_false = [](auto &&) { return false; }(data); // static_assert(false) support is C++23
+    static_assert(always_false, "hash can't be constructed with given policies!");
+  }
 };
 
 /**
  * Minimal perfect hash function (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
  *
  * @tparam TSymbols compile time array of symbols
- * @tparam TPolicies compile time tuple of policies to be executed in given order
+ * @tparam TPolicies compile time policies to be executed in given order
  */
-template <class TSymbols, class TPolicies = std::tuple<pext_direct<5>, pext_split_first_char<5>>>
-  requires(std::size(TSymbols{}()) > 0 and std::tuple_size_v<TPolicies> > 0)
+template <std::invocable TSymbols, class TPolicies = decltype(default_policies)>
 class hash final {
  public:
   constexpr explicit(true) hash(const TSymbols &symbols, const TPolicies &policies = {})
@@ -389,8 +400,7 @@ class hash final {
     if constexpr (Size < min_max.first or Size > min_max.second) {
       return {};
     } else {
-      return this->template operator()<0u>(data, std::integral_constant<decltype(Size), Size>{},
-                                           std::forward<decltype(args)>(args)...);
+      return policies(this->symbols, data, std::integral_constant<decltype(Size), Size>{}, std::forward<decltype(args)>(args)...);
     }
   }
 
@@ -404,7 +414,7 @@ class hash final {
   [[nodiscard]] constexpr auto operator()(const T *const data, auto &&...args) const noexcept(true) -> std::size_t {
     assert(data);
     struct unknown_size {};
-    return this->template operator()<0u>(data, unknown_size{}, std::forward<decltype(args)>(args)...);
+    return policies(this->symbols, data, unknown_size{}, std::forward<decltype(args)>(args)...);
   }
 
   /**
@@ -416,25 +426,11 @@ class hash final {
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const std::basic_string_view<T, Ts...> data, auto &&...args) const noexcept(true)
       -> std::size_t {
-    return this->template operator()<0u>(data.data(), std::size(data), std::forward<decltype(args)>(args)...);
-  }
-
- private:
-  template <std::size_t I>
-  [[nodiscard]] constexpr auto operator()(const auto data, const auto size, auto &&...args) const noexcept(true)
-      -> std::size_t {
-    if constexpr (I == std::tuple_size_v<TPolicies>) {
-      static_assert([](auto &&) { return false; }(data), "hash can't be constructed with given policies!");
-      return {};
-    } else if constexpr (requires { std::get<I>(policies)(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
-      return std::get<I>(policies)(symbols, data, size, std::forward<decltype(args)>(args)...);
-    } else {
-      return this->template operator()<I + 1>(data, size, std::forward<decltype(args)>(args)...);
-    }
+    return policies(this->symbols, std::data(data), std::size(data), std::forward<decltype(args)>(args)...);
   }
 
   TSymbols symbols{};
-  TPolicies policies{};
+  [[no_unique_address]] TPolicies policies{};
 };
 }  // namespace mph::inline v_1_0_0
 #endif  // MPH
