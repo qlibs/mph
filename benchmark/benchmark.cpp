@@ -109,8 +109,7 @@ int main() {
     });
   };
 
-  const auto bench_mph = [](auto Symbols, const auto name, const auto &symbols, auto fn) {
-    constexpr auto hash = mph::hash{std::move(Symbols)};
+  const auto bench_mph = [](const auto& hash, const auto name, const auto &symbols, auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
       doNotOptimizeAway(hash(fn(symbols).data()));
     });
@@ -122,7 +121,7 @@ int main() {
   bench_frozen("all", data::all, data::frozen_all, next);
 #endif
   bench_gperf("all", data::all, next);
-  bench_mph([] { return data::all; }, "all", data::all, next);
+  bench_mph(mph::hash{[] { return data::all; }}, "all", data::all, next);
 
   bench_unordered_map("random", data::random, next);
   bench_bsearch("random", data::random, next);
@@ -130,7 +129,7 @@ int main() {
   bench_frozen("all", data::random, data::frozen_random, next);
 #endif
   bench_gperf("random", data::random, next);
-  bench_mph([] { return data::random; }, "random", data::random, next);
+  bench_mph(mph::hash{[] { return data::random; }}, "random", data::random, next);
 
   // bench_unordered_map("single", data::single, first);
   // bench_bsearch("single", data::single, first);
@@ -139,6 +138,6 @@ int main() {
   // data::frozen_single, first);
   // #endif
   // bench_gperf("single", data::single, first);
-  // bench_mph([] { return data::single; }, "single", data::single,
+  // bench_mph(mph::hash{[] { return data::single; }}, "single", data::single,
   // first);
 }
