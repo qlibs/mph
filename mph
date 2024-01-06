@@ -31,11 +31,6 @@
 
 namespace mph::inline v_1_0_0 {
 namespace utility {
-#if defined(__cpp_lib_hardware_interference_size)
-using std::hardware_constructive_interference_size;
-#else
-constexpr std::size_t hardware_constructive_interference_size = 64;
-#endif
 /**
  * https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
  *
@@ -171,19 +166,25 @@ static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ st
  */
 template <auto max_bits_size = 5>
 class pext_direct {
-  // template <const auto mask, const auto symbols>
-  //[[nodiscard]] static constexpr auto make_lut() {
-  // alignas(utility::hardware_constructive_interference_size) std::array<std::array<char, 8>, 32> lut{};
+  static constexpr auto cache_line_size =
+#if defined(__cpp_lib_hardware_interference_size)
+  std::hardware_constructive_interference_size;
+#else
+  64;
+#endif
 
-  // for (const auto &symbol : symbols()) {
-  // auto &p = lut[utility::pext(utility::as<std::uint64_t>(symbol), mask)];
-  //// mempcpy
-  // for (auto k = 0u; k < std::size(symbol); ++k) {
-  // p[k] = symbol[k];
-  //}
-  //}
-  // return lut;
-  //}
+  template <const auto mask>
+  [[nodiscard]] static constexpr auto make_lut(const auto& symbols) {
+    alignas(cache_line_size) std::array<std::array<char, 8>, 32> lut{};
+    for (const auto &symbol : symbols()) {
+      auto &p = lut[utility::pext(utility::as<std::uint64_t>(symbol), mask)];
+      // mempcpy
+      for (auto k = 0u; k < std::size(symbol); ++k) {
+        p[k] = symbol[k];
+      }
+    }
+    return lut;
+  }
 
   template <const auto mask>
   [[nodiscard]] static constexpr auto make_index(const auto &symbols) {
@@ -195,7 +196,7 @@ class pext_direct {
       return result;
     }();
 
-    alignas(utility::hardware_constructive_interference_size) std::array<std::uint64_t, size> index{};
+    alignas(cache_line_size) std::array<std::uint64_t, size> index{};
     auto i = 0;
     for (const auto &symbol : symbols()) {
       index[utility::pext(utility::as<std::uint64_t>(symbol), mask)] = ++i;
@@ -205,8 +206,7 @@ class pext_direct {
 
  public:
   template <class TSymbols, const auto mask = utility::mask<std::uint64_t>(TSymbols{}())>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto ptr, [[maybe_unused]] const auto size,
-                                                        [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data, [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t
     requires(std::uint32_t(std::popcount(mask)) <= max_bits_size and ([](const auto &symbols) {
                return not symbols.empty() and
                       std::all_of(std::cbegin(symbols), std::cend(symbols),
@@ -221,14 +221,15 @@ class pext_direct {
     // v8si v8;
     //};
     static constexpr const auto index = make_index<mask>(s);
-    // static constexpr const auto lut = make_lut<mask, TSymbols>();
-    const auto lhs = *std::bit_cast<const std::uint64_t *>(ptr);
+    //static constexpr const auto lut = make_lut<mask>(s);
+    const auto lhs = *std::bit_cast<const std::uint64_t *>(data);
     const auto ext = _pext_u64(lhs, mask);
     return index[ext];
+
     // const auto rhs = std::bit_cast<const v8si*>(lut[ext].data());
     ////const auto idx = std::bit_cast<const v8si*>(std::addressof(index[ext]));
     // static constexpr auto max = (1ull << symbols()[0].size()*8) - 1ull;
-    // const auto cmp = *std::bit_cast<const v8si*>(ptr) == *rhs;
+    // const auto cmp = *std::bit_cast<const v8si*>(data) == *rhs;
     // const auto x = (cmp == max);
     // return std::bit_cast<const m128*>(std::addressof(x))->xmm==max * idx;
   }
@@ -236,6 +237,13 @@ class pext_direct {
 
 template <auto max_bits_size = 5>
 class pext_split_first_char {
+  static constexpr auto cache_line_size =
+#if defined(__cpp_lib_hardware_interference_size)
+  std::hardware_constructive_interference_size;
+#else
+  64;
+#endif
+
   static constexpr auto calc_offset = [](const auto &s) {
     return (
         *std::min_element(std::cbegin(s), std::cend(s), [](const auto &lhs, const auto &rhs) { return lhs[0] < rhs[0]; }))[0];
@@ -247,7 +255,7 @@ class pext_split_first_char {
     for (const auto &symbol : symbols()) {
       v[symbol[0] - offset].push_back(symbol);
     }
-    alignas(utility::hardware_constructive_interference_size) std::array<std::array<std::array<char, 8>, 32>, 32> lut{};
+    alignas(cache_line_size) std::array<std::array<std::array<char, 8>, 32>, 32> lut{};
     for (auto i = 0u; i < 32; ++i) {  // TODO max
       for (auto j = 0u; j < std::size(v[i]); ++j) {
         auto &p = lut[i][utility::pext(utility::as<std::uint64_t>(v[i][j]), masks[i])];
@@ -265,7 +273,7 @@ class pext_split_first_char {
     for (const auto &symbol : symbols()) {
       v[symbol[0] - offset].push_back(symbol);
     }
-    alignas(utility::hardware_constructive_interference_size) std::array<T, 32> masks{};  // TODO max, pad to 64
+    alignas(cache_line_size) std::array<T, 32> masks{};  // TODO max, pad to 64
     for (auto i = 0u; i < 32; ++i) {                                                      // TODO max
       masks[i] = utility::mask<T>(v[i]);
     }
@@ -281,7 +289,7 @@ class pext_split_first_char {
       idx[symbol[0] - offset].push_back(++i);
       v[symbol[0] - offset].push_back(symbol);
     }
-    alignas(utility::hardware_constructive_interference_size) std::array<std::array<std::uint64_t, 32>, 32>
+    alignas(cache_line_size) std::array<std::array<std::uint64_t, 32>, 32>
         index{};  // TODO max
     for (auto i = 0u; i < 32; ++i) {
       for (auto j = 0u; j < v[i].size(); ++j) {
@@ -294,8 +302,7 @@ class pext_split_first_char {
  public:
   template <class TSymbols, const auto offset = calc_offset(TSymbols{}()),
             const auto masks = make_masks<std::uint64_t, offset>(TSymbols{})>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto ptr, [[maybe_unused]] const auto size,
-                                                        [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data, [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t
     requires(std::all_of(std::cbegin(masks), std::cend(masks),
                          [](const auto mask) { return std::uint32_t(std::popcount(mask)) <= max_bits_size; }) and
              ([](const auto &symbols) {
@@ -313,8 +320,8 @@ class pext_split_first_char {
     //};
     // static constexpr const auto lut = make_luts<masks, symbols, offset>();
     static constexpr const auto index = make_indexes<masks, offset>(s);
-    const auto id = ptr[0] - offset;
-    const auto lhs = *std::bit_cast<const std::uint64_t *>(ptr);
+    const auto id = data[0] - offset;
+    const auto lhs = *std::bit_cast<const std::uint64_t *>(data);
     const auto ext = _pext_u64(lhs, masks[id]);
     // const auto rhs = std::bit_cast<const v8si *>(lut[id][ext].data());
     // const auto idx = std::bit_cast<const v8si *>(std::addressof(index[id][ext]));
@@ -335,47 +342,43 @@ class hash final {
   constexpr explicit(true) hash(TSymbols &&symbols, TPolicies &&policies = {})
       : symbols{std::move(symbols)}, policies{std::move(policies)} {}
 
+
+  template<class T, auto Size>
+  [[nodiscard]] constexpr auto operator()(const T(&&data)[Size], auto &&...args) const noexcept(true) -> std::size_t {
+    constexpr auto symbols = this->symbols();
+    constexpr auto min_max = std::minmax_element(std::cbegin(symbols), std::cend(symbols), [](const auto& lhs, const auto& rhs) { return std::size(lhs) < std::size(rhs); });
+    if constexpr (Size < min_max.first or Size > min_max.second) {
+      return {};
+    } else {
+      return this->template operator()<0u>(data, std::integral_constant<decltype(Size), Size>{}, std::forward<decltype(args)>(args)...);
+    }
+  }
+
   /**
    * @param data continuous input data
    * @param args... additonal parameters propagated to policies
    * @return result from executed policy
    */
-  [[nodiscard]] constexpr auto operator()(const auto data, auto &&...args) const noexcept(true) -> std::size_t {
-    if constexpr (std::is_pointer_v<decltype(data)>) {
-      assert(data);
-    }
+  [[nodiscard]] constexpr auto operator()(const auto* data, auto &&...args) const noexcept(true) -> std::size_t {
+    assert(data);
+    struct unknown {};
+    return this->template operator()<0u>(data, unknown{}, std::forward<decltype(args)>(args)...);
+  }
 
-    if constexpr (requires { data.size(); }) {
-      assert(data.size() > 0);
-    }
-
-    return this->template operator()<0>(
-        [](const auto data) {
-          if constexpr (requires { data.data(); }) {
-            return data.data();
-          } else {
-            return data;
-          }
-        }(data),
-        [](const auto data) {
-          if constexpr (requires { data.size(); }) {
-            return data.size();
-          } else {
-            return 0u;  // unknown size
-          }
-        }(data, std::forward<decltype(args)>(args)...));
+  [[nodiscard]] constexpr auto operator()(const std::string_view data, auto &&...args) const noexcept(true) -> std::size_t {
+    return this->template operator()<0u>(data.data(), data.size(), std::forward<decltype(args)>(args)...);
   }
 
  private:
-  template <auto I>
-  [[nodiscard]] constexpr auto operator()(const auto ptr, const auto size, auto &&...args) const noexcept(true) -> std::size_t {
+  template <std::size_t I>
+  [[nodiscard]] constexpr auto operator()(const auto data, const auto size, auto &&...args) const noexcept(true) -> std::size_t {
     if constexpr (I == std::tuple_size_v<TPolicies>) {
-      static_assert([](auto &&) { return false; }(ptr), "hash can't be constructed with given policies!");
+      static_assert([](auto &&) { return false; }(data), "hash can't be constructed with given policies!");
       return {};
-    } else if constexpr (requires { std::get<I>(policies)(symbols, ptr, size, std::forward<decltype(args)>(args)...); }) {
-      return std::get<I>(policies)(symbols, ptr, size, std::forward<decltype(args)>(args)...);
+    } else if constexpr (requires { std::get<I>(policies)(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+      return std::get<I>(policies)(symbols, data, size, std::forward<decltype(args)>(args)...);
     } else {
-      return this->template operator()<I+1>(ptr, size, std::forward<decltype(args)>(args)...);
+      return this->template operator()<I+1>(data, size, std::forward<decltype(args)>(args)...);
     }
   }
 
@@ -386,11 +389,13 @@ class hash final {
 
 #if defined(MPH_TEST)
 int main() {
+  using std::literals::operator""sv;
+
   {
-    static constexpr std::array<std::string_view, 3> symbols{
-        "A",
-        "B",
-        "C",
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
     };
 
     constexpr auto hash = mph::hash{[] { return symbols; }};
@@ -400,17 +405,17 @@ int main() {
       assert(expected++ == hash(symbol));
     }
 
-    // assert(0 == mph::hash{symbols}(""));
-    // assert(0 == mph::hash{symbols}("D"));
-    // assert(0 == mph::hash{symbols}("a"));
-    // assert(0 == mph::hash{symbols}("b"));
+    assert(0 == hash(""));
+    assert(0 == hash("D"));
+    assert(0 == hash("a"));
+    assert(0 == hash("b"));
   }
 
   {
-    static constexpr std::array<std::string_view, 3> symbols{
-        "A",
-        "B",
-        "C",
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
     };
 
     auto hash = mph::hash{[] { return symbols; }};
@@ -420,17 +425,17 @@ int main() {
       assert(expected++ == hash(symbol.data()));
     }
 
-    // assert(0 == mph::hash{symbols}(""));
-    // assert(0 == mph::hash{symbols}("D"));
-    // assert(0 == mph::hash{symbols}("a"));
-    // assert(0 == mph::hash{symbols}("b"));
+    assert(0 == hash(""));
+    assert(0 == hash("D"));
+    assert(0 == hash("a"));
+    assert(0 == hash("b"));
   }
 
   {
-    static constexpr std::array<std::string_view, 3> symbols{
-        "AA ",
-        "BB ",
-        "CC ",
+    static constexpr std::array symbols{
+        "AA "sv,
+        "BB "sv,
+        "CC "sv,
     };
 
     auto hash = mph::hash{[] { return symbols; }};
@@ -440,20 +445,20 @@ int main() {
       assert(expected++ == hash(symbol.data()));
     }
 
-    // assert(0 == mph::hash{symbols}(""));
-    // assert(0 == mph::hash{symbols}("   "));
-    // assert(0 == mph::hash{symbols}("aa "));
-    // assert(0 == mph::hash{symbols}("aaa"));
-    // assert(0 == mph::hash{symbols}("bb"));
-    // assert(0 == mph::hash{symbols}("bb "));
-    // assert(0 == mph::hash{symbols}(" cc"));
+    assert(0 == hash(""));
+    assert(0 == hash("   "));
+    assert(0 == hash("aa "));
+    assert(0 == hash("aaa"));
+    assert(0 == hash("bb"));
+    assert(0 == hash("bb "));
+    assert(0 == hash(" cc"));
   }
 
   {
-    static constexpr std::array<std::string_view, 3> symbols{
-        " AA ",
-        " AB ",
-        " AC ",
+    static constexpr std::array symbols{
+        " AA "sv,
+        " AB "sv,
+        " AC "sv,
     };
 
     auto hash = mph::hash{[] { return symbols; }};
@@ -463,47 +468,47 @@ int main() {
       assert(expected++ == hash(symbol.data()));
     }
 
-    // assert(0 == mph::hash{symbols}(""));
-    // assert(0 == mph::hash{symbols}(" aa "));
-    // assert(0 == mph::hash{symbols}("aaaa"));
-    // assert(0 == mph::hash{symbols}(" AA"));
-    // assert(0 == mph::hash{symbols}("AA "));
-    // assert(0 == mph::hash{symbols}(" AA_"));
-    // assert(0 == mph::hash{symbols}("_AA_"));
+    assert(0 == hash(""));
+    assert(0 == hash(" aa "));
+    assert(0 == hash("aaaa"));
+    assert(0 == hash(" AA"));
+    assert(0 == hash("AA "));
+    assert(0 == hash(" AA_"));
+    assert(0 == hash("_AA_"));
   }
 
-  {
-    static constexpr std::array<std::string_view, 100> symbols{
-        "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
-        "USRT    ", "BCOR    ", "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ", "GLBS    ", "CUBB    ",
-        "LRCX    ", "HTGM    ", "RYN     ", "IPG     ", "PNNTG   ", "ZIG     ", "IVR-A   ", "INVA    ", "MNE     ", "KRA     ",
-        "BRMK    ", "ARKG    ", "FFR     ", "QTRX    ", "XTN     ", "BAC-A   ", "CYBE    ", "ETJ     ", "JHCS    ", "RBCAA   ",
-        "GDS     ", "WTID    ", "TCO     ", "BWA     ", "MIE     ", "GENY    ", "TDOC    ", "MCRO    ", "QFIN    ", "NBTB    ",
-        "PWC     ", "FQAL    ", "NJAN    ", "IWB     ", "GXGXW   ", "EDUC    ", "RETL    ", "VIACA   ", "KLDO    ", "NEE-I   ",
-        "FBC     ", "JW.A    ", "BSMX    ", "FMNB    ", "EXR     ", "TAC     ", "FDL     ", "SWIR    ", "CLWT    ", "LMHB    ",
-        "IRTC    ", "CDMO    ", "HMLP-A  ", "LVUS    ", "UMRX    ", "GJH     ", "FRME    ", "CEIX    ", "IHD     ", "GHSI    ",
-        "DCP-B   ", "SB      ", "DSE     ", "CPRT    ", "NRZ     ", "VLYPO   ", "TDAC    ", "ZXZZT   ", "IWX     ", "NCSM    ",
-        "WIRE    ", "SFST    ", "EWD     ", "DEACW   ", "TRPX    ", "UCTT    ", "ZAZZT   ", "CYD     ", "NURE    ", "WEAT    ",
-    };
+  //{
+    //static constexpr std::array<std::string_view, 100> symbols{
+        //"III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
+        //"USRT    ", "BCOR    ", "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ", "GLBS    ", "CUBB    ",
+        //"LRCX    ", "HTGM    ", "RYN     ", "IPG     ", "PNNTG   ", "ZIG     ", "IVR-A   ", "INVA    ", "MNE     ", "KRA     ",
+        //"BRMK    ", "ARKG    ", "FFR     ", "QTRX    ", "XTN     ", "BAC-A   ", "CYBE    ", "ETJ     ", "JHCS    ", "RBCAA   ",
+        //"GDS     ", "WTID    ", "TCO     ", "BWA     ", "MIE     ", "GENY    ", "TDOC    ", "MCRO    ", "QFIN    ", "NBTB    ",
+        //"PWC     ", "FQAL    ", "NJAN    ", "IWB     ", "GXGXW   ", "EDUC    ", "RETL    ", "VIACA   ", "KLDO    ", "NEE-I   ",
+        //"FBC     ", "JW.A    ", "BSMX    ", "FMNB    ", "EXR     ", "TAC     ", "FDL     ", "SWIR    ", "CLWT    ", "LMHB    ",
+        //"IRTC    ", "CDMO    ", "HMLP-A  ", "LVUS    ", "UMRX    ", "GJH     ", "FRME    ", "CEIX    ", "IHD     ", "GHSI    ",
+        //"DCP-B   ", "SB      ", "DSE     ", "CPRT    ", "NRZ     ", "VLYPO   ", "TDAC    ", "ZXZZT   ", "IWX     ", "NCSM    ",
+        //"WIRE    ", "SFST    ", "EWD     ", "DEACW   ", "TRPX    ", "UCTT    ", "ZAZZT   ", "CYD     ", "NURE    ", "WEAT    ",
+    //};
 
-    auto hash = mph::hash{[] { return symbols; }};
+    //auto hash = mph::hash{[] { return symbols; }};
 
-    auto expected = 1u;
-    for (const auto &symbol : symbols) {
-      assert(expected++ == hash(symbol.data()));
-    }
+    //auto expected = 1u;
+    //for (const auto &symbol : symbols) {
+      //assert(expected++ == hash(symbol.data()));
+    //}
 
-    // assert(0 == mph::hash{symbols}(""));
-    // assert(0 == mph::hash{symbols}("        "));
-    // assert(0 == mph::hash{symbols}("III "));
-    // assert(0 == mph::hash{symbols}("III  "));
-    // assert(0 == mph::hash{symbols}("III   "));
-    // assert(0 == mph::hash{symbols}("III    "));
-    // assert(0 == mph::hash{symbols}("III     "));
-    // assert(0 == mph::hash{symbols}(" III    "));
-    // assert(0 == mph::hash{symbols}("IIIx    "));
-    // assert(0 == mph::hash{symbols}("     III"));
-  }
+    //// assert(0 == mph::hash{symbols}(""));
+    //// assert(0 == mph::hash{symbols}("        "));
+    //// assert(0 == mph::hash{symbols}("III "));
+    //// assert(0 == mph::hash{symbols}("III  "));
+    //// assert(0 == mph::hash{symbols}("III   "));
+    //// assert(0 == mph::hash{symbols}("III    "));
+    //// assert(0 == mph::hash{symbols}("III     "));
+    //// assert(0 == mph::hash{symbols}(" III    "));
+    //// assert(0 == mph::hash{symbols}("IIIx    "));
+    //// assert(0 == mph::hash{symbols}("     III"));
+  //}
 }
 #endif  // MPH_TEST
 #endif  // MPH

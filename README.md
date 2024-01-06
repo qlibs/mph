@@ -11,7 +11,7 @@
 ### Features
 
 - Single header/module (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
-- Fast (see #Benchmarks)
+- Fast (see [#Benchmarks](#benchmarks))
 
 ### Requirements
 
@@ -32,15 +32,17 @@ hash<symbols, policies>(data) {
 ### Usage
 
 ```cpp
-constexpr std::array<std::string_view, 3> symbols{
-  "FBC",
-  "SPY",
-  "CDC",
+constexpr std::array symbols{
+  "FBC"sv,
+  "SPY"sv,
+  "CDC"sv,
 };
 
 constexpr auto hash = mph::hash{[] { return symbols; }};
 
 assert(0 == hash(""));
+assert(0 == hash("FOO"));
+
 assert(1 == hash("FBC"));
 assert(2 == hash("SPY"));
 assert(3 == hash("CDC"));
