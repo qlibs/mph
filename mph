@@ -362,8 +362,7 @@ class pext_split_first_char {
  * Default implemention for picking the the policy based on the symbols, available policies and the input data
  */
 constexpr auto default_policies = [](const auto symbols, const auto data, const auto size, auto&&... args) {
-  constexpr auto max_bits_size = 5;
-  if constexpr (requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+  if constexpr (constexpr auto max_bits_size = 5; requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
     return pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
   } else if constexpr (requires { pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
     return pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
