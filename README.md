@@ -4,13 +4,14 @@
 
 ---------------------------------------
 
-## Branchless minimal perfect hash function
+## Minimal perfect hash function
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
 ### Features
 
 - Single header/module (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+- Flexible (see [#Design](#design))
 - Fast (see [#Benchmarks](#benchmarks))
 
 ### Requirements
@@ -40,8 +41,8 @@ constexpr std::array symbols{
 
 constexpr auto hash = mph::hash{[] { return symbols; }};
 
-assert(0 == hash(""));
-assert(0 == hash("FOO"));
+assert(0 == hash(""));    // not found
+assert(0 == hash("FOO")); // not found
 
 assert(1 == hash("FBC"));
 assert(2 == hash("SPY"));

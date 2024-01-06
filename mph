@@ -45,7 +45,7 @@ struct bitset final {
     }
   }
   constexpr auto set(const auto i, const auto value) { bits[i] = value; }
-  [[nodiscard]] constexpr auto size() const { return bits.size(); }
+  [[nodiscard]] constexpr auto size() const { return std::size(bits); }
   [[nodiscard]] constexpr auto operator[](const auto i) const { return bits[i]; }
   template <class T>
   [[nodiscard]] constexpr auto to() const -> T
@@ -72,8 +72,8 @@ static_assert(0b10 == bitset<2>{0b10}.to<int>());
 template <class T>
 [[nodiscard]] constexpr auto as(const auto value) -> T {
   T result{};
-  for (auto i = 0u; i < std::min(value.size(), sizeof(T)); ++i) {
-    result = (result << 8) | value[std::min(value.size(), sizeof(T)) - 1 - i];  // little-endian
+  for (auto i = 0u; i < std::min(std::size(value), sizeof(T)); ++i) {
+    result = (result << 8) | value[std::min(std::size(value), sizeof(T)) - 1 - i];  // little-endian
   }
   return result;
 }
@@ -146,7 +146,7 @@ template <class T>
   };
 
   bitset<sizeof(T) * 8> mask(std::numeric_limits<T>::max());
-  for (auto i = 0u; i < mask.size(); ++i) {
+  for (auto i = 0u; i < std::size(mask); ++i) {
     mask.set(i, 0);
     if (not is_unique(symbols, mask)) {
       mask.set(i, 1);
@@ -173,8 +173,7 @@ static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ st
 
 namespace concepts {
 template <const std::uint64_t mask, const std::size_t max_bits_size>
-concept required_bits_size = std::popcount(mask) <=
-max_bits_size;
+concept required_bits_size = std::popcount(mask) <= max_bits_size;
 
 // clang-format off
 static_assert(required_bits_size<0b00, 0u>);
@@ -204,7 +203,7 @@ static_assert(not required_symbols_bits_size<std::array{0b11u, 0b11u}, 1u>);
 
 template <class TSymbols, std::size_t Size>
 concept supported_symbols_size = [](const auto &symbols) {
-  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return symbol.size() <= Size; });
+  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) <= Size; });
 }(TSymbols{}());
 
 // clang-format off
@@ -242,7 +241,7 @@ class pext_direct {
 
     // const auto rhs = std::bit_cast<const v8si*>(lut[ext].data());
     ////const auto idx = std::bit_cast<const v8si*>(std::addressof(index[ext]));
-    // static constexpr auto max = (1ull << symbols()[0].size()*8) - 1ull;
+    // static constexpr auto max = (1ull << std::size(symbols()[0])*8) - 1ull;
     // const auto cmp = *std::bit_cast<const v8si*>(data) == *rhs;
     // const auto x = (cmp == max);
     // return std::bit_cast<const m128*>(std::addressof(x))->xmm==max * idx;
@@ -354,7 +353,7 @@ class pext_split_first_char {
     }
     alignas(cache_line_size) std::array<std::array<std::uint64_t, 32>, 32> index{};  // TODO max
     for (auto i = 0u; i < 32; ++i) {
-      for (auto j = 0u; j < v[i].size(); ++j) {
+      for (auto j = 0u; j < std::size(v[i]); ++j) {
         index[i][utility::pext(utility::as<std::uint64_t>(v[i][j]), masks[i])] = idx[i][j];
       }
     }
@@ -417,7 +416,7 @@ class hash final {
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const std::basic_string_view<T, Ts...> data, auto &&...args) const noexcept(true)
       -> std::size_t {
-    return this->template operator()<0u>(data.data(), data.size(), std::forward<decltype(args)>(args)...);
+    return this->template operator()<0u>(data.data(), std::size(data), std::forward<decltype(args)>(args)...);
   }
 
  private:
