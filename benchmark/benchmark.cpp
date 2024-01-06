@@ -6,8 +6,6 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #define ANKERL_NANOBENCH_IMPLEMENT
-#include <nanobench.h>
-
 #include <algorithm>
 #include <array>
 #include <mph>
@@ -15,6 +13,7 @@
 #include <unordered_map>
 
 #include "data.hpp"
+#include "nanobench.h"
 
 int main() {
   static constexpr auto iterations = 1'000'000;
@@ -52,24 +51,21 @@ int main() {
   };
 
   const auto bench_bsearch = [](const auto name, const auto &symbols, auto fn) {
-    std::vector<std::string_view> strings{};
-    for (const auto &symbol : symbols) {
-      strings.push_back(symbol);
-    }
-    std::sort(std::begin(strings), std::end(strings));
-    constexpr auto bsearch = [](const auto &symbols, const auto data) -> int {
-      if (const bool found = std::binary_search(std::cbegin(symbols), std::cend(symbols), data)) {
-        return std::distance(std::cbegin(symbols), std::lower_bound(std::cbegin(symbols), std::cend(symbols), data));
+    std::vector<std::string_view> tokens(std::cbegin(symbols), std::cend(symbols));
+    std::sort(std::begin(tokens), std::end(tokens));
+    const auto bsearch = [&](const auto data) -> int {
+      if (const bool found = std::binary_search(std::cbegin(tokens), std::cend(tokens), data)) {
+        return std::distance(std::cbegin(tokens), std::lower_bound(std::cbegin(tokens), std::cend(tokens), data));
       }
       return -1;
     };
     Bench().minEpochIterations(iterations).run(std::string(name) + ".bsearch", [&] {
-      doNotOptimizeAway(bsearch(strings, fn(symbols)));
+      doNotOptimizeAway(bsearch(fn(symbols)));
     });
   };
 
   const auto bench_gperf = [](const auto name, const auto &symbols, auto fn) {
-    const auto size = symbols[0].size();
+    const auto symbol_size = symbols[0].size();
     /* Command-line: gperf -e ' \\015' -L C++ -7 -C -E -k '*,1,$' */
     const auto hash = [](const char *str, std::size_t len) {
       static constexpr const unsigned short asso_values[] = {
@@ -79,6 +75,7 @@ int main() {
           15,  10,  80,  0,   20,  55,  70,  5,   2,   2,   115, 50,  15,  105, 50,  55,  0,   5,   0,   2,   115, 0,
           90,  2,   60,  393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393,
           393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393};
+
       unsigned int hval = len;
 
       switch (hval) {
@@ -105,11 +102,11 @@ int main() {
     };
 
     Bench().minEpochIterations(iterations).run(std::string(name) + ".gperf", [&] {
-      doNotOptimizeAway(hash(fn(symbols).data(), size));
+      doNotOptimizeAway(hash(fn(symbols).data(), symbol_size));
     });
   };
 
-  const auto bench_mph = [](const auto& hash, const auto name, const auto &symbols, auto fn) {
+  const auto bench_mph = [](const auto &hash, const auto name, const auto &symbols, auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
       doNotOptimizeAway(hash(fn(symbols).data()));
     });

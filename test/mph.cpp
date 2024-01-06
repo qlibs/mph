@@ -6,7 +6,8 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #include <mph>
-#include <ut.hpp>
+
+#include "ut.hpp"
 
 int main() {
   using namespace boost::ut;
@@ -38,7 +39,8 @@ int main() {
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_direct<std::uint64_t, 5>{}(args...); }};
+    constexpr auto hash =
+        mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_direct<std::uint64_t, 5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -50,7 +52,6 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-
   "[hash] custom policies - pext_split_on_first_char"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
@@ -58,7 +59,8 @@ int main() {
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_on_first_char<std::uint64_t, 5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; },
+                                    [](auto &&...args) { return mph::pext_split_on_first_char<std::uint64_t, 5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -79,13 +81,13 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data())); // no size information
+      expect(_u(expected++) == hash(symbol.data()));  // no size information
     }
 
-    expect(0_u == hash("        ")); // no size information
-    expect(0_u == hash("D       ")); // no size information
-    expect(0_u == hash("E       ")); // no size information
-    expect(0_u == hash("F       ")); // no size information
+    expect(0_u == hash("        "));  // no size information
+    expect(0_u == hash("D       "));  // no size information
+    expect(0_u == hash("E       "));  // no size information
+    expect(0_u == hash("F       "));  // no size information
   };
 
   "[hash] string_view"_test = [] {
@@ -134,16 +136,16 @@ int main() {
 
   "[hash] multiple policies trigger"_test = [] {
     static constexpr std::array<std::string_view, 100> symbols{
-      "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
-      "USRT    ", "BCOR    ", "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ", "GLBS    ", "CUBB    ",
-      "LRCX    ", "HTGM    ", "RYN     ", "IPG     ", "PNNTG   ", "ZIG     ", "IVR-A   ", "INVA    ", "MNE     ", "KRA     ",
-      "BRMK    ", "ARKG    ", "FFR     ", "QTRX    ", "XTN     ", "BAC-A   ", "CYBE    ", "ETJ     ", "JHCS    ", "RBCAA   ",
-      "GDS     ", "WTID    ", "TCO     ", "BWA     ", "MIE     ", "GENY    ", "TDOC    ", "MCRO    ", "QFIN    ", "NBTB    ",
-      "PWC     ", "FQAL    ", "NJAN    ", "IWB     ", "GXGXW   ", "EDUC    ", "RETL    ", "VIACA   ", "KLDO    ", "NEE-I   ",
-      "FBC     ", "JW.A    ", "BSMX    ", "FMNB    ", "EXR     ", "TAC     ", "FDL     ", "SWIR    ", "CLWT    ", "LMHB    ",
-      "IRTC    ", "CDMO    ", "HMLP-A  ", "LVUS    ", "UMRX    ", "GJH     ", "FRME    ", "CEIX    ", "IHD     ", "GHSI    ",
-      "DCP-B   ", "SB      ", "DSE     ", "CPRT    ", "NRZ     ", "VLYPO   ", "TDAC    ", "ZXZZT   ", "IWX     ", "NCSM    ",
-      "WIRE    ", "SFST    ", "EWD     ", "DEACW   ", "TRPX    ", "UCTT    ", "ZAZZT   ", "CYD     ", "NURE    ", "WEAT    ",
+        "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
+        "USRT    ", "BCOR    ", "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ", "GLBS    ", "CUBB    ",
+        "LRCX    ", "HTGM    ", "RYN     ", "IPG     ", "PNNTG   ", "ZIG     ", "IVR-A   ", "INVA    ", "MNE     ", "KRA     ",
+        "BRMK    ", "ARKG    ", "FFR     ", "QTRX    ", "XTN     ", "BAC-A   ", "CYBE    ", "ETJ     ", "JHCS    ", "RBCAA   ",
+        "GDS     ", "WTID    ", "TCO     ", "BWA     ", "MIE     ", "GENY    ", "TDOC    ", "MCRO    ", "QFIN    ", "NBTB    ",
+        "PWC     ", "FQAL    ", "NJAN    ", "IWB     ", "GXGXW   ", "EDUC    ", "RETL    ", "VIACA   ", "KLDO    ", "NEE-I   ",
+        "FBC     ", "JW.A    ", "BSMX    ", "FMNB    ", "EXR     ", "TAC     ", "FDL     ", "SWIR    ", "CLWT    ", "LMHB    ",
+        "IRTC    ", "CDMO    ", "HMLP-A  ", "LVUS    ", "UMRX    ", "GJH     ", "FRME    ", "CEIX    ", "IHD     ", "GHSI    ",
+        "DCP-B   ", "SB      ", "DSE     ", "CPRT    ", "NRZ     ", "VLYPO   ", "TDAC    ", "ZXZZT   ", "IWX     ", "NCSM    ",
+        "WIRE    ", "SFST    ", "EWD     ", "DEACW   ", "TRPX    ", "UCTT    ", "ZAZZT   ", "CYD     ", "NURE    ", "WEAT    ",
     };
 
     const auto hash = mph::hash{[] { return symbols; }};

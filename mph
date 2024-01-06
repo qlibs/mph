@@ -133,7 +133,7 @@ static_assert(0b11 == pext(0b11, 0b11));
  */
 template <class T>
 [[nodiscard]] constexpr auto mask(const std::ranges::range auto &symbols) {
-  constexpr auto is_unique = [](const auto &symbols, const auto mask) {
+  const auto is_unique = [&](const auto mask) {
     std::vector<T> v{};
     for (const auto &symbol : symbols) {
       const auto value = pext(as<T>(symbol), mask.template to<T>());
@@ -148,11 +148,11 @@ template <class T>
   bitset<sizeof(T) * 8> mask(std::numeric_limits<T>::max());
   for (auto i = 0u; i < std::size(mask); ++i) {
     mask.set(i, 0);
-    if (not is_unique(symbols, mask)) {
+    if (not is_unique(mask)) {
       mask.set(i, 1);
     }
   }
-  if (not is_unique(symbols, mask)) {
+  if (not is_unique(mask)) {
     throw;  // not a constant
   }
   return mask.template to<T>();
@@ -279,10 +279,12 @@ class pext_split_on_first_char {
     for (const auto &symbol : symbols()) {
       v[std::size_t(symbol[0])].push_back(symbol);
     }
+
     std::array<T, size> masks{};
     for (auto i = 0u; i < std::size(masks); ++i) {
       masks[i] = utility::mask<T>(v[i]);
     }
+
     return masks;
   }
 
@@ -395,7 +397,7 @@ class hash final {
 
  public:
   constexpr explicit(true) hash(const TSymbols &symbols, const TPolicies &policies = {})
-      : symbols{symbols}, policies{policies} {}
+      : symbols_{symbols}, policies_{policies} {}
 
   /**
    * @param data continuous input data
@@ -405,15 +407,15 @@ class hash final {
   template <class T, std::size_t Size>
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const T (&&data)[Size], auto &&...args) const noexcept(true) {
-    constexpr auto symbols = this->symbols();
+    constexpr auto symbols = symbols_();
     constexpr auto min_max =
-        std::minmax_element(std::cbegin(symbols), std::cend(symbols),
+        std::minmax_element(std::cbegin(symbols_), std::cend(symbols_),
                             [](const auto &lhs, const auto &rhs) { return std::size(lhs) < std::size(rhs); });
     if constexpr (Size < min_max.first or Size > min_max.second) {
-      return decltype(policies(this->symbols, data, std::integral_constant<decltype(Size), Size>{},
+      return decltype(policies_(symbols_, data, std::integral_constant<decltype(Size), Size>{},
                                std::forward<decltype(args)>(args)...)){};
     } else {
-      return policies(this->symbols, data, std::integral_constant<decltype(Size), Size>{},
+      return policies_(this->symbols, data, std::integral_constant<decltype(Size), Size>{},
                       std::forward<decltype(args)>(args)...);
     }
   }
@@ -427,7 +429,7 @@ class hash final {
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const T *const data, auto &&...args) const noexcept(true) {
     assert(data);
-    return policies(this->symbols, data, unknown_size{}, std::forward<decltype(args)>(args)...);
+    return policies_(symbols_, data, unknown_size{}, std::forward<decltype(args)>(args)...);
   }
 
   /**
@@ -438,11 +440,11 @@ class hash final {
   template <class T, class... Ts>
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const std::basic_string_view<T, Ts...> data, auto &&...args) const noexcept(true) {
-    return policies(this->symbols, std::data(data), std::size(data), std::forward<decltype(args)>(args)...);
+    return policies_(symbols_, std::data(data), std::size(data), std::forward<decltype(args)>(args)...);
   }
 
-  TSymbols symbols{};
-  [[no_unique_address]] TPolicies policies{};
+  TSymbols symbols_{};
+  [[no_unique_address]] TPolicies policies_{};
 };
 }  // namespace mph::inline v_1_0_0
 #endif  // MPH
