@@ -369,8 +369,13 @@ class pext_split_on_first_char {
 
 /**
  * Default implemention for picking the the policy based on the symbols, available policies and the input data
+ * @param symbols constexpr list of symbols
+ * @param data continuous input data
+ * @param size input size
+ * @param args... additional args propagated to policies
+ * @return 0 if string doesn't match, 1..N for matches
  */
-constexpr auto default_policies = [](const auto symbols, const auto* data, const auto size, auto&&... args) {
+constexpr auto default_policies = [](const auto symbols, const auto* data, const auto size, auto&&... args) -> std::size_t {
   if constexpr (constexpr auto max_bits_size = 5; requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
     return pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
   } else if constexpr (requires { pext_split_on_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
@@ -378,6 +383,7 @@ constexpr auto default_policies = [](const auto symbols, const auto* data, const
   } else {
     constexpr auto always_false = [](auto &&) { return false; }(data); // static_assert(false) support is C++23
     static_assert(always_false, "hash can't be constructed with given policies!");
+    return {};
   }
 };
 
