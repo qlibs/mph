@@ -129,7 +129,7 @@ static_assert(0b11 == pext(0b11, 0b11));
 // clang-format on
 
 /**
- * Finds T type mask which uniquly identifies given symbols
+ * Finds T type mask which uniquely identifies given symbols
  */
 template <class T>
 [[nodiscard]] constexpr auto mask(const std::ranges::range auto &symbols) {
@@ -222,17 +222,16 @@ static_assert(not supported_symbols_size<decltype([] { return std::array{std::ar
  *  - requires symbols to have the same size <= 8 bytes
  *  - requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = utility::cache_line_size>
+template <class T = std::uint64_t, const std::size_t max_bits_size = 5,
+          const std::size_t cache_line_size = utility::cache_line_size>
 class pext_direct {
-  using T = std::uint64_t;
-
   template <const auto mask>
-  [[nodiscard]] static constexpr auto make_lut(const auto &symbols) {
-    alignas(cache_line_size) std::array<T, 32> lut{};
+  [[nodiscard]] static constexpr auto make_lookup(const auto &symbols) {
+    alignas(cache_line_size) std::array<T, 32> lookup{};
     for (const auto &symbol : symbols()) {
-      lut[utility::pext(utility::as<T>(symbol), mask)] = utility::as<T>(symbol);
+      lookup[utility::pext(utility::as<T>(symbol), mask)] = utility::as<T>(symbol);
     }
-    return lut;
+    return lookup;
   }
 
   template <const auto mask>
@@ -251,7 +250,7 @@ class pext_direct {
                                                         [[maybe_unused]] auto &&...args) const noexcept(true) {
     const auto lhs = [&] {
       if constexpr (requires { size.unknown; }) {
-        return *std::bit_cast<const T *>(data);
+        return *std::bit_cast<const T *>(data);  // assuming there is at least sizeof(T) bytes available
       } else {
         T t{};
         std::memcpy(&t, data, size);
@@ -259,10 +258,10 @@ class pext_direct {
       }
     }();
 
-    static constexpr const auto lut = make_lut<mask>(s);
+    static constexpr const auto lookup = make_lookup<mask>(s);
     static constexpr const auto index = make_index<mask>(s);
 
-    if (const auto ext = _pext_u64(lhs, mask); lut[ext] == lhs) {
+    if (const auto ext = _pext_u64(lhs, mask); lookup[ext] == lhs) {
       return index[ext];
     } else {
       return decltype(index[ext]){};
@@ -270,15 +269,15 @@ class pext_direct {
   }
 };
 
-template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = utility::cache_line_size>
+template <class T = std::uint64_t, const std::size_t max_bits_size = 5,
+          const std::size_t cache_line_size = utility::cache_line_size>
 class pext_split_on_first_char {
-  using T = std::uint64_t;
-
   [[nodiscard]] static constexpr auto make_masks(const auto &symbols) {
     constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
+
     std::vector<std::vector<std::string_view>> v(size);
     for (const auto &symbol : symbols()) {
-      v[int(symbol[0])].push_back(symbol);
+      v[std::size_t(symbol[0])].push_back(symbol);
     }
     std::array<T, size> masks{};
     for (auto i = 0u; i < std::size(masks); ++i) {
@@ -288,35 +287,43 @@ class pext_split_on_first_char {
   }
 
   template <const auto masks>
-  [[nodiscard]] static constexpr auto make_luts(const auto &symbols) {
-    std::vector<std::string_view> v[127]{};  // TODO max
+  [[nodiscard]] static constexpr auto make_lookups(const auto &symbols) {
+    constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
+
+    std::vector<std::string_view> v[size]{};
     for (const auto &symbol : symbols()) {
-      v[int(symbol[0])].push_back(symbol);
+      v[std::size_t(symbol[0])].push_back(symbol);
     }
-    alignas(cache_line_size) std::array<std::array<T, 32>, 127> lut{};
-    for (auto i = 0u; i < 127; ++i) {  // TODO max
+
+    alignas(cache_line_size) std::array<std::array<T, 32>, size> lookup{};
+    for (auto i = 0u; i < size; ++i) {
       for (auto j = 0u; j < std::size(v[i]); ++j) {
-        lut[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
+        lookup[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
       }
     }
-    return lut;
+
+    return lookup;
   }
 
   template <const auto masks>
   [[nodiscard]] static constexpr auto make_indexes(const auto &symbols) {
-    std::vector<std::size_t> idx[127]{};     // TODO max
-    std::vector<std::string_view> v[127]{};  // TODO max
-    auto i = 0;
-    for (const auto &symbol : symbols()) {
-      idx[int(symbol[0])].push_back(++i);
-      v[int(symbol[0])].push_back(symbol);
+    constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
+
+    std::vector<std::size_t> idx[size]{};
+    std::vector<std::string_view> v[size]{};
+
+    for (auto i = 0u; const auto &symbol : symbols()) {
+      idx[std::size_t(symbol[0])].push_back(++i);
+      v[std::size_t(symbol[0])].push_back(symbol);
     }
-    alignas(cache_line_size) std::array<std::array<T, 32>, 127> index{};  // TODO max
-    for (auto i = 0u; i < 127; ++i) {
+
+    alignas(cache_line_size) std::array<std::array<T, 32>, size> index{};
+    for (auto i = 0u; i < size; ++i) {
       for (auto j = 0u; j < std::size(v[i]); ++j) {
         index[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = idx[i][j];
       }
     }
+
     return index;
   }
 
@@ -328,7 +335,7 @@ class pext_split_on_first_char {
                                                         [[maybe_unused]] auto &&...args) const noexcept(true) {
     const auto lhs = [&] {
       if constexpr (requires { size.unknown; }) {
-        return *std::bit_cast<const T *>(data);
+        return *std::bit_cast<const T *>(data);  // assuming there is at least sizeof(T) bytes available
       } else {
         assert(size > 0);
         T t{};
@@ -338,10 +345,10 @@ class pext_split_on_first_char {
     }();
 
     const auto id = data[0];
-    static constexpr auto lut = make_luts<masks>(s);
+    static constexpr auto lookup = make_lookups<masks>(s);
     static constexpr auto index = make_indexes<masks>(s);
 
-    if (const auto ext = _pext_u64(lhs, masks[id]); lut[id][ext] == lhs) {
+    if (const auto ext = _pext_u64(lhs, masks[id]); lookup[id][ext] == lhs) {
       return index[id][ext];
     } else {
       return decltype(index[id][ext]){};
@@ -351,25 +358,27 @@ class pext_split_on_first_char {
 
 /**
  * Default implementation for picking the policy based on the symbols, available policies and the input data
+ * Will fail to compile if policies don't return the same type
+ *
  * @param symbols constexpr list of symbols
  * @param data continuous input data
  * @param size input size
  * @param args... additional args propagated to policies
- * @return 0 if string doesn't match, 1..N for matches
+ * @return depends on the policies [default: 0 if string doesn't match, 1..N for matches]
  */
 constexpr auto default_policies = [](const auto symbols, const auto *data, const auto size, auto &&...args) {
-  if constexpr (constexpr auto max_bits_size = 5;
-                requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
-    return pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
-  } else if constexpr (requires {
-                         pext_split_on_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
-                       }) {
-    return pext_split_on_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
+  constexpr auto max_bits_size = 5;
+  constexpr auto pext_direct = mph::pext_direct<std::uint64_t, max_bits_size>{};
+  constexpr auto pext_split_on_first_char = mph::pext_split_on_first_char<std::uint64_t, max_bits_size>{};
+
+  if constexpr (requires { pext_direct(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+    return pext_direct(symbols, data, size, std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { pext_split_on_first_char(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+    return pext_split_on_first_char(symbols, data, size, std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto always_false = [](auto &&) { return false; }(data);  // static_assert(false) support is C++23
     static_assert(always_false, "hash can't be constructed with given policies!");
   }
-  // will fail if policies don't return the same type
 };
 
 /**
@@ -390,7 +399,7 @@ class hash final {
 
   /**
    * @param data continuous input data
-   * @param args... additonal parameters propagated to policies
+   * @param args... additional parameters propagated to policies
    * @return result from executed policy
    */
   template <class T, std::size_t Size>
@@ -423,7 +432,7 @@ class hash final {
 
   /**
    * @param data continuous input data
-   * @param args... additonal parameters propagated to policies
+   * @param args... additional parameters propagated to policies
    * @return result from executed policy
    */
   template <class T, class... Ts>

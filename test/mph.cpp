@@ -12,7 +12,7 @@ int main() {
   using namespace boost::ut;
   using std::literals::operator""sv;
 
-  ""_test = [] {
+  "[hash] default policies"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
@@ -31,14 +31,14 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  ""_test = [] {
+  "[hash] custom policies - pext_direct"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_direct<5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_direct<std::uint64_t, 5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -51,14 +51,14 @@ int main() {
   };
 
 
-  ""_test = [] {
+  "[hash] custom policies - pext_split_on_first_char"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_on_first_char<5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_on_first_char<std::uint64_t, 5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -69,7 +69,7 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  ""_test = [] {
+  "[hash] raw data"_test = [] {
     static constexpr std::array symbols{
         "A       "sv,
         "B       "sv,
@@ -88,7 +88,7 @@ int main() {
     expect(0_u == hash("F       ")); // no size information
   };
 
-  ""_test = [] {
+  "[hash] string_view"_test = [] {
     static constexpr std::array symbols{
         "AA "sv,
         "BB "sv,
@@ -110,7 +110,7 @@ int main() {
     expect(0_u == hash(" cc"sv));
   };
 
-  ""_test = [] {
+  "[hash] fail case - different sizes"_test = [] {
     static constexpr std::array symbols{
         " AA "sv,
         " AB "sv,
@@ -132,7 +132,7 @@ int main() {
     expect(0_u == hash("_AA_"sv));
   };
 
-  ""_test = [] {
+  "[hash] multiple policies trigger"_test = [] {
     static constexpr std::array<std::string_view, 100> symbols{
       "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
       "USRT    ", "BCOR    ", "TWM     ", "BVSN    ", "STBA    ", "GPK     ", "LVHD    ", "FTEK    ", "GLBS    ", "CUBB    ",
