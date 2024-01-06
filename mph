@@ -237,15 +237,7 @@ class pext_direct {
 
   template <const auto mask>
   [[nodiscard]] static constexpr auto make_index(const auto &symbols) {
-    constexpr auto size = [] {  // std::pow is not constexpr
-      std::size_t result{1};
-      for (auto i = 0u; i < std::popcount(mask); ++i) {
-        result *= 2;
-      }
-      return result;
-    }();
-
-    alignas(cache_line_size) std::array<T, size> index{};
+    alignas(cache_line_size) std::array<T, 32> index{};
     for (auto i = 0u; const auto &symbol : symbols()) {
       index[utility::pext(utility::as<T>(symbol), mask)] = ++i;
     }
@@ -286,7 +278,7 @@ class pext_split_on_first_char {
     constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
     std::vector<std::vector<std::string_view>> v(size);
     for (const auto &symbol : symbols()) {
-      v[symbol[0]].push_back(symbol);
+      v[int(symbol[0])].push_back(symbol);
     }
     std::array<T, size> masks{};
     for (auto i = 0u; i < std::size(masks); ++i) {
@@ -295,33 +287,35 @@ class pext_split_on_first_char {
     return masks;
   }
 
-  template <const auto C, const auto mask>
-  [[nodiscard]] static constexpr auto make_lut(const auto &symbols) {
-    alignas(cache_line_size) std::array<T, 32> lut{};
+  template <const auto masks>
+  [[nodiscard]] static constexpr auto make_luts(const auto &symbols) {
+    std::vector<std::string_view> v[127]{};  // TODO max
     for (const auto &symbol : symbols()) {
-      if (symbol[0] == C) {
-        lut[utility::pext(utility::as<T>(symbol), mask)] = utility::as<T>(symbol);
+      v[int(symbol[0])].push_back(symbol);
+    }
+    alignas(cache_line_size) std::array<std::array<T, 32>, 127> lut{};
+    for (auto i = 0u; i < 127; ++i) {  // TODO max
+      for (auto j = 0u; j < std::size(v[i]); ++j) {
+        lut[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
       }
     }
     return lut;
   }
 
-  template <const auto C, const auto mask>
-  [[nodiscard]] static constexpr auto make_index(const auto &symbols) {
-    constexpr auto size = [] {  // std::pow is not constexpr
-      std::size_t result{1};
-      for (auto i = 0u; i < std::popcount(mask); ++i) {
-        result *= 2;
+  template <const auto masks>
+  [[nodiscard]] static constexpr auto make_indexes(const auto &symbols) {
+    std::vector<std::size_t> idx[127]{};     // TODO max
+    std::vector<std::string_view> v[127]{};  // TODO max
+    auto i = 0;
+    for (const auto &symbol : symbols()) {
+      idx[int(symbol[0])].push_back(++i);
+      v[int(symbol[0])].push_back(symbol);
+    }
+    alignas(cache_line_size) std::array<std::array<T, 32>, 127> index{};  // TODO max
+    for (auto i = 0u; i < 127; ++i) {
+      for (auto j = 0u; j < std::size(v[i]); ++j) {
+        index[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = idx[i][j];
       }
-      return result;
-    }();
-
-    alignas(cache_line_size) std::array<T, size> index{};
-    for (auto i = 1u; const auto &symbol : symbols()) {
-      if (symbol[0] == C) {
-        index[utility::pext(utility::as<T>(symbol), mask)] = i;
-      }
-      ++i; // global index across different symbols
     }
     return index;
   }
@@ -332,56 +326,25 @@ class pext_split_on_first_char {
              concepts::supported_symbols_size<TSymbols, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto *data, const auto size,
                                                         [[maybe_unused]] auto &&...args) const noexcept(true) {
-    constexpr auto unique = [](const auto &symbols) {
-      std::array<bool, 255> a{};
-      for (const auto &symbol : symbols) {
-        a[symbol[0]] = true;
+    const auto lhs = [&] {
+      if constexpr (requires { size.unknown; }) {
+        return *std::bit_cast<const T *>(data);
+      } else {
+        assert(size > 0);
+        T t{};
+        std::memcpy(&t, data, size);
+        return t;
       }
-      return a;
-    }(s());
+    }();
 
-    return [&]<auto... Ns>(std::index_sequence<Ns...>) {
-      return dispatch<masks, std::pair{Ns, unique[Ns]}...>(
-          s,
-          [&] {
-            if constexpr (requires { size.unknown; }) {
-              return *std::bit_cast<const T *>(data);
-            } else {
-              assert(size > 0);
-              T t{};
-              std::memcpy(&t, data, size);
-              return t;
-            }
-          }(),
-          data);
-    }
-    (std::make_index_sequence<std::size(unique)>{});
-  }
+    const auto id = data[0];
+    static constexpr auto lut = make_luts<masks>(s);
+    static constexpr auto index = make_indexes<masks>(s);
 
- private:
-  template <const auto masks, const auto C, const auto... Cs>
-  [[nodiscard]] static auto dispatch(const auto symbols, const auto lhs, const auto *data) noexcept(true) {
-    if constexpr (not sizeof...(Cs)) {
-      // return decltype(index[0]){};
-      return 0ul;
-    } else if constexpr (C.second) {
-      switch (data[0]) {
-        case C.first: {
-          static constexpr auto mask = masks[C.first];
-          static constexpr auto lut = make_lut<C.first, mask>(symbols);
-          static constexpr auto index = make_index<C.first, mask>(symbols);
-
-          if (const auto ext = _pext_u64(lhs, mask); lut[ext] == lhs) {
-            return index[ext];
-          } else {
-            return decltype(index[0]){};
-          }
-        }
-        default:
-          return dispatch<masks, Cs...>(symbols, lhs, data);
-      }
+    if (const auto ext = _pext_u64(lhs, masks[id]); lut[id][ext] == lhs) {
+      return index[id][ext];
     } else {
-      return dispatch<masks, Cs...>(symbols, lhs, data);
+      return decltype(index[id][ext]){};
     }
   }
 };
