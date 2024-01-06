@@ -41,12 +41,12 @@ constexpr std::array symbols{
 
 constexpr auto hash = mph::hash{[] { return symbols; }};
 
-assert(0 == hash(""));    // not found
-assert(0 == hash("FOO")); // not found
+assert(0 == hash(""sv));    // not found
+assert(0 == hash("FOO"sv)); // not found
 
-assert(1 == hash("FBC"));
-assert(2 == hash("SPY"));
-assert(3 == hash("CDC"));
+assert(1 == hash("FBC"sv));
+assert(2 == hash("SPY"sv));
+assert(3 == hash("CDC"sv));
 ```
 
 ### x86-64 assembly (https://godbolt.org/z/dTYdec4jz)

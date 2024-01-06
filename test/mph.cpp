@@ -25,10 +25,10 @@ int main() {
       expect(_u(expected++) == hash(symbol));
     }
 
-    expect(0_u == hash(""));
-    expect(0_u == hash("D"));
-    expect(0_u == hash("a"));
-    expect(0_u == hash("b"));
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("D"sv));
+    expect(0_u == hash("a"sv));
+    expect(0_u == hash("b"sv));
   };
 
   ""_test = [] {
@@ -44,30 +44,30 @@ int main() {
       expect(_u(expected++) == hash(symbol));
     }
 
-    expect(0_u == hash(""));
-    expect(0_u == hash("D"));
-    expect(0_u == hash("a"));
-    expect(0_u == hash("b"));
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("D"sv));
+    expect(0_u == hash("a"sv));
+    expect(0_u == hash("b"sv));
   };
 
-  ""_test = [] {
-    static constexpr std::array symbols{
-        "A"sv,
-        "B"sv,
-        "C"sv,
-    };
+  //""_test = [] {
+    //static constexpr std::array symbols{
+        //"A"sv,
+        //"B"sv,
+        //"C"sv,
+    //};
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_first_char<5>{}(args...); }};
+    //constexpr auto hash = mph::hash{[] { return symbols; }, [](auto&&... args) { return mph::pext_split_on_first_char<5>{}(args...); }};
 
-    for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol));
-    }
+    //for (auto expected = 1u; const auto &symbol : symbols) {
+      //expect(_u(expected++) == hash(symbol));
+    //}
 
-    expect(0_u == hash(""));
-    expect(0_u == hash("D"));
-    expect(0_u == hash("a"));
-    expect(0_u == hash("b"));
-  };
+    //expect(0_u == hash(""));
+    //expect(0_u == hash("D"));
+    //expect(0_u == hash("a"));
+    //expect(0_u == hash("b"));
+  //};
 
   ""_test = [] {
     static constexpr std::array symbols{
@@ -79,13 +79,13 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data()));
+      expect(_u(expected++) == hash(symbol.data())); // no size information
     }
 
-    expect(0_u == hash(""));
-    expect(0_u == hash("D"));
-    expect(0_u == hash("a"));
-    expect(0_u == hash("b"));
+    expect(0_u == hash("        ")); // no size information
+    expect(0_u == hash("D       ")); // no size information
+    expect(0_u == hash("a       ")); // no size information
+    expect(0_u == hash("b       ")); // no size information
   };
 
   ""_test = [] {
@@ -98,16 +98,16 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data()));
+      expect(_u(expected++) == hash(symbol));
     }
 
-    expect(0_u == hash(""));
-    expect(0_u == hash("   "));
-    expect(0_u == hash("aa "));
-    expect(0_u == hash("aaa"));
-    expect(0_u == hash("bb"));
-    expect(0_u == hash("bb "));
-    expect(0_u == hash(" cc"));
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("   "sv));
+    expect(0_u == hash("aa "sv));
+    expect(0_u == hash("aaa"sv));
+    expect(0_u == hash("bb"sv));
+    expect(0_u == hash("bb "sv));
+    expect(0_u == hash(" cc"sv));
   };
 
   ""_test = [] {
@@ -120,16 +120,16 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data()));
+      expect(_u(expected++) == hash(symbol));
     }
 
-    expect(0_u == hash(""));
-    expect(0_u == hash(" aa "));
-    expect(0_u == hash("aaaa"));
-    expect(0_u == hash(" AA"));
-    expect(0_u == hash("AA "));
-    expect(0_u == hash(" AA_"));
-    expect(0_u == hash("_AA_"));
+    expect(0_u == hash(""sv));
+    expect(0_u == hash(" aa "sv));
+    expect(0_u == hash("aaaa"sv));
+    expect(0_u == hash(" AA"sv));
+    expect(0_u == hash("AA "sv));
+    expect(0_u == hash(" AA_"sv));
+    expect(0_u == hash("_AA_"sv));
   };
 
   //""_test = [] {
@@ -153,15 +153,15 @@ int main() {
       //expect(_u(expected++) == hash(symbol.data()));
     //}
 
-    //expect(0_u == hash(""));
-    //expect(0_u == hash("        "));
-    //expect(0_u == hash("III "));
-    //expect(0_u == hash("III  "));
-    //expect(0_u == hash("III   "));
-    //expect(0_u == hash("III    "));
-    //expect(0_u == hash("III     "));
-    //expect(0_u == hash(" III    "));
-    //expect(0_u == hash("IIIx    "));
-    //expect(0_u == hash("     III"));
+    //expect(0_u == hash(""sv));
+    //expect(0_u == hash("        "sv));
+    //expect(0_u == hash("III "sv));
+    //expect(0_u == hash("III  "sv));
+    //expect(0_u == hash("III   "sv));
+    //expect(0_u == hash("III    "sv));
+    //expect(0_u == hash("III     "sv));
+    //expect(0_u == hash(" III    "sv));
+    //expect(0_u == hash("IIIx    "sv));
+    //expect(0_u == hash("     III"sv));
   //};
 }

@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <new>
 #include <numeric>
+#include <cstring>
 #include <ranges>
 #include <string_view>
 #include <type_traits>
@@ -27,14 +28,14 @@
 #include <x86intrin.h>
 #endif
 
-#if defined(__cpp_lib_hardware_interference_size)
-#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size
-#else
-#define MPH_CACHE_LINE_SIZE 64  // x86-64
-#endif
-
 namespace mph::inline v_1_0_0 {
 namespace utility {
+#if defined(__cpp_lib_hardware_interference_size)
+static constexpr auto cache_line_size = ::std::hardware_constructive_interference_size;
+#else
+static constexpr auto cache_line_size = 64; // x86-64
+#endif
+
 template <std::size_t N>
   requires(N > 0)
 struct bitset final {
@@ -220,7 +221,7 @@ static_assert(not supported_symbols_size<decltype([] { return std::array{std::ar
  *  - requires symbols to have the same size <= 8 bytes
  *  - requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = MPH_CACHE_LINE_SIZE, class T = std::uint64_t>
+template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = utility::cache_line_size, class T = std::uint64_t>
 class pext_direct {
   template <const auto mask>
   [[nodiscard]] static constexpr auto make_lut(const auto &symbols) {
@@ -256,7 +257,7 @@ class pext_direct {
   template <class TSymbols, const auto mask = utility::mask<T>(TSymbols{}())>
     requires concepts::required_bits_size<mask, max_bits_size> and
              concepts::supported_symbols_size<TSymbols, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data, [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto* data, const auto size, [[maybe_unused]] auto &&...args) const noexcept(true) -> std::size_t {
     // using v8si = std::int8_t __attribute__((vector_size(sizeof(std::uint64_t))));
     // using m128 = union {
     // std::uint64_t xmm;
@@ -264,7 +265,15 @@ class pext_direct {
     //};
     static constexpr const auto index = make_index<mask>(s);
     // static constexpr const auto lut = make_lut<mask>(s);
-    const auto lhs = *std::bit_cast<const T *>(data);
+    const auto lhs = [&] {
+      if constexpr (requires { size.unknown; }) {
+        return *std::bit_cast<const T *>(data);
+      } else {
+        T t{};
+        std::memcpy(&t, data, size);
+        return t;
+      }
+    }();
     const auto ext = _pext_u64(lhs, mask);
     return index[ext];
 
@@ -277,8 +286,8 @@ class pext_direct {
   }
 };
 
-template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = MPH_CACHE_LINE_SIZE, class T = std::uint64_t>
-class pext_split_first_char {
+template <const std::size_t max_bits_size = 5, const std::size_t cache_line_size = utility::cache_line_size, class T = std::uint64_t>
+class pext_split_on_first_char {
   static constexpr auto calc_offset = [](const auto &symbols) {
     return (
         *std::min_element(std::cbegin(symbols), std::cend(symbols), [](const auto &lhs, const auto &rhs) { return lhs[0] < rhs[0]; }))[0];
@@ -338,7 +347,7 @@ class pext_split_first_char {
             const auto masks = make_masks<offset>(TSymbols{})>
     requires concepts::required_symbols_bits_size<masks, max_bits_size> and
              concepts::supported_symbols_size<TSymbols, sizeof(T)>
-             [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto data,
+             [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols s, const auto* data,
                                                                    [[maybe_unused]] const auto size,
                                                                    [[maybe_unused]] auto &&...args) const noexcept(true)
                  -> std::size_t {
@@ -361,11 +370,11 @@ class pext_split_first_char {
 /**
  * Default implemention for picking the the policy based on the symbols, available policies and the input data
  */
-constexpr auto default_policies = [](const auto symbols, const auto data, const auto size, auto&&... args) {
+constexpr auto default_policies = [](const auto symbols, const auto* data, const auto size, auto&&... args) {
   if constexpr (constexpr auto max_bits_size = 5; requires { pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
     return pext_direct<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
-  } else if constexpr (requires { pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
-    return pext_split_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { pext_split_on_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
+    return pext_split_on_first_char<max_bits_size>{}(symbols, data, size, std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto always_false = [](auto &&) { return false; }(data); // static_assert(false) support is C++23
     static_assert(always_false, "hash can't be constructed with given policies!");
@@ -380,6 +389,10 @@ constexpr auto default_policies = [](const auto symbols, const auto data, const 
  */
 template <std::invocable TSymbols, class TPolicies = decltype(default_policies)>
 class hash final {
+  struct unknown_size final {
+    static constexpr auto unknown = true; // tag for `if constexpr (requires { size.unknown; })`
+  };
+
  public:
   constexpr explicit(true) hash(const TSymbols &symbols, const TPolicies &policies = {})
       : symbols{symbols}, policies{policies} {}
@@ -412,7 +425,6 @@ class hash final {
     requires(sizeof(T) == 1u)
   [[nodiscard]] constexpr auto operator()(const T *const data, auto &&...args) const noexcept(true) -> std::size_t {
     assert(data);
-    struct unknown_size {};
     return policies(this->symbols, data, unknown_size{}, std::forward<decltype(args)>(args)...);
   }
 
