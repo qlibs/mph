@@ -97,6 +97,27 @@ int main() {
     expect(0_u == hash(static_cast<const char *>("F       ")));  // no size information
   };
 
+  "[hash] raw data const char*"_test = [] {
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
+    };
+
+    const auto hash = mph::hash{[] { return symbols; }};
+
+    expect(0_u == hash(" ")); // compile-time size information
+    expect(0_u == hash("a")); // compile-time size information
+    expect(0_u == hash("b")); // compile-time size information
+    expect(0_u == hash("c")); // compile-time size information
+    expect(0_u == hash("AB")); // compile-time size information
+    expect(0_u == hash("BC")); // compile-time size information
+
+    expect(1_u == hash("A")); // compile-time size information
+    expect(2_u == hash("B")); // compile-time size information
+    expect(3_u == hash("C")); // compile-time size information
+  };
+
   "[hash] std::span"_test = [] {
     static constexpr std::array symbols{
         "A"sv,

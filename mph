@@ -471,7 +471,7 @@ class hash final {
     } else {
       return utility::overloaded{
         [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const T(&ptr)[Size]) {
-          constexpr auto min_max = // minmax_element is not constexpr
+          constexpr auto min_max = // std::minmax_element is not constexpr
             [] {
               auto min = std::size_t(std::numeric_limits<T>::max());
               auto max = std::size_t();
@@ -482,11 +482,11 @@ class hash final {
               return std::pair{min, max};
             }();
 
-          if constexpr (Size < min_max.first or Size > min_max.second) {
-            return decltype(policies_(symbols_, ptr, std::integral_constant<decltype(Size), Size>{},
+          if constexpr (constexpr auto size = Size-1; size < min_max.first or size > min_max.second) {
+            return decltype(policies_(symbols_, ptr, std::integral_constant<decltype(size), size>{},
                                      std::forward<decltype(args)>(args)...)){};
           } else {
-            return policies_(symbols_, ptr, std::integral_constant<decltype(Size), Size>{},
+            return policies_(symbols_, ptr, std::integral_constant<decltype(size), size>{},
                             std::forward<decltype(args)>(args)...);
           }
         },
