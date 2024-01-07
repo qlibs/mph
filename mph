@@ -17,6 +17,7 @@ export module mph;
 #define MPH 1'0'0 // SemVer - should match mph namespace
 
 #include <algorithm>
+#include <climits>
 #include <array>
 #include <bit>
 #include <cassert>
@@ -59,7 +60,7 @@ struct bitset final {
   [[nodiscard]] constexpr auto operator[](const auto i) const { return bits[i]; }
   template <class T>
   [[nodiscard]] constexpr auto to() const -> T
-    requires(sizeof(T) * 8 >= N)
+    requires(sizeof(T) * CHAR_BIT >= N)
   {
     T result{};
     for (auto i = 0u; i < N; ++i) {
@@ -83,7 +84,7 @@ template <class T>
 [[nodiscard]] constexpr auto as(const auto value) -> T {
   T result{};
   for (auto i = 0u; i < std::min(std::size(value), sizeof(T)); ++i) {
-    result = (result << 8) | value[std::min(std::size(value), sizeof(T)) - 1 - i];  // little-endian
+    result = (result << CHAR_BIT) | value[std::min(std::size(value), sizeof(T)) - 1 - i];  // little-endian
   }
   return result;
 }
@@ -96,9 +97,9 @@ static_assert(std::uint32_t(0b00000000'00000001) == as<std::uint16_t>(std::array
 static_assert(std::is_same_v<std::uint8_t, decltype(as<std::uint8_t>(std::string_view{"a"}))>);
 static_assert(std::uint8_t('a') == as<std::uint8_t>(std::string_view{"a"}));
 static_assert(std::is_same_v<std::uint32_t, decltype(as<std::uint32_t>(std::array<std::uint8_t, 4>{ 'a', 'b', 0, 0}))>);
-static_assert(((std::uint32_t('b') << 8) | std::uint32_t('a') << 0) == as<std::uint32_t>(std::array<std::uint8_t, 4>{'a', 'b', 0, 0}));
+static_assert(((std::uint32_t('b') << CHAR_BIT) | std::uint32_t('a') << 0) == as<std::uint32_t>(std::array<std::uint8_t, 4>{'a', 'b', 0, 0}));
 static_assert(std::is_same_v<std::uint32_t, decltype(as<std::uint32_t>(std::array<std::uint8_t, 4>{0, 0, 'a', 'b'}))>);
-static_assert(((std::uint32_t('b') << 24) | std::uint32_t('a') << 16) == as<std::uint32_t>(std::array<std::uint8_t, 4>{0, 0, 'a', 'b'}));
+static_assert(((std::uint32_t('b') << CHAR_BIT*3) | std::uint32_t('a') << CHAR_BIT*2) == as<std::uint32_t>(std::array<std::uint8_t, 4>{0, 0, 'a', 'b'}));
 // clang-format on
 
 /**
@@ -117,7 +118,7 @@ template <class T>
   T result{};
   auto k = 0u;
   auto m = 0u;
-  while (m < sizeof(T) * 8) {
+  while (m < sizeof(T) * CHAR_BIT) {
     if ((mask & 1) == 1) {
       result |= ((a >> m) & 1) << k++;
     }
@@ -155,7 +156,7 @@ template <class T>
     return true;
   };
 
-  bitset<sizeof(T) * 8> mask(std::numeric_limits<T>::max());
+  bitset<sizeof(T) * CHAR_BIT> mask(std::numeric_limits<T>::max());
   for (auto i = 0u; i < std::size(mask); ++i) {
     mask.set(i, 0);
     if (not is_unique(mask)) {
@@ -275,7 +276,7 @@ static_assert(not supported_symbols_size<decltype([] { return std::array{std::ar
 
 /**
  * Minimal perfect hashing function based on pext with support up to 2^max_bits_size
- *  requires symbols to have size <= 8 bytes
+ *  requires symbols to have size <= CHAR_BIT bytes
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size = 5,
