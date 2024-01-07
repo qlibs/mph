@@ -8,6 +8,11 @@
 #if __cplusplus < 202002L
 #error "MPH requires C++20!"
 #else
+
+#if defined(__cpp_modules)
+export module mph;
+#endif
+
 #ifndef MPH
 #define MPH 1'0'0 // SemVer - should match mph namespace
 
@@ -26,6 +31,10 @@
 
 #if __has_include(<x86intrin.h>)
 #include <x86intrin.h>
+#endif
+
+#if defined(__cpp_modules)
+export
 #endif
 
 namespace mph::inline v_1_0_0 {
@@ -487,5 +496,6 @@ class hash final {
   [[no_unique_address]] TPolicies policies_{};
 };
 }  // namespace mph::inline v_1_0_0
+
 #endif  // MPH
 #endif  //  __cplusplus
