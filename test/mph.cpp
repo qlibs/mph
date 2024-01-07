@@ -39,8 +39,7 @@ int main() {
         "C"sv,
     };
 
-    constexpr auto hash =
-        mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_direct<std::uint64_t, 5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_direct<5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -59,8 +58,8 @@ int main() {
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; },
-                                    [](auto &&...args) { return mph::pext_split_on_first_char<std::uint64_t, 5>{}(args...); }};
+    constexpr auto hash =
+        mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_split_on_first_char<5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -71,54 +70,55 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  "[hash] raw data"_test = [] {
+  "[hash] span data"_test = [] {
     static constexpr std::array symbols{
         "A       "sv,
         "B       "sv,
         "C       "sv,
     };
 
+    constexpr auto size = std::size(symbols[0]);
+
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(std::data(symbol)));  // no size information
+      expect(_u(expected++) == hash(std::span<const char, size>(std::data(symbol), std::data(symbol) + size)));
     }
 
-    expect(0_u == hash(""));     // compile-time size information
-    expect(0_u == hash("D "));   // compile-time size information
-    expect(0_u == hash(" D"));   // compile-time size information
-    expect(0_u == hash(" D "));  // compile-time size information
-    expect(0_u == hash("E"));    // compile-time size information
-    expect(0_u == hash("F"));    // compile-time size information
-
-    expect(0_u == hash(static_cast<const char *>("        ")));  // no size information
-    expect(0_u == hash(static_cast<const char *>("D       ")));  // no size information
-    expect(0_u == hash(static_cast<const char *>("E       ")));  // no size information
-    expect(0_u == hash(static_cast<const char *>("F       ")));  // no size information
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("D "sv));
+    expect(0_u == hash(" D"sv));
+    expect(0_u == hash(" D "sv));
+    expect(0_u == hash("E"sv));
+    expect(0_u == hash("F"sv));
+    expect(0_u == hash(std::span<const char>("        ", size)));
+    expect(0_u == hash(std::span<const char>("D       ", size)));
+    expect(0_u == hash(std::span<const char>("E       ", size)));
+    expect(0_u == hash(std::span<const char>("F       ", size)));
   };
 
-  "[hash] raw data const char*"_test = [] {
+  "[hash] span variable length"_test = [] {
     static constexpr std::array symbols{
-        "A"sv,
-        "B"sv,
-        "C"sv,
+        "enter"sv,
+        "delete"sv,
+        "esc"sv,
     };
 
     const auto hash = mph::hash{[] { return symbols; }};
 
-    expect(0_u == hash(" ")); // compile-time size information
-    expect(0_u == hash("a")); // compile-time size information
-    expect(0_u == hash("b")); // compile-time size information
-    expect(0_u == hash("c")); // compile-time size information
-    expect(0_u == hash("AB")); // compile-time size information
-    expect(0_u == hash("BC")); // compile-time size information
+    expect(1_u == hash(std::span<const char>("enter")));
+    expect(2_u == hash(std::span<const char>("delete")));
+    expect(3_u == hash(std::span<const char>("esc")));
 
-    expect(1_u == hash("A")); // compile-time size information
-    expect(2_u == hash("B")); // compile-time size information
-    expect(3_u == hash("C")); // compile-time size information
+    expect(0_u == hash(std::span("")));
+    expect(0_u == hash(std::span("  ")));
+    expect(0_u == hash(std::span("    ")));
+    expect(0_u == hash(std::span("stop")));
+    expect(0_u == hash(std::span("start")));
+    expect(0_u == hash(std::span("foobar")));
   };
 
-  "[hash] std::span"_test = [] {
+  "[hash] span from array"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
@@ -128,7 +128,7 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      std::array<char, 1> data{symbol[0]};
+      std::array<const char, 1> data{symbol[0]};
       expect(_u(expected++) == hash(std::span(data)));
     }
   };
@@ -194,7 +194,7 @@ int main() {
     const auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(std::data(symbol)));
+      expect(_u(expected++) == hash(symbol));
     }
 
     expect(0_u == hash("        "sv));

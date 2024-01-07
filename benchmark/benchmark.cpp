@@ -6,8 +6,10 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #define ANKERL_NANOBENCH_IMPLEMENT
+
 #include <algorithm>
 #include <array>
+#include <map>
 #include <mph>
 #include <random>
 #include <unordered_map>
@@ -33,6 +35,14 @@ int main() {
   // const auto first = [](const auto &symbols) { return symbols[0]; };
 
   auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+  const auto bench_map = [](const auto name, const auto &symbols, auto fn) {
+    std::map<std::string_view, int> map{};
+    for (auto index = 0; const auto &symbol : symbols) {
+      map[symbol] = index++;
+    }
+    Bench().minEpochIterations(iterations).run(std::string(name) + ".map", [&] { doNotOptimizeAway(map[fn(symbols)]); });
+  };
 
   const auto bench_unordered_map = [](const auto name, const auto &symbols, auto fn) {
     std::unordered_map<std::string_view, int> hash_map{};
@@ -102,16 +112,18 @@ int main() {
     };
 
     Bench().minEpochIterations(iterations).run(std::string(name) + ".gperf", [&] {
-      doNotOptimizeAway(hash(fn(symbols).data(), symbol_size));
+      doNotOptimizeAway(hash(std::data(fn(symbols)), symbol_size));
     });
   };
 
   const auto bench_mph = [](const auto &hash, const auto name, const auto &symbols, auto fn) {
+    constexpr auto symbol_size = hash.symbols()[0].size();
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(hash(fn(symbols).data()));
+      doNotOptimizeAway(hash(std::span<const char, symbol_size>(std::data(fn(symbols)), std::data(fn(symbols)) + symbol_size)));
     });
   };
 
+  bench_map("all", data::all, next);
   bench_unordered_map("all", data::all, next);
   bench_bsearch("all", data::all, next);
 #if __has_include(<frozen/unordered_map.h>) and __has_include(<frozen/string.h>)
@@ -120,6 +132,7 @@ int main() {
   bench_gperf("all", data::all, next);
   bench_mph(mph::hash{[] { return data::all; }}, "all", data::all, next);
 
+  bench_map("random", data::random, next);
   bench_unordered_map("random", data::random, next);
   bench_bsearch("random", data::random, next);
 #if __has_include(<frozen/unordered_map.h>) and __has_include(<frozen/string.h>)
@@ -128,6 +141,7 @@ int main() {
   bench_gperf("random", data::random, next);
   bench_mph(mph::hash{[] { return data::random; }}, "random", data::random, next);
 
+  // bench_map("single", data::single, first);
   // bench_unordered_map("single", data::single, first);
   // bench_bsearch("single", data::single, first);
   // #if __has_include(<frozen/unordered_map.h>) and

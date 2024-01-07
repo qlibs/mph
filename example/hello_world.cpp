@@ -21,11 +21,11 @@ int main() {
 
   auto hash = mph::hash{[] { return symbols; }};
 
-  std::cout << int(hash("F"));    // 0
-  std::cout << int(hash("FO"));   // 0
-  std::cout << int(hash("FOO"));  // 0
+  std::cout << int(hash("F"sv));    // 0
+  std::cout << int(hash("FO"sv));   // 0
+  std::cout << int(hash("FOO"sv));  // 0
 
-  std::cout << int(hash("FBC"));  // 1
-  std::cout << int(hash("SPY"));  // 2
-  std::cout << int(hash("CDC"));  // 3
+  std::cout << int(hash("FBC"sv));  // 1
+  std::cout << int(hash("SPY"sv));  // 2
+  std::cout << int(hash("CDC"sv));  // 3
 }

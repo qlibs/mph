@@ -10,15 +10,14 @@
 #include <mph>
 #include <string_view>
 
-constexpr auto dummy_policies = []([[maybe_unused]] const auto symbols, [[maybe_unused]] const auto *data,
-                                   [[maybe_unused]] const auto size, [[maybe_unused]] auto &&...args) {
-  if (not size) {
+constexpr auto dummy_policies = [](const auto symbols, const auto span, [[maybe_unused]] auto &&...args) {
+  if (not std::size(span)) {
     return -1;
-  } else if constexpr (constexpr auto pext_direct = mph::pext_direct<std::uint64_t, 2>{};
-                       requires { pext_direct(symbols, data, size, std::forward<decltype(args)>(args)...); }) {
-    return int(pext_direct(symbols, data, size, std::forward<decltype(args)>(args)...)) - 1;
+  } else if constexpr (constexpr auto pext_direct = mph::pext_direct<2>{};
+                       requires { pext_direct(symbols, span, std::forward<decltype(args)>(args)...); }) {
+    return int(pext_direct(symbols, span, std::forward<decltype(args)>(args)...)) - 1;
   } else {
-    static_assert([](auto &&) { return false; }(data), "No luck!");
+    static_assert([](auto &&) { return false; }(span), "No luck!");
   }
 };
 
