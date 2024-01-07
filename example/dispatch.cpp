@@ -9,7 +9,6 @@
 #include <iostream>
 #include <mph>
 #include <string_view>
-#include <vector>
 
 using std::literals::operator""sv;
 
@@ -32,8 +31,7 @@ class dispatch {
   auto on(const std::string_view data) { ++v[hash(data)]; }
 
  private:
-  std::vector<std::size_t> v =
-      std::vector<std::size_t>(std::size(symbols) + 1);  // 0 is special for branchless code continuation
+  std::array<std::size_t, std::size(symbols) + 1> v{};  // 0 is special for branchless code continuation
 };
 
 int main() {
