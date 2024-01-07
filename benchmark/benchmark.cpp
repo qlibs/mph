@@ -6,7 +6,6 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #define ANKERL_NANOBENCH_IMPLEMENT
-
 #include <algorithm>
 #include <array>
 #include <map>
@@ -18,21 +17,9 @@
 #include "nanobench.h"
 
 int main() {
-  static constexpr auto iterations = 1'000'000;
-  static constexpr auto size = 100;
-
-  std::random_device rd{};
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<int> distribution(0, size - 1);
-  std::vector<int> ids{};
-  ids.reserve(iterations);
-  for (auto i = 0; i < iterations; ++i) {
-    ids.push_back(distribution(gen));
-  }
-
   using namespace ankerl::nanobench;
 
-  auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+  static constexpr auto iterations = 1'000'000;
 
   const auto bench_map = [](const auto name, const auto &symbols, auto fn) {
     std::map<std::string_view, int> map{};
@@ -52,12 +39,6 @@ int main() {
     });
   };
 
-  const auto bench_frozen = [](const auto name, const auto &symbols, const auto &frozen, auto fn) {
-    Bench().minEpochIterations(iterations).run(std::string(name) + ".frozen", [&] {
-      doNotOptimizeAway(frozen.at(fn(symbols)));
-    });
-  };
-
   const auto bench_bsearch = [](const auto name, const auto &symbols, auto fn) {
     std::vector<std::string_view> tokens(std::cbegin(symbols), std::cend(symbols));
     std::sort(std::begin(tokens), std::end(tokens));
@@ -72,45 +53,10 @@ int main() {
     });
   };
 
-  const auto bench_gperf = [](const auto name, const auto &symbols, auto fn) {
-    const auto symbol_size = symbols[0].size();
-    /* Command-line: gperf -e ' \\015' -L C++ -7 -C -E -k '*,1,$' */
-    const auto hash = [](const char *str, std::size_t len) {
-      static constexpr const unsigned short asso_values[] = {
-          393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393,
-          393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393,
-          393, 5,   10,  393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 20,
-          15,  10,  80,  0,   20,  55,  70,  5,   2,   2,   115, 50,  15,  105, 50,  55,  0,   5,   0,   2,   115, 0,
-          90,  2,   60,  393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393,
-          393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393, 393};
-
-      unsigned int hval = len;
-
-      switch (hval) {
-        default:
-          hval += asso_values[static_cast<unsigned char>(str[5])];
-        /*FALLTHROUGH*/
-        case 5:
-          hval += asso_values[static_cast<unsigned char>(str[4])];
-        /*FALLTHROUGH*/
-        case 4:
-          hval += asso_values[static_cast<unsigned char>(str[3])];
-        /*FALLTHROUGH*/
-        case 3:
-          hval += asso_values[static_cast<unsigned char>(str[2])];
-        /*FALLTHROUGH*/
-        case 2:
-          hval += asso_values[static_cast<unsigned char>(str[1])];
-        /*FALLTHROUGH*/
-        case 1:
-          hval += asso_values[static_cast<unsigned char>(str[0])];
-          break;
-      }
-      return hval;
-    };
-
+  const auto bench_gperf = [](const auto &hash, const auto name, const auto &symbols, auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".gperf", [&] {
-      doNotOptimizeAway(hash(std::data(fn(symbols)), symbol_size));
+      const auto symbol = fn(symbols);
+      doNotOptimizeAway(hash(std::data(symbol), std::size(symbol)));
     });
   };
 
@@ -121,21 +67,140 @@ int main() {
     });
   };
 
-  bench_map("all", data::all, next);
-  bench_unordered_map("all", data::all, next);
-  bench_bsearch("all", data::all, next);
-#if __has_include(<frozen/unordered_map.h>) and __has_include(<frozen/string.h>)
-  bench_frozen("all", data::all, data::frozen_all, next);
-#endif
-  bench_gperf("all", data::all, next);
-  bench_mph(mph::hash{[] { return data::all; }}, "all", data::all, next);
+  const auto bench_mph2 = [](const auto &hash, const auto name, const auto &symbols, auto fn) {
+    Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] { doNotOptimizeAway(hash(fn(symbols))); });
+  };
 
-  bench_map("random", data::random, next);
-  bench_unordered_map("random", data::random, next);
-  bench_bsearch("random", data::random, next);
-#if __has_include(<frozen/unordered_map.h>) and __has_include(<frozen/string.h>)
-  bench_frozen("all", data::random, data::frozen_random, next);
-#endif
-  bench_gperf("random", data::random, next);
-  bench_mph(mph::hash{[] { return data::random; }}, "random", data::random, next);
+  {
+    std::random_device rd{};
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_5_len_4) - 1);
+    std::vector<int> ids{};
+    ids.reserve(iterations);
+    for (auto i = 0; i < iterations; ++i) {
+      ids.push_back(distribution(gen));
+    }
+
+    auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+    bench_map("random_5_len_4", data::random_5_len_4, next);
+    bench_unordered_map("random_5_len_4", data::random_5_len_4, next);
+    bench_bsearch("random_5_len_4", data::random_5_len_4, next);
+    bench_gperf(
+        [](const char *str, [[maybe_unused]] std::size_t len) {
+          static constexpr unsigned char asso_values[] = {
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 7, 8, 2, 8, 8, 8,
+              8, 8, 8, 5, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
+          return asso_values[static_cast<unsigned char>(str[0])];
+        },
+        "random_5_len_4", data::random_5_len_4, next);
+    bench_mph(mph::hash{[] { return data::random_5_len_4; }}, "random_5_len_4", data::random_5_len_4, next);
+  }
+
+  {
+    std::random_device rd{};
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_5_len_8) - 1);
+    std::vector<int> ids{};
+    ids.reserve(iterations);
+    for (auto i = 0; i < iterations; ++i) {
+      ids.push_back(distribution(gen));
+    }
+
+    auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+    bench_map("random_5_len_8", data::random_5_len_8, next);
+    bench_unordered_map("random_5_len_8", data::random_5_len_8, next);
+    bench_bsearch("random_5_len_8", data::random_5_len_8, next);
+    bench_gperf(
+        [](const char *str, [[maybe_unused]] std::size_t len) {
+          static constexpr unsigned char asso_values[] = {
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 7, 8, 2, 8, 8, 8,
+              8, 8, 8, 5, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+              8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
+          return asso_values[static_cast<unsigned char>(str[0])];
+        },
+        "random_5_len_8", data::random_5_len_8, next);
+    bench_mph(mph::hash{[] { return data::random_5_len_8; }}, "random_5_len_8", data::random_5_len_8, next);
+  }
+
+  {
+    std::random_device rd{};
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_6_len_3_5) - 1);
+    std::vector<int> ids{};
+    ids.reserve(iterations);
+    for (auto i = 0; i < iterations; ++i) {
+      ids.push_back(distribution(gen));
+    }
+
+    auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+    bench_map("random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_unordered_map("random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_bsearch("random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_gperf(
+        [](const char *str, std::size_t len) {
+          static constexpr unsigned char asso_values[] = {
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 5,  10,
+              0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+          return len + asso_values[static_cast<unsigned char>(str[0])];
+        },
+        "random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_mph2(mph::hash{[] { return data::random_6_len_3_5; }}, "random_6_len_3_5", data::random_6_len_3_5, next);
+  }
+
+  {
+    std::random_device rd{};
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_100_len_8) - 1);
+    std::vector<int> ids{};
+    ids.reserve(iterations);
+    for (auto i = 0; i < iterations; ++i) {
+      ids.push_back(distribution(gen));
+    }
+
+    auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+    bench_map("random_100_len_8", data::random_100_len_8, next);
+    bench_unordered_map("random_100_len_8", data::random_100_len_8, next);
+    bench_bsearch("random_100_len_8", data::random_100_len_8, next);
+    bench_gperf(
+        [](const char *str, [[maybe_unused]] std::size_t len) {
+          static constexpr unsigned short asso_values[] = {
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 25,  303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 0,   303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 80,
+              125, 5,   40,  25,  10,  45,  52,  10,  115, 117, 82,  55,  95,  7,   70,  4,   105, 27,  0,   2,   70,  0,
+              9,   127, 5,   10,  70,  303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303,
+              303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303, 303};
+          return asso_values[static_cast<unsigned char>(str[2] + 2)] + asso_values[static_cast<unsigned char>(str[1])] +
+                 asso_values[static_cast<unsigned char>(str[0])];
+        },
+        "random_100_len_8", data::random_100_len_8, next);
+    bench_mph(mph::hash{[] { return data::random_100_len_8; }}, "random_100_len_8", data::random_100_len_8, next);
+  }
 }

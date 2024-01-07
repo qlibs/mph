@@ -198,6 +198,22 @@ int main() {
     expect(0_u == hash("_AA_"sv));
   };
 
+  "[hash] different sizes"_test = [] {
+    static constexpr std::array<std::string_view, 6> symbols{"ftp", "file", "http", "https", "ws", "wss"};
+
+    constexpr auto hash = mph::hash{[] { return symbols; }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("udp"sv));
+    expect(0_u == hash("HTTP"sv));
+    expect(0_u == hash("http2"sv));
+    expect(0_u == hash("https!"sv));
+  };
+
   "[hash] multiple policies trigger"_test = [] {
     static constexpr std::array<std::string_view, 100> symbols{
         "III     ", "AGM-C   ", "LOPE    ", "FEMS    ", "IEA     ", "VYMI    ", "BHK     ", "SIEB    ", "DGBP    ", "INFN    ",
