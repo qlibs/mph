@@ -81,13 +81,35 @@ int main() {
     auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data()));  // no size information
+      expect(_u(expected++) == hash(std::data(symbol)));  // no size information
     }
 
-    expect(0_u == hash("        "));  // no size information
-    expect(0_u == hash("D       "));  // no size information
-    expect(0_u == hash("E       "));  // no size information
-    expect(0_u == hash("F       "));  // no size information
+    expect(0_u == hash(""));     // compile-time size information
+    expect(0_u == hash("D "));   // compile-time size information
+    expect(0_u == hash(" D"));   // compile-time size information
+    expect(0_u == hash(" D "));  // compile-time size information
+    expect(0_u == hash("E"));    // compile-time size information
+    expect(0_u == hash("F"));    // compile-time size information
+
+    expect(0_u == hash(static_cast<const char *>("        ")));  // no size information
+    expect(0_u == hash(static_cast<const char *>("D       ")));  // no size information
+    expect(0_u == hash(static_cast<const char *>("E       ")));  // no size information
+    expect(0_u == hash(static_cast<const char *>("F       ")));  // no size information
+  };
+
+  "[hash] std::span"_test = [] {
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
+    };
+
+    auto hash = mph::hash{[] { return symbols; }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      std::array<char, 1> data{symbol[0]};
+      expect(_u(expected++) == hash(std::span(data)));
+    }
   };
 
   "[hash] string_view"_test = [] {
@@ -151,7 +173,7 @@ int main() {
     const auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol.data()));
+      expect(_u(expected++) == hash(std::data(symbol)));
     }
 
     expect(0_u == hash("        "sv));

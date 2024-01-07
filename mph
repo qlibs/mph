@@ -26,6 +26,7 @@ export module mph;
 #include <numeric>
 #include <ranges>
 #include <string_view>
+#include <span>
 #include <type_traits>
 #include <vector>
 
@@ -178,12 +179,20 @@ static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ st
 static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 1}, std::array<std::uint8_t, 3>{1, 0, 1}, std::array<std::uint8_t, 3>{1, 1, 0}}));
 static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 1, 0}}));
 // clang-format on
+
+template<class... Ts> struct overloaded final : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+// clang-format off
+static_assert(42 == overloaded([](auto v) { return v; })(42));
+static_assert(1 == overloaded([](int) { return 1; }, [](bool) { return 2; })(int{}));
+static_assert(2 == overloaded([](int) { return 1; }, [](bool) { return 2; })(bool{}));
+// clang-format on
 }  // namespace utility
 
 namespace concepts {
 template <const std::uint64_t mask, const std::size_t max_bits_size>
-concept required_bits_size = std::popcount(mask) <=
-max_bits_size;
+concept required_bits_size = (std::popcount(mask) <= max_bits_size);
 
 // clang-format off
 static_assert(required_bits_size<0b00, 0u>);
@@ -449,47 +458,46 @@ class hash final {
       : symbols_{symbols}, policies_{policies} {}
 
   /**
-   * @param data continuous input data
+   * @param data continuous input data such as const char*, std::string_view, std::span, std::array
    * @param args... additional parameters propagated to policies
    * @return result from executed policy
    */
-  template <class T, std::size_t Size>
-    requires(sizeof(T) == 1u)
-  [[nodiscard]] constexpr auto operator()(const T (&&data)[Size], auto &&...args) const noexcept(true) {
-    constexpr auto symbols = symbols_();
-    constexpr auto min_max =
-        std::minmax_element(std::cbegin(symbols_), std::cend(symbols_),
-                            [](const auto &lhs, const auto &rhs) { return std::size(lhs) < std::size(rhs); });
-    if constexpr (Size < min_max.first or Size > min_max.second) {
-      return decltype(policies_(symbols_, data, std::integral_constant<decltype(Size), Size>{},
-                               std::forward<decltype(args)>(args)...)){};
+  [[nodiscard]] constexpr auto operator()(auto&& data, auto &&...args) const noexcept(true) {
+    if constexpr (std::is_pointer_v<std::remove_cvref_t<decltype(data)>>) {
+      return [&]<class T> requires (sizeof(T) == 1u) (const T* const ptr) {
+        assert(ptr);
+        return policies_(symbols_, ptr, unknown_size{}, std::forward<decltype(args)>(args)...);
+      }(std::forward<decltype(data)>(data));
     } else {
-      return policies_(this->symbols, data, std::integral_constant<decltype(Size), Size>{},
-                      std::forward<decltype(args)>(args)...);
+      return utility::overloaded{
+        [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const T(&ptr)[Size]) {
+          constexpr auto min_max = // minmax_element is not constexpr
+            [] {
+              auto min = std::size_t(std::numeric_limits<T>::max());
+              auto max = std::size_t();
+              for (const auto& symbol : TSymbols{}()) {
+                min = std::min(min, std::size(symbol));
+                max = std::max(max, std::size(symbol));
+              }
+              return std::pair{min, max};
+            }();
+
+          if constexpr (Size < min_max.first or Size > min_max.second) {
+            return decltype(policies_(symbols_, ptr, std::integral_constant<decltype(Size), Size>{},
+                                     std::forward<decltype(args)>(args)...)){};
+          } else {
+            return policies_(symbols_, ptr, std::integral_constant<decltype(Size), Size>{},
+                            std::forward<decltype(args)>(args)...);
+          }
+        },
+        [&]<class T, class... Ts> requires (sizeof(T) == 1u) (const std::basic_string_view<T, Ts...> ptr) {
+          return policies_(symbols_, std::data(ptr), std::size(ptr), std::forward<decltype(args)>(args)...);
+        },
+        [&]<class T, const std::size_t Extent> requires (sizeof(T) == 1u) (const std::span<T, Extent> ptr) {
+          return policies_(symbols_, std::data(ptr), std::size(ptr), std::forward<decltype(args)>(args)...);
+        }
+      }(std::forward<decltype(data)>(data));
     }
-  }
-
-  /**
-   * @param data continuous input data
-   * @param args... additional parameters propagated to policies
-   * @return result from executed policy
-   */
-  template <class T>
-    requires(sizeof(T) == 1u)
-  [[nodiscard]] constexpr auto operator()(const T *const data, auto &&...args) const noexcept(true) {
-    assert(data);
-    return policies_(symbols_, data, unknown_size{}, std::forward<decltype(args)>(args)...);
-  }
-
-  /**
-   * @param data continuous input data
-   * @param args... additional parameters propagated to policies
-   * @return result from executed policy
-   */
-  template <class T, class... Ts>
-    requires(sizeof(T) == 1u)
-  [[nodiscard]] constexpr auto operator()(const std::basic_string_view<T, Ts...> data, auto &&...args) const noexcept(true) {
-    return policies_(symbols_, std::data(data), std::size(data), std::forward<decltype(args)>(args)...);
   }
 
   TSymbols symbols_{};

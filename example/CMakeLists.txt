@@ -24,6 +24,6 @@ function(example file target)
   endif()
 endfunction()
 
-example(hello_world hello_wolrd)
+example(hello_world hello_world)
 example(dispatch dispatch)
 example(policies policies)
