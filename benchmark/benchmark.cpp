@@ -32,8 +32,6 @@ int main() {
 
   using namespace ankerl::nanobench;
 
-  // const auto first = [](const auto &symbols) { return symbols[0]; };
-
   auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
 
   const auto bench_map = [](const auto name, const auto &symbols, auto fn) {
@@ -119,7 +117,7 @@ int main() {
   const auto bench_mph = [](const auto &hash, const auto name, const auto &symbols, auto fn) {
     constexpr auto symbol_size = hash.symbols()[0].size();
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(hash(std::span<const char, symbol_size>(std::data(fn(symbols)), std::data(fn(symbols)) + symbol_size)));
+      doNotOptimizeAway(hash(mph::utility::array_view<const char, symbol_size>(std::data(fn(symbols)))));
     });
   };
 
@@ -140,15 +138,4 @@ int main() {
 #endif
   bench_gperf("random", data::random, next);
   bench_mph(mph::hash{[] { return data::random; }}, "random", data::random, next);
-
-  // bench_map("single", data::single, first);
-  // bench_unordered_map("single", data::single, first);
-  // bench_bsearch("single", data::single, first);
-  // #if __has_include(<frozen/unordered_map.h>) and
-  // __has_include(<frozen/string.h>) bench_frozen("single", data::single,
-  // data::frozen_single, first);
-  // #endif
-  // bench_gperf("single", data::single, first);
-  // bench_mph(mph::hash{[] { return data::single; }}, "single", data::single,
-  // first);
 }

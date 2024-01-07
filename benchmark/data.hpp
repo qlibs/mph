@@ -47,10 +47,6 @@ constexpr const std::array<std::string_view, 6> small{
     "FXB     ", "CODI    ", "DDMX    ", "MOHO    ", "SPCB    ", "XXII    ",
 };
 
-constexpr const std::array<std::string_view, 1> single{
-    "FXB     ",
-};
-
 #if __has_include(<frozen/unordered_map.h>) and __has_include(<frozen/string.h>)
 constexpr frozen::unordered_map<frozen::string, std::int16_t, 100> frozen_all = {
     {"III     ", 0},  {"AGM-C   ", 1},  {"LOPE    ", 2},  {"FEMS    ", 3},  {"IEA     ", 4},  {"VYMI    ", 5},
@@ -92,6 +88,5 @@ constexpr frozen::unordered_map<frozen::string, std::int16_t, 100> frozen_random
     {"CDC     ", 96}, {"OPESW   ", 97}, {"EXP     ", 98}, {"NCTY    ", 99},
 };
 
-constexpr frozen::unordered_map<frozen::string, std::int16_t, 1> frozen_single = {{"FXB     ", 0}};
 #endif
 }  // namespace data
