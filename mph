@@ -518,8 +518,8 @@ constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...
   } else if constexpr (requires { pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
     return pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
   } else {
-    constexpr auto always_false = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
-    static_assert(always_false, "hash can't be constructed with given policies!");
+    constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
+    static_assert(hash_cant_be_created, "hash can't be created with given policies!");
   }
 };
 
