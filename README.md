@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/dTYdec4jz">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/YsxnnG8rb">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -49,7 +49,7 @@ assert(2 == hash("SPY"sv));
 assert(3 == hash("CDC"sv));
 ```
 
-### x86-64 assembly (https://godbolt.org/z/dTYdec4jz)
+### x86-64 assembly ()
 
 ```
 ```
