@@ -479,8 +479,9 @@ class pext_split_on_first_char {
  * @return depends on the policies [default: 0 if string doesn't match, 1..N for matches]
  */
 constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...args) {
-  constexpr auto max_bits_size = 5;
   constexpr auto char_lookup = mph::char_lookup<0>{};
+
+  constexpr auto max_bits_size = 5;
   constexpr auto pext_direct = mph::pext_direct<max_bits_size>{};
   constexpr auto pext_split_on_first_char = mph::pext_split_on_first_char<max_bits_size>{};
 
