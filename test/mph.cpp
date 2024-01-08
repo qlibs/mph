@@ -32,6 +32,24 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
+  "[hash] custom policies - char_lookup"_test = [] {
+    static constexpr std::array symbols{
+        "C "sv,
+        "D "sv,
+        "A "sv,
+    };
+
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::char_lookup<0>{}(args...); }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash("X"sv));
+    expect(0_u == hash("a"sv));
+    expect(0_u == hash("b"sv));
+  };
+
   "[hash] custom policies - pext_direct"_test = [] {
     static constexpr std::array symbols{
         "A"sv,

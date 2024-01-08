@@ -143,7 +143,7 @@ static_assert(0b11 == pext(0b11, 0b11));
  * Finds T type mask which uniquely identifies given symbols
  */
 template <class T>
-[[nodiscard]] constexpr auto mask(const std::ranges::range auto &symbols) {
+[[nodiscard]] constexpr auto find_mask(const std::ranges::range auto &symbols) {
   const auto is_unique = [&](const auto mask) {
     std::vector<T> v{};
     for (const auto &symbol : symbols) {
@@ -170,15 +170,15 @@ template <class T>
 }
 
 // clang-format off
-static_assert(0b00000000'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 0}, std::array<std::uint8_t, 2>{0, 0}}));
-static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{0, 0}, std::array<std::uint8_t, 2>{0, 1}}));
-static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 0}, std::array<std::uint8_t, 2>{0, 1}}));
-static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{0, 1}, std::array<std::uint8_t, 2>{1, 0}}));
-static_assert(0b00000001'00000000 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 1}, std::array<std::uint8_t, 2>{1, 0}}));
-static_assert(0b00000000'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 1}, std::array<std::uint8_t, 2>{0, 1}}));
-static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 0, 1}}));
-static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 1}, std::array<std::uint8_t, 3>{1, 0, 1}, std::array<std::uint8_t, 3>{1, 1, 0}}));
-static_assert(0b00000000'00000001'00000001 == mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 1, 0}}));
+static_assert(0b00000000'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 0}, std::array<std::uint8_t, 2>{0, 0}}));
+static_assert(0b00000001'00000000 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{0, 0}, std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000001'00000000 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 0}, std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000001'00000000 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{0, 1}, std::array<std::uint8_t, 2>{1, 0}}));
+static_assert(0b00000001'00000000 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 1}, std::array<std::uint8_t, 2>{1, 0}}));
+static_assert(0b00000000'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 2>{1, 1}, std::array<std::uint8_t, 2>{0, 1}}));
+static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 0, 1}}));
+static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 1}, std::array<std::uint8_t, 3>{1, 0, 1}, std::array<std::uint8_t, 3>{1, 1, 0}}));
+static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 1, 0}}));
 // clang-format on
 
 template<class T, const std::size_t Size>
@@ -260,19 +260,52 @@ static_assert(not required_symbols_bits_size<std::array{0b11u, 0b11u}, 1u>);
 // clang-format on
 
 template <class TSymbols, std::size_t Size>
-concept supported_symbols_size = [](const auto &symbols) {
-  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) <= Size; });
+concept per_symbols_size_gt = [](const auto &symbols) {
+  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) > Size; });
 }(TSymbols{}());
 
 // clang-format off
-static_assert(supported_symbols_size<decltype([] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }), 1u>);
-static_assert(supported_symbols_size<decltype([] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }), 2u>);
-static_assert(supported_symbols_size<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 2u>);
-static_assert(supported_symbols_size<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 3u>);
-static_assert(not supported_symbols_size<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 0u>);
-static_assert(not supported_symbols_size<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 1u>);
+static_assert(not per_symbols_size_gt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 2u>);
+static_assert(not per_symbols_size_gt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 3u>);
+static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }), 0u>);
+static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }), 0u>);
+static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 1u>);
+static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 1u>);
+// clang-format on
+
+template <class TSymbols, std::size_t N>
+concept unique_symbols_per_char = [](const auto &symbols) {
+  for (const auto& symbol : symbols) {
+      if (const auto count = std::count_if(std::cbegin(symbols), std::cend(symbols), [&symbol](const auto& s) { return s[0] == symbol[0]; }); count > 1) {
+        return false;
+      }
+  }
+  return true;
+}(TSymbols{}());
+
+// clang-format off
+static_assert(not unique_symbols_per_char<decltype([] { return std::array{std::array<char, 1>{'a'}, std::array<char, 1>{'a'}}; }), 0u>);
+static_assert(unique_symbols_per_char<decltype([] { return std::array{std::array<char, 1>{'a'}, std::array<char, 1>{'b'}}; }), 0u>);
+static_assert(unique_symbols_per_char<decltype([] { return std::array{std::array<char, 1>{'b'}, std::array<char, 1>{'a'}}; }), 0u>);
 // clang-format on
 }  // namespace concepts
+
+template <const auto N, const std::size_t cache_line_size = utility::cache_line_size>
+class char_lookup {
+ public:
+  template<class TSymbols>
+    requires (std::size(TSymbols{}()) < std::numeric_limits<std::uint8_t>::max()) and concepts::per_symbols_size_gt<TSymbols, N> and concepts::unique_symbols_per_char<TSymbols, N>
+  [[nodiscard]] auto operator()(const TSymbols, auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
+    static constexpr auto lookup = [] {
+      std::array<std::uint8_t, std::numeric_limits<std::remove_cvref_t<decltype(data[0])>>::max()> lut{};
+      for (auto i = 0u; const auto& symbol : TSymbols{}()) {
+        lut[symbol[0]] = ++i;
+      }
+      return lut;
+    }();
+    return lookup[data[0]];
+  }
+};
 
 /**
  * Minimal perfect hashing function based on pext with support up to 2^max_bits_size
@@ -312,8 +345,8 @@ class pext_direct {
   // clang-format on
 
  public:
-  template <class TSymbols, class T = std::uint64_t, const auto mask = utility::mask<T>(TSymbols{}())>
-    requires concepts::required_bits_size<mask, max_bits_size> and concepts::supported_symbols_size<TSymbols, sizeof(T)>
+  template <class TSymbols, class T = std::uint64_t, const auto mask = utility::find_mask<T>(TSymbols{}())>
+    requires concepts::required_bits_size<mask, max_bits_size>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols symbols, auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     const auto lhs = [&] {
       if constexpr (requires { std::bool_constant<(data.size(), true)>{}; } and data.size() == sizeof(T)) {
@@ -355,7 +388,7 @@ class pext_split_on_first_char {
 
     std::array<T, size> masks{};
     for (auto i = 0u; i < std::size(masks); ++i) {
-      masks[i] = utility::mask<T>(v[i]);
+      masks[i] = utility::find_mask<T>(v[i]);
     }
 
     return masks;
@@ -404,8 +437,7 @@ class pext_split_on_first_char {
 
  public:
   template <class TSymbols, class T = std::uint64_t, const auto masks = make_masks<T>(TSymbols{})>
-    requires concepts::required_symbols_bits_size<masks, max_bits_size> and
-             concepts::supported_symbols_size<TSymbols, sizeof(T)>
+    requires concepts::required_symbols_bits_size<masks, max_bits_size>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const TSymbols symbols, const auto data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     const auto lhs = [&] {
       if constexpr (requires { std::bool_constant<(data.size(), true)>{}; } and data.size() == sizeof(T)) {
@@ -448,10 +480,13 @@ class pext_split_on_first_char {
  */
 constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...args) {
   constexpr auto max_bits_size = 5;
+  constexpr auto char_lookup = mph::char_lookup<0>{};
   constexpr auto pext_direct = mph::pext_direct<max_bits_size>{};
   constexpr auto pext_split_on_first_char = mph::pext_split_on_first_char<max_bits_size>{};
 
-  if constexpr (requires { pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+  if constexpr (requires { char_lookup(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return char_lookup(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
     return pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
   } else if constexpr (requires { pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
     return pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
