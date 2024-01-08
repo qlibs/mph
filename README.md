@@ -90,13 +90,10 @@ clang: -fconstexpr-steps=100000000
 
 #### TODO
 
-- memcpy pruning
-- pext_32 if <= 4 bytes
 - enable github workflow
-- find hash policy
 - custom return type array {
 -     "av" : 1,
 -     "ab" : 3,
 - }
 - remove array_view if span gives the same asm
-- cmove?
+- benchmarks with actually finding the word for gperf
