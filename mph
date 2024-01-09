@@ -224,24 +224,26 @@ template<class T, const auto cache_line_size, const bool unsafe = true>
   if constexpr (T t{}; requires { std::bool_constant<(data.size(), true)>{}; }) {
     static_assert(std::size(data) <= sizeof(T));
     std::memcpy(std::addressof(t), std::data(data), std::size(data));
-    return t; // should generate same code as *std::bit_cast<const T*>(std::data(data))
+    return t; // should generate the same code as *std::bit_cast<const T*>(std::data(data))
   } else if constexpr (unsafe) {
-    std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // might be outside std::size(data) but copying std::size(data) is much slower
-    alignas(cache_line_size) static constexpr const T masks[]{ // little endian
-      0x0,
-      0xFF,
-      0xFFFF,
-      0xFFFFFF,
-      0xFFFFFFFF,
-      0xFFFFFFFFFF,
-      0xFFFFFFFFFFFF,
-      0xFFFFFFFFFFFFFF,
-      0xFFFFFFFFFFFFFFFF,
-    };
+    std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // [[unsafe]] might be outside of std::size(data)
+    static constexpr const auto masks = [] {
+      alignas(cache_line_size) std::array<T, sizeof(T)+1> array{}; // +1 for leading 0u
+      for (auto i = 0u; i < sizeof(T); ++i) {
+        array[i+1] = array[i] | (T(0xFF) << (i * CHAR_BIT)); // little endian
+      }
+      return array;
+    }();
+    assert(std::size(data) < std::size(masks));
     return t & masks[std::size(data)]; // only use valid bytes
   } else {
-    std::memcpy(std::addressof(t), std::data(data), std::size(data));
-    return t;
+    union { // type punning with `memcpy`
+      std::uint8_t storage[sizeof(T)];
+      T value;
+    };
+    value = {};
+    std::memcpy(storage, std::data(data), std::size(data));
+    return value;
   }
 }
 }  // namespace utility
@@ -325,6 +327,31 @@ constexpr auto conditional = [](const auto cond, const auto lhs, const auto rhs)
 
 constexpr auto branchless = [](const auto cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return cond * lhs; // generates cmov (x86-64)
+};
+
+template<class T = std::uint64_t, const std::size_t cache_line_size = utility::cache_line_size>
+class swar {
+ public:
+  template <class TSymbols>
+    requires concepts::all_symbols_size_lt<TSymbols, sizeof(T)>
+  [[nodiscard]] constexpr auto operator()(const TSymbols symbols, auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
+    return dispatch(symbols, utility::copy_required_bytes<T, cache_line_size, false>(data), std::make_index_sequence<std::size(symbols())>{});
+  }
+
+private:
+  template<auto N, auto... Ns>
+  [[nodiscard]] static constexpr auto dispatch(const auto symbols, const T value, std::index_sequence<N, Ns...>) {
+    switch (value) {
+      default:
+        if constexpr (not sizeof...(Ns)) {
+          return decltype(N){};
+        } else {
+          return dispatch(symbols, value, std::index_sequence<Ns...>{});
+        }
+      case utility::as<T>(symbols()[N]):
+        return 1u+N;
+    }
+  }
 };
 
 /**
@@ -489,10 +516,17 @@ constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...
   constexpr auto char_index = 0u;
   constexpr auto pext_split = mph::pext_split<max_bits_size, char_index>{};
 
+  constexpr auto swar_32 = mph::swar<std::uint32_t>{};
+  constexpr auto swar_64 = mph::swar<std::uint64_t>{};
+
   if constexpr (requires { pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
     return pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
   } else if constexpr (requires { pext_split(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
     return pext_split(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { swar_32(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return swar_32(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { swar_64(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return swar_64(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
     static_assert(hash_cant_be_created, "hash can't be created with given policies!");

@@ -152,6 +152,9 @@ int main() {
         },
         "random_5_len_4", data::random_5_len_4, next);
     bench_mph(mph::hash{[] { return data::random_5_len_4; }}, "random_5_len_4", data::random_5_len_4, next);
+    bench_mph(
+        mph::hash{[] { return data::random_5_len_4; }, [](auto &&...args) { return mph::swar<std::uint32_t>{}(args...); }},
+        "random_5_len_4.swar32", data::random_5_len_4, next);
   }
 
   {
@@ -208,6 +211,9 @@ int main() {
         },
         "random_5_len_8", data::random_5_len_8, next);
     bench_mph(mph::hash{[] { return data::random_5_len_8; }}, "random_5_len_8", data::random_5_len_8, next);
+    bench_mph(
+        mph::hash{[] { return data::random_5_len_4; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
+        "random_5_len_8.swar64", data::random_5_len_8, next);
   }
 
   {
@@ -265,6 +271,9 @@ int main() {
         },
         "random_6_len_3_5", data::random_6_len_3_5, next);
     bench_mph(mph::hash{[] { return data::random_6_len_3_5; }}, "random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_mph(
+        mph::hash{[] { return data::random_6_len_3_5; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
+        "random_6_len_3_5.swar64", data::random_6_len_3_5, next);
   }
 
   {
@@ -369,5 +378,8 @@ int main() {
         },
         "random_100_len_8", data::random_100_len_8, next);
     bench_mph(mph::hash{[] { return data::random_100_len_8; }}, "random_100_len_8", data::random_100_len_8, next);
+    bench_mph(
+        mph::hash{[] { return data::random_100_len_8; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
+        "random_100_len_8.swar64", data::random_100_len_8, next);
   }
 }

@@ -69,6 +69,69 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
+  "[hash] custom policies - swar32"_test = [] {
+    static constexpr std::array symbols{
+        "A"sv,
+        "B"sv,
+        "C"sv,
+    };
+
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::swar<std::uint32_t>{}(args...); }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash("D"sv));
+    expect(0_u == hash("a"sv));
+    expect(0_u == hash("b"sv));
+  };
+
+  "[hash] custom policies - swar64"_test = [] {
+    static constexpr std::array symbols{
+        "foobar"sv,
+        "bar"sv,
+        "foo"sv,
+    };
+
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
+
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("xxx"sv));
+    expect(0_u == hash("baz"sv));
+  };
+
+  "[hash] custom policies - swar64 / std::span"_test = [] {
+    static constexpr std::array symbols{
+        "A       "sv,
+        "B       "sv,
+        "C       "sv,
+    };
+
+    constexpr auto size = std::size(symbols[0]);
+
+    auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }};
+
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(std::span<const char, size>(std::data(symbol), std::data(symbol) + size)));
+    }
+
+    expect(0_u == hash(""sv));
+    expect(0_u == hash("D "sv));
+    expect(0_u == hash(" D"sv));
+    expect(0_u == hash(" D "sv));
+    expect(0_u == hash("E"sv));
+    expect(0_u == hash("F"sv));
+    expect(0_u == hash(std::span<const char>("        ", size)));
+    expect(0_u == hash(std::span<const char>("D       ", size)));
+    expect(0_u == hash(std::span<const char>("E       ", size)));
+    expect(0_u == hash(std::span<const char>("F       ", size)));
+  };
+
   "[hash] std::span data"_test = [] {
     static constexpr std::array symbols{
         "A       "sv,
