@@ -32,35 +32,14 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  "[hash] custom policies - char_lookup"_test = [] {
-    static constexpr std::array symbols{
-        "C "sv,
-        "D "sv,
-        "A "sv,
-    };
-
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::char_lookup<0>{}(args...); }};
-
-    for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(symbol));
-    }
-
-    expect(0_u == hash("X"sv));
-    expect(0_u == hash("a"sv));
-    expect(0_u == hash("b"sv));
-    expect(0_u == hash("CC"sv));
-    expect(0_u == hash("CD"sv));
-    expect(0_u == hash(" D"sv));
-  };
-
-  "[hash] custom policies - pext_direct"_test = [] {
+  "[hash] custom policies - pext"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
         "C"sv,
     };
 
-    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_direct<5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext<5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -72,15 +51,14 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  "[hash] custom policies - pext_split_on_first_char"_test = [] {
+  "[hash] custom policies - pext_split"_test = [] {
     static constexpr std::array symbols{
         "A"sv,
         "B"sv,
         "C"sv,
     };
 
-    constexpr auto hash =
-        mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_split_on_first_char<5>{}(args...); }};
+    constexpr auto hash = mph::hash{[] { return symbols; }, [](auto &&...args) { return mph::pext_split<5>{}(args...); }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
       expect(_u(expected++) == hash(symbol));
@@ -91,7 +69,7 @@ int main() {
     expect(0_u == hash("b"sv));
   };
 
-  "[hash] span data"_test = [] {
+  "[hash] std::span data"_test = [] {
     static constexpr std::array symbols{
         "A       "sv,
         "B       "sv,
@@ -118,19 +96,18 @@ int main() {
     expect(0_u == hash(std::span<const char>("F       ", size)));
   };
 
-  "[hash] span variable length"_test = [] {
+  "[hash] std::span variable length"_test = [] {
     static constexpr std::array symbols{
-        "enter"sv,
-        "delete"sv,
-        "esc"sv,
+        std::span<const char, 8>("enter  "),
+        std::span<const char, 8>("delete "),
+        std::span<const char, 8>("esc    "),
     };
 
     const auto hash = mph::hash{[] { return symbols; }};
 
-    expect(1_u == hash(std::span<const char>("enter")));
-    // TODO
-    // expect(2_u == hash(std::span<const char>("delete")));
-    expect(3_u == hash(std::span<const char>("esc")));
+    for (auto expected = 1u; const auto &symbol : symbols) {
+      expect(_u(expected++) == hash(symbol));
+    }
 
     expect(0_u == hash(std::span("")));
     expect(0_u == hash(std::span("  ")));
@@ -138,24 +115,31 @@ int main() {
     expect(0_u == hash(std::span("stop")));
     expect(0_u == hash(std::span("start")));
     expect(0_u == hash(std::span("foobar")));
+    expect(0_u == hash(std::span("12345678")));
   };
 
-  "[hash] span from array"_test = [] {
+  "[hash] std::array"_test = [] {
     static constexpr std::array symbols{
-        "A"sv,
-        "B"sv,
-        "C"sv,
+        std::array{'A', 'a'},
+        std::array{'B', 'b'},
+        std::array{'C', 'c'},
     };
 
-    auto hash = mph::hash{[] { return symbols; }};
+    const auto hash = mph::hash{[] { return symbols; }};
 
     for (auto expected = 1u; const auto &symbol : symbols) {
-      std::array<const char, 1> data{symbol[0]};
-      expect(_u(expected++) == hash(std::span(data)));
+      expect(_u(expected++) == hash(symbol));
     }
+
+    expect(0_u == hash(std::array{'A'}));
+    expect(0_u == hash(std::array{'X'}));
+    expect(0_u == hash(std::array{'A', 'A'}));
+    expect(0_u == hash(std::array{'B', 'c'}));
+    expect(0_u == hash(std::array{'C', 'b'}));
+    expect(0_u == hash(std::array{'C', 'b', 'a'}));
   };
 
-  "[hash] string_view"_test = [] {
+  "[hash] std::string_view"_test = [] {
     static constexpr std::array symbols{
         "AA "sv,
         "BB "sv,

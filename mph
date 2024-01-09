@@ -39,6 +39,11 @@ export module mph;
 export
 #endif
 
+/**
+ * Minimal perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
+ * The library requires C++20 and is generic purpose
+ * Current version mainly focuses on x86-64
+ */
 namespace mph::inline v_1_0_0 {
 namespace utility {
 #if defined(__cpp_lib_hardware_interference_size)
@@ -48,7 +53,7 @@ static constexpr auto cache_line_size = 64;  // x86-64
 #endif
 
 template <std::size_t N>
-  requires(N > 0)
+  requires(N > 0u)
 struct bitset final {
   constexpr explicit(true) bitset(const auto value) {
     for (std::size_t i{}; i < N; ++i) {
@@ -68,6 +73,7 @@ struct bitset final {
     }
     return result;
   }
+ private:
   std::array<bool, N> bits{};
 };
 
@@ -119,7 +125,7 @@ template <class T>
   auto k = 0u;
   auto m = 0u;
   while (m < sizeof(T) * CHAR_BIT) {
-    if ((mask & 1) == 1) {
+    if ((mask & 1) == 1) { // little endian
       result |= ((a >> m) & 1) << k++;
     }
     mask >>= 1;
@@ -181,29 +187,6 @@ static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::arra
 static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::array{ std::array<std::uint8_t, 3>{0, 0, 0}, std::array<std::uint8_t, 3>{1, 1, 1}, std::array<std::uint8_t, 3>{0, 1, 0}}));
 // clang-format on
 
-template<class T, const auto cache_line_size>
-[[nodiscard]] auto copy_required_bytes(const auto data) {
-  T t; // not initialized
-  std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // might be outside std::size(data) but copying std::size(data) is much slower
-  if constexpr (requires { std::bool_constant<(data.size(), true)>{}; } and data.size() == sizeof(T)) {
-    return t; // should generate same code as *std::bit_cast<const T*>(std::data(data))
-  } else {
-    alignas(cache_line_size) static constexpr T masks[]{ // little endian
-      0x0,
-      0xFF,
-      0xFFFF,
-      0xFFFFFF,
-      0xFFFFFFFF,
-      0xFFFFFFFFFF,
-      0xFFFFFFFFFFFF,
-      0xFFFFFFFFFFFFFF,
-      0xFFFFFFFFFFFFFFFF,
-    };
-    return t & masks[std::size(data)]; // only use valid bytes
-  }
-}
-// clang-format on
-
 template<class... Ts> struct overloaded final : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
@@ -235,6 +218,32 @@ static_assert(std::is_same_v<std::uint16_t, unsigned_value_t<std::uint16_t(std::
 static_assert(std::is_same_v<std::uint32_t, unsigned_value_t<std::uint32_t(std::numeric_limits<std::uint16_t>::max())+1>>);
 static_assert(std::is_same_v<std::uint64_t, unsigned_value_t<std::uint64_t(std::numeric_limits<std::uint32_t>::max())+1>>);
 // clang-format on
+
+template<class T, const auto cache_line_size, const bool unsafe = true>
+[[nodiscard]] auto copy_required_bytes(const auto data) {
+  if constexpr (T t{}; requires { std::bool_constant<(data.size(), true)>{}; }) {
+    static_assert(std::size(data) <= sizeof(T));
+    std::memcpy(std::addressof(t), std::data(data), std::size(data));
+    return t; // should generate same code as *std::bit_cast<const T*>(std::data(data))
+  } else if constexpr (unsafe) {
+    std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // might be outside std::size(data) but copying std::size(data) is much slower
+    alignas(cache_line_size) static constexpr const T masks[]{ // little endian
+      0x0,
+      0xFF,
+      0xFFFF,
+      0xFFFFFF,
+      0xFFFFFFFF,
+      0xFFFFFFFFFF,
+      0xFFFFFFFFFFFF,
+      0xFFFFFFFFFFFFFF,
+      0xFFFFFFFFFFFFFFFF,
+    };
+    return t & masks[std::size(data)]; // only use valid bytes
+  } else {
+    std::memcpy(std::addressof(t), std::data(data), std::size(data));
+    return t;
+  }
+}
 }  // namespace utility
 
 namespace concepts {
@@ -252,7 +261,7 @@ static_assert(not required_bits_size<0b10, 0>);
 static_assert(not required_bits_size<0b11, 1>);
 // clang-format on
 
-template <const auto masks, const std::size_t max_bits_size>
+template <const std::ranges::range auto masks, const std::size_t max_bits_size>
 concept required_symbols_bits_size = std::all_of(std::cbegin(masks), std::cend(masks), [](const auto mask) {
   return std::size_t(std::popcount(mask)) <= max_bits_size;
 });
@@ -267,9 +276,9 @@ static_assert(not required_symbols_bits_size<std::array{0b10u, 0b11u}, 1u>);
 static_assert(not required_symbols_bits_size<std::array{0b11u, 0b11u}, 1u>);
 // clang-format on
 
-template <class TSymbols, std::size_t Size>
+template <class TSymbols, std::size_t size>
 concept per_symbols_size_gt = [](const auto &symbols) {
-  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) > Size; });
+  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) > size; });
 }(TSymbols{}());
 
 // clang-format off
@@ -281,9 +290,9 @@ static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<cha
 static_assert(per_symbols_size_gt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 1u>);
 // clang-format on
 
-template <class TSymbols, std::size_t Size>
+template <class TSymbols, std::size_t size>
 concept all_symbols_size_lt = [](const auto &symbols) {
-  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) <= Size; });
+  return std::all_of(std::cbegin(symbols), std::cend(symbols), [](const auto &symbol) { return std::size(symbol) <= size; });
 }(TSymbols{}());
 
 static_assert(not all_symbols_size_lt<decltype([] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }), 0u>);
@@ -296,7 +305,7 @@ static_assert(all_symbols_size_lt<decltype([] { return std::array{std::array<cha
 template <class TSymbols, std::size_t N>
 concept unique_symbols_per_char = [](const auto &symbols) {
   for (const auto& symbol : symbols) {
-      if (const auto count = std::count_if(std::cbegin(symbols), std::cend(symbols), [&symbol](const auto& s) { return s[0] == symbol[0]; }); count > 1) {
+      if (const auto count = std::count_if(std::cbegin(symbols), std::cend(symbols), [&symbol](const auto& s) { return s[N] == symbol[N]; }); count > 1) {
         return false;
       }
   }
@@ -309,23 +318,6 @@ static_assert(unique_symbols_per_char<decltype([] { return std::array{std::array
 static_assert(unique_symbols_per_char<decltype([] { return std::array{std::array<char, 1>{'b'}, std::array<char, 1>{'a'}}; }), 0u>);
 // clang-format on
 }  // namespace concepts
-
-template <const auto N, const std::size_t cache_line_size = utility::cache_line_size>
-class char_lookup {
- public:
-  template<class TSymbols>
-    requires (std::size(TSymbols{}()) < std::numeric_limits<std::uint8_t>::max()) and concepts::per_symbols_size_gt<TSymbols, N> and concepts::unique_symbols_per_char<TSymbols, N>
-  [[nodiscard]] auto operator()(const TSymbols, auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
-    static constexpr auto lookup = [] {
-      std::array<std::uint8_t, std::numeric_limits<std::remove_cvref_t<decltype(data[0])>>::max()> lut{};
-      for (auto i = 0u; const auto& symbol : TSymbols{}()) {
-        lut[symbol[0]] = ++i;
-      }
-      return lut;
-    }();
-    return lookup[data[0]];
-  }
-};
 
 constexpr auto conditional = [](const auto cond, const auto lhs, const auto rhs) {
   return cond ? lhs : rhs; // generates jmp (x86-64)
@@ -340,9 +332,9 @@ constexpr auto branchless = [](const auto cond, const auto lhs, [[maybe_unused]]
  *  requires symbols to have size <= CHAR_BIT bytes
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size = 5, const auto policy = conditional,
+template <const std::size_t max_bits_size = 5, const auto result_policy = conditional,
           const std::size_t cache_line_size = utility::cache_line_size>
-class pext_direct {
+class pext {
   template <class T, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_lookup(const auto &symbols) {
     alignas(cache_line_size) std::array<T, size> lookup{};
@@ -389,20 +381,21 @@ class pext_direct {
 
     const auto lhs = utility::copy_required_bytes<T, cache_line_size>(data);
     const auto ext = _pext_u64(lhs, mask);
-    return policy(lookup[ext] == lhs, index[ext], decltype(index[ext]){});
+    return result_policy(lookup[ext] == lhs, index[ext], decltype(index[ext]){});
   }
 };
 
-template <const std::size_t max_bits_size = 5, const auto policy = conditional,
+template <const std::size_t max_bits_size = 5, const auto N = 0u,
+          const auto result_policy = conditional,
           const std::size_t cache_line_size = utility::cache_line_size>
-class pext_split_on_first_char {
+class pext_split {
   template<class T>
   [[nodiscard]] static consteval auto make_masks(const auto &symbols) {
     constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
 
     std::vector<std::vector<std::remove_cvref_t<decltype(symbols()[0])>>> v(size);
     for (const auto &symbol : symbols()) {
-      v[std::size_t(symbol[0])].push_back(symbol);
+      v[std::size_t(symbol[N])].push_back(symbol);
     }
 
     std::array<T, size> masks{};
@@ -419,7 +412,7 @@ class pext_split_on_first_char {
 
     std::vector<std::remove_cvref_t<decltype(symbols()[0])>> v[split_size]{};
     for (const auto &symbol : symbols()) {
-      v[std::size_t(symbol[0])].push_back(symbol);
+      v[std::size_t(symbol[N])].push_back(symbol);
     }
 
     alignas(cache_line_size) std::array<std::array<T, size>, split_size> lookup{};
@@ -440,8 +433,8 @@ class pext_split_on_first_char {
     std::vector<std::remove_cvref_t<decltype(symbols()[0])>> v[split_size]{};
 
     for (auto i = 0u; const auto &symbol : symbols()) {
-      idx[std::size_t(symbol[0])].push_back(++i);
-      v[std::size_t(symbol[0])].push_back(symbol);
+      idx[std::size_t(symbol[N])].push_back(++i);
+      v[std::size_t(symbol[N])].push_back(symbol);
     }
 
     alignas(cache_line_size) std::array<std::array<utility::unsigned_value_t<size>, size>, split_size> index{};
@@ -472,11 +465,11 @@ class pext_split_on_first_char {
     static constexpr auto lookup = make_lookups<T, masks, required_size>(symbols);
     static constexpr auto index = make_indexes<T, masks, required_size>(symbols);
 
-    assert(std::size(data) > 0u);
-    const auto id = data[0];
+    assert(std::size(data) > N);
+    const auto id = data[N];
     const auto lhs = utility::copy_required_bytes<T, cache_line_size>(data);
     const auto ext = _pext_u64(lhs, masks[id]);
-    return policy(lookup[id][ext] == lhs, index[id][ext], decltype(index[id][ext]){});
+    return result_policy(lookup[id][ext] == lhs, index[id][ext], decltype(index[id][ext]){});
   }
 };
 
@@ -490,18 +483,16 @@ class pext_split_on_first_char {
  * @return depends on the policies [default: 0 if string doesn't match, 1..N for matches]
  */
 constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...args) {
-  constexpr auto char_lookup = mph::char_lookup<0>{};
-
   constexpr auto max_bits_size = 5;
-  constexpr auto pext_direct = mph::pext_direct<max_bits_size>{};
-  constexpr auto pext_split_on_first_char = mph::pext_split_on_first_char<max_bits_size>{};
+  constexpr auto pext = mph::pext<max_bits_size>{};
 
-  if constexpr (requires { char_lookup(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
-    return char_lookup(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-  } else if constexpr (requires { pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
-    return pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-  } else if constexpr (requires { pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
-    return pext_split_on_first_char(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+  constexpr auto char_index = 0u;
+  constexpr auto pext_split = mph::pext_split<max_bits_size, char_index>{};
+
+  if constexpr (requires { pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+  } else if constexpr (requires { pext_split(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return pext_split(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
     static_assert(hash_cant_be_created, "hash can't be created with given policies!");
@@ -516,6 +507,7 @@ constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...
  */
 template <std::invocable TSymbols, class TPolicies = decltype(default_policies)>
   requires (std::size(TSymbols{}()) > 0u)
+  //requires range and size on each element of the range
 class hash final {
  public:
   static constexpr auto symbols = TSymbols{};
@@ -546,6 +538,7 @@ class hash final {
         if (const auto size = std::size(sv); size < min_max.first or size > min_max.second) {
           return decltype(policies(symbols, sv, std::forward<decltype(args)>(args)...)){};
         }
+        assert(std::size(sv) > 0u);
         return policies(symbols, sv, std::forward<decltype(args)>(args)...);
       },
       [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const std::span<T, Size> span) {
@@ -555,11 +548,12 @@ class hash final {
           if (const auto size = std::size(span); size < min_max.first or size > min_max.second) {
             return decltype(policies(symbols, span, std::forward<decltype(args)>(args)...)){};
           }
+          assert(std::size(span) > 0u);
           return policies(symbols, span, std::forward<decltype(args)>(args)...);
         }
       },
       [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const std::array<T, Size>& array) {
-        if constexpr (Size != std::dynamic_extent and (Size < min_max.first or Size > min_max.second)) {
+        if constexpr (Size < min_max.first or Size > min_max.second) {
           return decltype(policies(symbols, array, std::forward<decltype(args)>(args)...)){};
         } else {
           return policies(symbols, array, std::forward<decltype(args)>(args)...);

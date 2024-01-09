@@ -13,11 +13,9 @@
 constexpr auto policies = [](const auto symbols, auto &&data, [[maybe_unused]] auto &&...args) {
   if (not std::size(data)) {
     return -1;
-  } else if constexpr (constexpr auto pext_direct = mph::pext_direct<2>{};
-                       requires {
-                         pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-                       }) {
-    return int(pext_direct(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...)) - 1;
+  } else if constexpr (constexpr auto pext = mph::pext<2>{};
+                       requires { pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    return int(pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...)) - 1;
   } else {
     static_assert([](auto &&) { return false; }(symbols), "No luck!");
   }
