@@ -90,10 +90,8 @@ clang: -fconstexpr-steps=100000000
 
 #### TODO
 
-- enable github workflow
-- custom return type array {
--     "av" : 1,
--     "ab" : 3,
-- }
-- remove array_view if span gives the same asm
-- benchmarks with actually finding the word for gperf
+ -githbu workflow
+ - one more varied benchmark data
+ - swar policy
+ - support for custom indexes
+ - update spec

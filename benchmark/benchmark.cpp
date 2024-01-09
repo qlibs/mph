@@ -120,7 +120,7 @@ int main() {
           static constexpr auto MAX_WORD_LENGTH = 4;
           static constexpr auto MAX_HASH_VALUE = 7;
 
-          static constexpr unsigned char asso_values[] = {
+          static constexpr const unsigned char asso_values[] = {
               8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
               8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 7, 8, 2, 8, 8, 8,
               8, 8, 8, 5, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
