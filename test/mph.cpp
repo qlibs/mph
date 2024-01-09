@@ -115,7 +115,7 @@ int main() {
     expect(0_u == hash(std::span("stop")));
     expect(0_u == hash(std::span("start")));
     expect(0_u == hash(std::span("foobar")));
-    expect(0_u == hash(std::span("12345678")));
+    expect(0_u == hash(std::span("1234567")));
   };
 
   "[hash] std::array"_test = [] {

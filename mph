@@ -191,9 +191,9 @@ template<class... Ts> struct overloaded final : Ts... { using Ts::operator()...;
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 // clang-format off
-static_assert(42 == overloaded([](auto v) { return v; })(42));
-static_assert(1 == overloaded([](int) { return 1; }, [](bool) { return 2; })(int{}));
-static_assert(2 == overloaded([](int) { return 1; }, [](bool) { return 2; })(bool{}));
+static_assert(42 == overloaded{[](auto v) { return v; }}(42));
+static_assert(1 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(int{}));
+static_assert(2 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(bool{}));
 // clang-format on
 
 namespace detail {
@@ -261,7 +261,7 @@ static_assert(not required_bits_size<0b10, 0>);
 static_assert(not required_bits_size<0b11, 1>);
 // clang-format on
 
-template <const std::ranges::range auto masks, const std::size_t max_bits_size>
+template <const auto masks, const std::size_t max_bits_size>
 concept required_symbols_bits_size = std::all_of(std::cbegin(masks), std::cend(masks), [](const auto mask) {
   return std::size_t(std::popcount(mask)) <= max_bits_size;
 });
