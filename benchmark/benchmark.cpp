@@ -152,9 +152,6 @@ int main() {
         },
         "random_5_len_4", data::random_5_len_4, next);
     bench_mph(mph::hash{[] { return data::random_5_len_4; }}, "random_5_len_4", data::random_5_len_4, next);
-    bench_mph(
-        mph::hash{[] { return data::random_5_len_4; }, [](auto &&...args) { return mph::swar<std::uint32_t>{}(args...); }},
-        "random_5_len_4.swar32", data::random_5_len_4, next);
   }
 
   {
@@ -211,9 +208,6 @@ int main() {
         },
         "random_5_len_8", data::random_5_len_8, next);
     bench_mph(mph::hash{[] { return data::random_5_len_8; }}, "random_5_len_8", data::random_5_len_8, next);
-    bench_mph(
-        mph::hash{[] { return data::random_5_len_4; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
-        "random_5_len_8.swar64", data::random_5_len_8, next);
   }
 
   {
@@ -271,9 +265,6 @@ int main() {
         },
         "random_6_len_3_5", data::random_6_len_3_5, next);
     bench_mph(mph::hash{[] { return data::random_6_len_3_5; }}, "random_6_len_3_5", data::random_6_len_3_5, next);
-    bench_mph(
-        mph::hash{[] { return data::random_6_len_3_5; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
-        "random_6_len_3_5.swar64", data::random_6_len_3_5, next);
   }
 
   {
@@ -378,8 +369,111 @@ int main() {
         },
         "random_100_len_8", data::random_100_len_8, next);
     bench_mph(mph::hash{[] { return data::random_100_len_8; }}, "random_100_len_8", data::random_100_len_8, next);
-    bench_mph(
-        mph::hash{[] { return data::random_100_len_8; }, [](auto &&...args) { return mph::swar<std::uint64_t>{}(args...); }},
-        "random_100_len_8.swar64", data::random_100_len_8, next);
+  }
+
+  {
+    std::random_device rd{};
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_100_len_8) - 1);
+    std::vector<int> ids{};
+    ids.reserve(iterations);
+    for (auto i = 0; i < iterations; ++i) {
+      ids.push_back(distribution(gen));
+    }
+
+    auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]]; };
+
+    bench_std_map("random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_std_unordered_map("random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_boost_unordered_map("random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_std_bsearch("random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_gperf(
+        [](const char *str, std::size_t len) {
+          static constexpr auto MIN_WORD_LENGTH = 1;
+          static constexpr auto MAX_WORD_LENGTH = 8;
+          static constexpr auto MAX_HASH_VALUE = 186;
+
+          static constexpr const unsigned char asso_values[] = {
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 0,   0,   187, 0,   187, 5,   187, 5,   0,   187, 187, 187, 187, 187, 187, 187, 2,
+              35,  20,  120, 85,  80,  35,  2,   187, 0,   187, 55,  35,  187, 125, 100, 7,   80,  10,  0,   187, 85,  60,
+              187, 187, 110, 187, 187, 187, 187, 187, 187, 0,   20,  10,  10,  0,   115, 65,  50,  10,  187, 30,  5,   70,
+              15,  5,   5,   187, 5,   0,   20,  15,  70,  40,  187, 110, 0,   187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187,
+              187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187, 187};
+
+          static constexpr const char *wordlist[] = {
+              "",      "1",      "",        "",         "1234",    "",      "",       "zzzzzzz", "11111111", "",
+              "sleep", "",       "Happy",   "12345678", "",        "apple", "Serene", "Journey", "98765432", "",
+              "Solar", "Sphere", "",        "Cat",      "",        "Spark", "",       "Quiet",   "Sun",      "",
+              "Comet", "Spiral", "Sparkle", "Quasar",   "",        "Color", "Candle", "cascade", "",         "",
+              "Stars", "Secret", "Sincere", "Tranquil", "",        "Cloud", "Breeze", "Glisten", "",         "",
+              "Beach", "Cuddle", "lullaby", "Autumn",   "",        "Sweet", "Bridge", "",        "keyboard", "Moon",
+              "Swirl", "Mirror", "",        "Mountain", "",        "Music", "Beacon", "Glitter", "",         "",
+              "Misty", "Silken", "",        "",         "Book",    "phone", "Bubble", "",        "",         "",
+              "Child", "Guitar", "",        "",         "",        "Windy", "Travel", "",        "",         "",
+              "Smile", "Basket", "",        "Luminous", "Harmony", "River", "Spring", "",        "",         "Rain",
+              "Fruit", "Winter", "",        "",         "Echo",    "Petal", "Summer", "Feather", "",         "",
+              "Earth", "Forest", "Radiant", "Ethereal", "",        "Peace", "Shadow", "Whisper", "Twilight", "",
+              "Light", "Puzzle", "Whistle", "",         "",        "Laugh", "Window", "",        "Dog",      "",
+              "Dream", "Puddle", "",        "",         "",        "Dance", "Flower", "",        "Symphony", "",
+              "Ocean", "Rocket", "",        "",         "",        "",      "Coffee", "",        "",         "",
+              "",      "Galaxy", "",        "",         "",        "",      "Wisdom", "",        "",         "",
+              "",      "Pillow", "",        "",         "",        "",      "Beauty", "Elusive", "",         "",
+              "Swift", "Zephyr", "Enchant", "",         "",        "",      "Flight", "",        "",         "",
+              "",      "Velvet", "",        "",         "",        "",      "Warmth"};
+
+          static constexpr const std::uint8_t index[] = {
+              0,  1,  0,  0,  2,  0,  0,  3,  4,  0,  5,  0,  6,  7,  0,  8,  9,  10, 11, 0,  12, 13, 0,  14, 0,   15, 0,
+              16, 17, 0,  18, 19, 20, 21, 0,  22, 23, 24, 0,  0,  25, 26, 27, 28, 0,  29, 30, 31, 0,  0,  32, 33,  34, 35,
+              0,  36, 37, 0,  38, 39, 40, 41, 0,  42, 0,  43, 44, 45, 0,  0,  46, 47, 0,  0,  48, 49, 50, 0,  0,   0,  51,
+              52, 0,  0,  0,  53, 54, 0,  0,  0,  55, 56, 0,  57, 58, 59, 60, 0,  0,  61, 62, 63, 0,  0,  64, 65,  66, 67,
+              0,  0,  68, 69, 70, 71, 0,  72, 73, 74, 75, 0,  76, 77, 78, 0,  0,  79, 80, 0,  81, 0,  82, 83, 0,   0,  0,
+              84, 85, 0,  86, 0,  87, 88, 0,  0,  0,  0,  89, 0,  0,  0,  0,  90, 0,  0,  0,  0,  91, 0,  0,  0,   0,  92,
+              0,  0,  0,  0,  93, 94, 0,  0,  95, 96, 97, 0,  0,  0,  98, 0,  0,  0,  0,  99, 0,  0,  0,  0,  100,
+          };
+
+          const auto hash = [&] {
+            unsigned int hval = len;
+
+            switch (hval) {
+              default:
+                hval += asso_values[static_cast<unsigned char>(str[5])];
+              /*FALLTHROUGH*/
+              case 5:
+              case 4:
+                hval += asso_values[static_cast<unsigned char>(str[3])];
+              /*FALLTHROUGH*/
+              case 3:
+              case 2:
+                hval += asso_values[static_cast<unsigned char>(str[1])];
+              /*FALLTHROUGH*/
+              case 1:
+                hval += asso_values[static_cast<unsigned char>(str[0])];
+                break;
+            }
+            return hval;
+          };
+
+          if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH) {
+            unsigned int key = hash();
+
+            if (key <= MAX_HASH_VALUE) {
+              const char *s = wordlist[key];
+
+              if (*str == *s && !strcmp(str + 1, s + 1)) {
+                return index[key];
+              }
+            }
+          }
+          return decltype(index[0]){};
+        },
+        "random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_mph(mph::hash{[] { return data::random_100_len_1_8; }}, "random_100_len_1_8", data::random_100_len_1_8, next);
   }
 }

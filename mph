@@ -41,8 +41,6 @@ export
 
 /**
  * Minimal perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
- * The library requires C++20 and is generic purpose
- * Current version mainly focuses on x86-64
  */
 namespace mph::inline v_1_0_0 {
 namespace utility {
@@ -335,7 +333,7 @@ class swar {
   template <class TSymbols>
     requires concepts::all_symbols_size_lt<TSymbols, sizeof(T)>
   [[nodiscard]] constexpr auto operator()(const TSymbols symbols, auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
-    return dispatch(symbols, utility::copy_required_bytes<T, cache_line_size, false>(data), std::make_index_sequence<std::size(symbols())>{});
+    return dispatch(symbols, utility::copy_required_bytes<T, cache_line_size>(data), std::make_index_sequence<std::size(symbols())>{});
   }
 
 private:
@@ -349,7 +347,7 @@ private:
           return dispatch(symbols, value, std::index_sequence<Ns...>{});
         }
       case utility::as<T>(symbols()[N]):
-        return 1u+N;
+        return N + 1;
     }
   }
 };
@@ -510,7 +508,7 @@ class pext_split {
  * @return depends on the policies [default: 0 if string doesn't match, 1..N for matches]
  */
 constexpr auto default_policies = [](const auto symbols, auto&& data, auto &&...args) {
-  constexpr auto max_bits_size = 5;
+  constexpr auto max_bits_size = 7;
   constexpr auto pext = mph::pext<max_bits_size>{};
 
   constexpr auto char_index = 0u;

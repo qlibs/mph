@@ -12,7 +12,23 @@
 
 namespace data::inline v_1_0_0 {
 // clang-format off
-constexpr std::array random_6_len_3_5{
+inline constexpr std::array random_5_len_4{
+  std::array{'F', 'X', 'B', ' ',},
+  std::array{'C', 'O', 'D', 'I',},
+  std::array{'D', 'D', 'M', 'X',},
+  std::array{'M', 'O', 'H', 'O',},
+  std::array{'S', 'P', 'C', 'B',},
+};
+
+inline constexpr std::array random_5_len_8{
+  std::array{'F', 'X', 'B', ' ', ' ', ' ', ' ', ' ',},
+  std::array{'C', 'O', 'D', 'I', ' ', ' ', ' ', ' ',},
+  std::array{'D', 'D', 'M', 'X', ' ', ' ', ' ', ' ',},
+  std::array{'M', 'O', 'H', 'O', ' ', ' ', ' ', ' ',},
+  std::array{'S', 'P', 'C', 'B', ' ', ' ', ' ', ' ',},
+};
+
+inline constexpr std::array random_6_len_3_5{
   std::string_view{"ftp"},
   std::string_view{"file"},
   std::string_view{"http"},
@@ -21,23 +37,7 @@ constexpr std::array random_6_len_3_5{
   std::string_view{"wss"}
 };
 
-constexpr std::array random_5_len_4{
-  std::array{'F', 'X', 'B', ' ',},
-  std::array{'C', 'O', 'D', 'I',},
-  std::array{'D', 'D', 'M', 'X',},
-  std::array{'M', 'O', 'H', 'O',},
-  std::array{'S', 'P', 'C', 'B',},
-};
-
-constexpr std::array random_5_len_8{
-  std::array{'F', 'X', 'B', ' ', ' ', ' ', ' ', ' ',},
-  std::array{'C', 'O', 'D', 'I', ' ', ' ', ' ', ' ',},
-  std::array{'D', 'D', 'M', 'X', ' ', ' ', ' ', ' ',},
-  std::array{'M', 'O', 'H', 'O', ' ', ' ', ' ', ' ',},
-  std::array{'S', 'P', 'C', 'B', ' ', ' ', ' ', ' ',},
-};
-
-constexpr std::array random_100_len_8{
+inline constexpr std::array random_100_len_8{
   std::array{'I','I','I',' ',' ',' ',' ',' ',},
   std::array{'A','G','M','-','C',' ',' ',' ',},
   std::array{'L','O','P','E',' ',' ',' ',' ',},
@@ -139,5 +139,109 @@ constexpr std::array random_100_len_8{
   std::array{'N','U','R','E',' ',' ',' ',' ',},
   std::array{'W','E','A','T',' ',' ',' ',' ',},
 };
+
+inline constexpr std::array random_100_len_1_8{
+  std::string_view{"apple"},
+  std::string_view{"Autumn"},
+  std::string_view{"Basket"},
+  std::string_view{"Beach"},
+  std::string_view{"Beacon"},
+  std::string_view{"Beauty"},
+  std::string_view{"Book"},
+  std::string_view{"Breeze"},
+  std::string_view{"Bridge"},
+  std::string_view{"Bubble"},
+  std::string_view{"Candle"},
+  std::string_view{"phone"},
+  std::string_view{"1"},
+  std::string_view{"1234"},
+  std::string_view{"12345678"},
+  std::string_view{"98765432"},
+  std::string_view{"11111111"},
+  std::string_view{"zzzzzzz"},
+  std::string_view{"cascade"},
+  std::string_view{"Cat"},
+  std::string_view{"Child"},
+  std::string_view{"Cloud"},
+  std::string_view{"Coffee"},
+  std::string_view{"Color"},
+  std::string_view{"Comet"},
+  std::string_view{"Cuddle"},
+  std::string_view{"Dance"},
+  std::string_view{"Dog"},
+  std::string_view{"Dream"},
+  std::string_view{"Earth"},
+  std::string_view{"Echo"},
+  std::string_view{"Elusive"},
+  std::string_view{"Enchant"},
+  std::string_view{"Ethereal"},
+  std::string_view{"Feather"},
+  std::string_view{"Flight"},
+  std::string_view{"Flower"},
+  std::string_view{"Forest"},
+  std::string_view{"Fruit"},
+  std::string_view{"Galaxy"},
+  std::string_view{"Glisten"},
+  std::string_view{"Glitter"},
+  std::string_view{"Guitar"},
+  std::string_view{"Happy"},
+  std::string_view{"Harmony"},
+  std::string_view{"Journey"},
+  std::string_view{"Laugh"},
+  std::string_view{"Light"},
+  std::string_view{"lullaby"},
+  std::string_view{"Luminous"},
+  std::string_view{"Mirror"},
+  std::string_view{"Misty"},
+  std::string_view{"Moon"},
+  std::string_view{"Mountain"},
+  std::string_view{"Music"},
+  std::string_view{"Ocean"},
+  std::string_view{"Peace"},
+  std::string_view{"Petal"},
+  std::string_view{"Pillow"},
+  std::string_view{"Puddle"},
+  std::string_view{"Puzzle"},
+  std::string_view{"Quasar"},
+  std::string_view{"Quiet"},
+  std::string_view{"Radiant"},
+  std::string_view{"Rain"},
+  std::string_view{"River"},
+  std::string_view{"Rocket"},
+  std::string_view{"Secret"},
+  std::string_view{"Serene"},
+  std::string_view{"Shadow"},
+  std::string_view{"Silken"},
+  std::string_view{"Sincere"},
+  std::string_view{"sleep"},
+  std::string_view{"Smile"},
+  std::string_view{"Solar"},
+  std::string_view{"Spark"},
+  std::string_view{"Sparkle"},
+  std::string_view{"Sphere"},
+  std::string_view{"Spiral"},
+  std::string_view{"Spring"},
+  std::string_view{"Stars"},
+  std::string_view{"Summer"},
+  std::string_view{"Sun"},
+  std::string_view{"Sweet"},
+  std::string_view{"Swift"},
+  std::string_view{"Swirl"},
+  std::string_view{"Symphony"},
+  std::string_view{"Tranquil"},
+  std::string_view{"Travel"},
+  std::string_view{"Twilight"},
+  std::string_view{"Velvet"},
+  std::string_view{"Warmth"},
+  std::string_view{"Whisper"},
+  std::string_view{"Whistle"},
+  std::string_view{"Window"},
+  std::string_view{"Windy"},
+  std::string_view{"Winter"},
+  std::string_view{"Wisdom"},
+  std::string_view{"Zephyr"},
+  std::string_view{"keyboard"},
+};
+
 // clang-format on
 }  // namespace data::inline v_1_0_0
