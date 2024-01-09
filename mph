@@ -184,7 +184,7 @@ static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::arra
 template<class T, const auto cache_line_size>
 [[nodiscard]] auto copy_required_bytes(const auto data) {
   T t; // not initialized
-  std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // might be outside std::size(data) but copying std::size(data) is slow
+  std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // might be outside std::size(data) but copying std::size(data) is much slower
   if constexpr (requires { std::bool_constant<(data.size(), true)>{}; } and data.size() == sizeof(T)) {
     return t; // should generate same code as *std::bit_cast<const T*>(std::data(data))
   } else {
