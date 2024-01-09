@@ -235,21 +235,6 @@ static_assert(std::is_same_v<std::uint16_t, unsigned_value_t<std::uint16_t(std::
 static_assert(std::is_same_v<std::uint32_t, unsigned_value_t<std::uint32_t(std::numeric_limits<std::uint16_t>::max())+1>>);
 static_assert(std::is_same_v<std::uint64_t, unsigned_value_t<std::uint64_t(std::numeric_limits<std::uint32_t>::max())+1>>);
 // clang-format on
-
-template<class T, const std::size_t Size>
-struct array_view final {
-  const T* const view{};
-  constexpr const auto& operator[](const auto i) const { return view[i]; }
-  constexpr auto data() const { return view; }
-  constexpr auto size() const { return Size; }
-};
-
-// clang-format off
-static_assert(0u == std::size(array_view<const std::uint8_t, 0u>{}));
-static_assert(4u == std::size(array_view<const char, 4u>{"data"}));
-static_assert(std::string_view{"data"} == std::string_view{std::data(array_view<const char, 4u>{"data"}), 4});
-static_assert('t' == array_view<const char, 4u>{"data"}[2]);
-// clang-format on
 }  // namespace utility
 
 namespace concepts {
@@ -415,7 +400,7 @@ class pext_split_on_first_char {
   [[nodiscard]] static consteval auto make_masks(const auto &symbols) {
     constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
 
-    std::vector<std::vector<std::string_view>> v(size);
+    std::vector<std::vector<std::remove_cvref_t<decltype(symbols()[0])>>> v(size);
     for (const auto &symbol : symbols()) {
       v[std::size_t(symbol[0])].push_back(symbol);
     }
@@ -432,7 +417,7 @@ class pext_split_on_first_char {
   [[nodiscard]] static consteval auto make_lookups(const auto &symbols) {
     constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
 
-    std::vector<std::string_view> v[split_size]{};
+    std::vector<std::remove_cvref_t<decltype(symbols()[0])>> v[split_size]{};
     for (const auto &symbol : symbols()) {
       v[std::size_t(symbol[0])].push_back(symbol);
     }
@@ -452,7 +437,7 @@ class pext_split_on_first_char {
     constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(symbols()[0][0])>>::max();
 
     std::vector<std::size_t> idx[split_size]{};
-    std::vector<std::string_view> v[split_size]{};
+    std::vector<std::remove_cvref_t<decltype(symbols()[0])>> v[split_size]{};
 
     for (auto i = 0u; const auto &symbol : symbols()) {
       idx[std::size_t(symbol[0])].push_back(++i);
@@ -578,13 +563,6 @@ class hash final {
           return decltype(policies(symbols, array, std::forward<decltype(args)>(args)...)){};
         } else {
           return policies(symbols, array, std::forward<decltype(args)>(args)...);
-        }
-      },
-      [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const utility::array_view<T, Size> av) {
-        if constexpr (Size < min_max.first or Size > min_max.second) {
-          return decltype(policies(symbols, av, std::forward<decltype(args)>(args)...)){};
-        } else {
-          return policies(symbols, av, std::forward<decltype(args)>(args)...);
         }
       },
     }(std::forward<decltype(data)>(data));

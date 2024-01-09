@@ -48,10 +48,9 @@ int main() {
     expect(0_u == hash("X"sv));
     expect(0_u == hash("a"sv));
     expect(0_u == hash("b"sv));
-    // TODO
-    // expect(0_u == hash("CC"sv));
-    // expect(0_u == hash("CD"sv));
-    // expect(0_u == hash(" D"sv));
+    expect(0_u == hash("CC"sv));
+    expect(0_u == hash("CD"sv));
+    expect(0_u == hash(" D"sv));
   };
 
   "[hash] custom policies - pext_direct"_test = [] {
@@ -90,27 +89,6 @@ int main() {
     expect(0_u == hash("D"sv));
     expect(0_u == hash("a"sv));
     expect(0_u == hash("b"sv));
-  };
-
-  "[hash] utility::array_view"_test = [] {
-    static constexpr std::array symbols{
-        "A       "sv,
-        "B       "sv,
-        "C       "sv,
-    };
-
-    constexpr auto size = std::size(symbols[0]);
-
-    auto hash = mph::hash{[] { return symbols; }};
-
-    for (auto expected = 1u; const auto &symbol : symbols) {
-      expect(_u(expected++) == hash(mph::utility::array_view<const char, size>(std::data(symbol))));
-    }
-
-    expect(0_u == hash(mph::utility::array_view<const char, size>("        ")));
-    expect(0_u == hash(mph::utility::array_view<const char, size>("D       ")));
-    expect(0_u == hash(mph::utility::array_view<const char, size>("E       ")));
-    expect(0_u == hash(mph::utility::array_view<const char, size>("F       ")));
   };
 
   "[hash] span data"_test = [] {
