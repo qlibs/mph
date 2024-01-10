@@ -233,7 +233,7 @@ template<class T, const auto cache_line_size, const bool unsafe = true>
   } else if constexpr (unsafe) {
     std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // [[unsafe]] might be outside of std::size(data)
     static constexpr const auto masks = [] {
-      alignas(cache_line_size) std::array<T, sizeof(T)+1> array{}; // +1 for leading 0u
+      alignas(cache_line_size) std::array<T, sizeof(T)+1> array{}; // +1 for leading 0
       for (auto i = 0u; i < sizeof(T); ++i) {
         array[i+1] = array[i] | (T(0xFF) << (i * CHAR_BIT)); // little endian
       }
