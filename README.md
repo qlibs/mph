@@ -65,7 +65,8 @@ clang: -fconstexpr-steps=100000000
 
 #### TODO
 
- -githbu workflow
- - support for custom indexes
- - unsafe
- - update spec
+- github workflow
+- memcpy speed up
+- README
+- endianess
+- swar in the policies for < 4
