@@ -334,6 +334,10 @@ constexpr auto branchless = [](const auto cond, const auto lhs, [[maybe_unused]]
   return cond * lhs; // generates cmov (x86-64)
 };
 
+/**
+ * Minimal perfect hashing function based on SWAR
+ *  reads sizeof(T) bytes and switches on that
+ */
 template<class T, const std::size_t cache_line_size = utility::cache_line_size>
 class swar {
  public:
@@ -360,8 +364,7 @@ private:
 };
 
 /**
- * Minimal perfect hashing function based on pext with support up to 2^max_bits_size
- *  requires symbols to have size <= CHAR_BIT bytes
+ * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const auto result_policy = conditional,
@@ -408,6 +411,10 @@ class pext {
   }
 };
 
+/**
+ * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
+ *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+ */
 template <const std::size_t max_bits_size, const auto N,
           const auto result_policy = conditional,
           const std::size_t cache_line_size = utility::cache_line_size>
@@ -496,13 +503,12 @@ class pext_split {
 };
 
 /**
- * Default implementation for picking the policy based on the symbols, available policies and the input data
- * Will fail to compile if policies don't return the same type
+ * Default policies
  *
- * @param symbols constexpr list of id:value pairs
- * @param data input data
- * @param args... additional args propagated to policies
- * @return depends on the policies [default: 0 if string doesn't match, 1..N for matches]
+ * @tparam unknown returned if there is no match
+ * @tparam symbols constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
+ * @param args... args propagated to policies
+ * @return second from matched symbol or unknown if not matched
  */
 constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... args) {
   constexpr auto max_bits_size = 7;
@@ -529,13 +535,18 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
 };
 
 /**
-   * @param data continuous input data such as std::string_view, std::span, std::array
-   * @param args... additional parameters propagated to policies
-   * @return result from executed policy
-   * */
+ * Minimal perfect hashing function
+ *
+ * @tparam unknown returned if there is no match
+ * @tparam symbols constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
+ * @tparam policies invocable which returns the hash
+ * @param data continuous input data such as std::string_view, std::span, std::array
+ * @param args... args propagated to policies
+ * @return result of executing policies
+ */
 template<const auto unknown, const auto symbols, const auto policies = mph::policies>
     requires (std::size(symbols()) > 0u) and std::same_as<decltype(utility::value(symbols()[0])), decltype(unknown)>
-constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcept(true) {
+constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcept(true) { // attributes on lambdas is C++23
   constexpr auto min_max = // std::minmax_element is not constexpr
     [] {
       const auto& v = symbols();
@@ -549,14 +560,14 @@ constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcep
     }();
 
   return utility::overloaded{
-    [&]<class T, class... Ts> requires (sizeof(T) == 1u) (const std::basic_string_view<T, Ts...> sv) {
+    [&]<class T, class... Ts> (const std::basic_string_view<T, Ts...> sv) {
       if (const auto size = std::size(sv); size < min_max.first or size > min_max.second) {
         return unknown;
       }
       assert(std::size(sv) > 0u);
       return policies.template operator()<unknown, symbols>(sv, std::forward<decltype(args)>(args)...);
     },
-    [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const std::span<T, Size> span) {
+    [&]<class T, const std::size_t Size> (const std::span<T, Size> span) {
       if constexpr (Size != std::dynamic_extent and (Size < min_max.first or Size > min_max.second)) {
         return unknown;
       } else {
@@ -567,7 +578,7 @@ constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcep
         return policies.template operator()<unknown, symbols>(span, std::forward<decltype(args)>(args)...);
       }
     },
-    [&]<class T, const std::size_t Size> requires (sizeof(T) == 1u) (const std::array<T, Size>& array) {
+    [&]<class T, const std::size_t Size> (const std::array<T, Size>& array) {
       if constexpr (Size < min_max.first or Size > min_max.second) {
         return unknown;
       } else {
