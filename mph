@@ -334,7 +334,7 @@ constexpr auto branchless = [](const auto cond, const auto lhs, [[maybe_unused]]
   return cond * lhs; // generates cmov (x86-64)
 };
 
-template<class T = std::uint64_t, const std::size_t cache_line_size = utility::cache_line_size>
+template<class T, const std::size_t cache_line_size = utility::cache_line_size>
 class swar {
  public:
   template <const auto unknown, const auto symbols>
@@ -364,7 +364,7 @@ private:
  *  requires symbols to have size <= CHAR_BIT bytes
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size = 5, const auto result_policy = conditional,
+template <const std::size_t max_bits_size, const auto result_policy = conditional,
           const std::size_t cache_line_size = utility::cache_line_size>
 class pext {
   template <class T, const auto symbols, const auto mask, const std::size_t size>
@@ -408,7 +408,7 @@ class pext {
   }
 };
 
-template <const std::size_t max_bits_size = 5, const auto N = 0u,
+template <const std::size_t max_bits_size, const auto N,
           const auto result_policy = conditional,
           const std::size_t cache_line_size = utility::cache_line_size>
 class pext_split {
@@ -433,7 +433,7 @@ class pext_split {
   [[nodiscard]] static consteval auto make_lookups() {
     constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(symbols()[0])[0])>>::max();
 
-    std::vector<std::remove_cvref_t<decltype(utility::id(symbols()[0]))>> v[split_size]{};
+    std::array<std::vector<std::remove_cvref_t<decltype(utility::id(symbols()[0]))>>, split_size> v{};
     for (const auto &symbol : symbols()) {
       v[std::size_t(utility::id(symbol)[N])].push_back(utility::id(symbol));
     }
@@ -452,14 +452,14 @@ class pext_split {
   [[nodiscard]] static consteval auto make_indexes() {
     constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(symbols()[0])[0])>>::max();
 
-    std::vector<decltype(symbols()[0])> iv[split_size]{};
-    for (auto i = 0u; const auto &symbol : symbols()) {
+    std::array<std::vector<std::remove_cvref_t<decltype(symbols()[0])>>, split_size> iv{};
+    for (const auto &symbol : symbols()) {
       iv[std::size_t(utility::id(symbol)[N])].push_back(symbol);
     }
 
     alignas(cache_line_size) std::array<std::array<decltype(unknown), size>, split_size> index{};
-    std::fill(std::begin(index), std::end(index), unknown);
     for (auto i = 0u; i < split_size; ++i) {
+      std::fill(std::begin(index[i]), std::end(index[i]), unknown);
       for (auto j = 0u; j < std::size(utility::id(iv[i])); ++j) {
         index[i][utility::pext(utility::as<T>(utility::id(iv[i][j])), masks[i])] = utility::value(iv[i][j]);
       }
@@ -535,7 +535,7 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
    * */
 template<const auto unknown, const auto symbols, const auto policies = mph::policies>
     requires (std::size(symbols()) > 0u) and std::same_as<decltype(utility::value(symbols()[0])), decltype(unknown)>
-[[nodiscard]] constexpr auto hash(auto&& data, auto &&...args) noexcept(true) {
+constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcept(true) {
   constexpr auto min_max = // std::minmax_element is not constexpr
     [] {
       const auto& v = symbols();
@@ -571,11 +571,11 @@ template<const auto unknown, const auto symbols, const auto policies = mph::poli
       if constexpr (Size < min_max.first or Size > min_max.second) {
         return unknown;
       } else {
-        return policies.template operator()<unknown, symbols>(symbols, array, std::forward<decltype(args)>(args)...);
+        return policies.template operator()<unknown, symbols>(array, std::forward<decltype(args)>(args)...);
       }
     },
   }(std::forward<decltype(data)>(data));
-}
+};
 }  // namespace mph::inline v_1_0_0
 #endif  // MPH
 #endif  //  __cplusplus

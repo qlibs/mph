@@ -20,11 +20,11 @@ int main() {
     blue,
   };
 
-  constexpr auto colors = std::array{
-    std::pair{"red"sv, color::red},
-    std::pair{"green"sv, color::green},
-    std::pair{"blue"sv, color::blue},
+  static constexpr auto colors = std::array{
+      std::pair{"red"sv, color::red},
+      std::pair{"green"sv, color::green},
+      std::pair{"blue"sv, color::blue},
   };
 
-  std::cout << int(mph::hash<color::unknown, [] { return colors; }>("green"sv)); // prints 2
+  std::cout << int(mph::hash<color::unknown, [] { return colors; }>("green"sv));  // prints 2
 }

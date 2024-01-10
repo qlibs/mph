@@ -14,12 +14,12 @@ using std::literals::operator""sv;
 
 class dispatch {
   static constexpr std::array symbols{
-      "FBC"sv,
-      "SPY"sv,
-      "CDC"sv,
+      std::pair{"APPL    "sv, 1},
+      std::pair{"GOOGL   "sv, 2},
+      std::pair{"MSFT    "sv, 3},
   };
 
-  static constexpr auto hash = mph::hash{[] { return symbols; }};
+  static constexpr auto hash = mph::hash<0, [] { return symbols; }>;
 
  public:
   ~dispatch() {
@@ -28,7 +28,7 @@ class dispatch {
     }
   }
 
-  auto on(const std::string_view data) { ++v[hash(data)]; }
+  auto on(const auto data) { ++v[hash(data)]; }
 
  private:
   std::array<std::size_t, std::size(symbols) + 1> v{};  // 0 is special for branchless code continuation
@@ -36,10 +36,12 @@ class dispatch {
 
 int main() {
   dispatch d{};
-  d.on("FBC");  // 1: 1
-  d.on("SPY");  // 2: 1
-  d.on("CDC");  // 3: 1
-  d.on("XXX");  // 0: 1
-  d.on("Y");    // 0: 2
-  d.on("SPY");  // 2: 2
+
+  const auto on = [&](const auto symbol) {
+    d.on(std::span<const char, std::size(symbol) - 1>(std::data(symbol), std::data(symbol) + std::size(symbol) - 1));
+  };
+
+  on(std::to_array("APPL    "));
+  on(std::to_array("GOOGL   "));
+  on(std::to_array("MSFT    "));
 }

@@ -10,14 +10,14 @@
 #include <mph>
 #include <string_view>
 
-constexpr auto policies = [](const auto symbols, auto &&data, [[maybe_unused]] auto &&...args) {
+constexpr auto policies = []<const auto unknown, const auto symbols>(auto &&data, auto &&...args) {
   if (not std::size(data)) {
-    return -1;
+    return unknown;
   } else if constexpr (constexpr auto pext = mph::pext<2>{};
-                       requires { pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
-    return int(pext(symbols, std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...)) - 1;
+                       requires { pext.template operator()<unknown, symbols>(data, std::forward<decltype(args)>(args)...); }) {
+    return pext.template operator()<unknown, symbols>(data, std::forward<decltype(args)>(args)...);
   } else {
-    static_assert([](auto &&) { return false; }(symbols), "No luck!");
+    static_assert([](auto &&) { return false; }(symbols), "hash can't be created with given policies!");
   }
 };
 
@@ -25,12 +25,12 @@ int main() {
   using std::literals::operator""sv;
 
   static constexpr std::array symbols{
-      "FBC"sv,
-      "SPY"sv,
-      "CDC"sv,
+      std::pair{"FBC"sv, 0},
+      std::pair{"SPY"sv, 1},
+      std::pair{"CDC"sv, 2},
   };
 
-  const auto hash = mph::hash{[] { return symbols; }, policies};
+  constexpr auto hash = mph::hash<-1, [] { return symbols; }, policies>;
 
   std::cout << hash(""sv);     // -1
   std::cout << hash("FO"sv);   // -1
