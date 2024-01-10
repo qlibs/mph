@@ -21,32 +21,11 @@
 ### Design
 
 ```
-hash<symbols, policies>(data) {
-    for policy in policies:
-        if r = policy<symbols>(data)
-            return r;
-
-    assert "hash can't be constructed with given policies!"
-}
 ```
 
 ### Usage
 
 ```cpp
-constexpr std::array symbols{
-  "FBC"sv,
-  "SPY"sv,
-  "CDC"sv,
-};
-
-constexpr auto hash = mph::hash{[] { return symbols; }};
-
-assert(0 == hash(""sv));    // not found
-assert(0 == hash("FOO"sv)); // not found
-
-assert(1 == hash("FBC"sv));
-assert(2 == hash("SPY"sv));
-assert(3 == hash("CDC"sv));
 ```
 
 ### x86-64 assembly ()
@@ -69,10 +48,6 @@ assert(3 == hash("CDC"sv));
 
 ### FAQ
 
-### Can I use it with run-time data?
-
-> Yes, as long as there is a policy to handle run-time data.
-
 #### Doenst' compile
 
 ```
@@ -91,7 +66,6 @@ clang: -fconstexpr-steps=100000000
 #### TODO
 
  -githbu workflow
- - one more varied benchmark data
- - swar policy
  - support for custom indexes
+ - unsafe
  - update spec
