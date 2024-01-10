@@ -162,6 +162,14 @@ template <class T>
   return result;
 }
 
+[[nodiscard]] [[gnu::target("bmi2")]] auto pext(const std::uint32_t a, const std::uint32_t mask) {
+  return _pext_u32(a, mask);
+}
+
+[[nodiscard]] [[gnu::target("bmi2")]] auto pext(const std::uint64_t a, const std::uint64_t mask) {
+  return _pext_u64(a, mask);
+}
+
 // clang-format off
 static_assert(0b00 == pext(0b00, 0b00));
 static_assert(0b00 == pext(0b01, 0b00));
@@ -181,7 +189,7 @@ template <class T>
   const auto is_unique = [&](const auto mask) {
     std::vector<T> v{};
     for (const auto &symbol : symbols) {
-      const auto value = pext(as<T>(utility::id(symbol)), mask.template to<T>());
+      const auto value = pext<T>(as<T>(utility::id(symbol)), mask.template to<T>());
       if (std::find(std::cbegin(v), std::cend(v), value) != std::cend(v)) {
         return false;
       }
@@ -224,23 +232,32 @@ static_assert(1 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(int
 static_assert(2 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(bool{}));
 // clang-format on
 
+template<const auto symbols>
+static constexpr auto max_length = [](const auto& v) { return std::size(utility::id(*std::max_element(std::cbegin(v), std::cend(v), [](const auto& lhs, const auto& rhs) { return std::size(utility::id(lhs)) < std::size(utility::id(rhs)); }))); }(symbols());
+
+// clang-format off
+static_assert(0u == max_length<[] { return std::array{std::string_view{""}}; }>);
+static_assert(1u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
+static_assert(2u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}, std::string_view{"ab"}}; }>);
+// clang-format on
+
 template<class T, const auto cache_line_size, const bool unsafe = true>
 [[nodiscard]] auto copy_required_bytes(const auto data) {
   if constexpr (T t{}; requires { std::bool_constant<(data.size(), true)>{}; }) {
     static_assert(std::size(data) <= sizeof(T));
     std::memcpy(std::addressof(t), std::data(data), std::size(data));
     return t; // should generate the same code as *std::bit_cast<const T*>(std::data(data))
-  } else if constexpr (unsafe) {
-    std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // [[unsafe]] might be outside of std::size(data)
-    static constexpr const auto masks = [] {
-      alignas(cache_line_size) std::array<T, sizeof(T)+1> array{}; // +1 for leading 0
-      for (auto i = 0u; i < sizeof(T); ++i) {
-        array[i+1] = array[i] | (T(0xFF) << (i * CHAR_BIT)); // little endian
-      }
-      return array;
-    }();
-    assert(std::size(data) < std::size(masks));
-    return t & masks[std::size(data)]; // only use valid bytes
+  //} else if constexpr (unsafe) {
+    //std::memcpy(std::addressof(t), std::data(data), sizeof(T)); // [[unsafe]] might be outside of std::size(data)
+    //static constexpr const auto masks = [] {
+      //alignas(cache_line_size) std::array<T, sizeof(T)+1> array{}; // +1 for leading 0
+      //for (auto i = 0u; i < sizeof(T); ++i) {
+        //array[i+1] = array[i] | (T(0xFF) << (i * CHAR_BIT)); // little endian
+      //}
+      //return array;
+    //}();
+    //assert(std::size(data) < std::size(masks));
+    //return t & masks[std::size(data)]; // only use valid bytes
   } else {
     union { // type punning with `memcpy`
       std::uint8_t storage[sizeof(T)];
@@ -374,7 +391,7 @@ class pext {
   [[nodiscard]] static consteval auto make_lookup() {
     alignas(cache_line_size) std::array<T, size> lookup{};
     for (const auto &symbol : symbols()) {
-      lookup[utility::pext(utility::as<T>(utility::id(symbol)), mask)] = utility::as<T>(utility::id(symbol));
+      lookup[utility::pext<T>(utility::as<T>(utility::id(symbol)), mask)] = utility::as<T>(utility::id(symbol));
     }
     return lookup;
   }
@@ -384,14 +401,14 @@ class pext {
     alignas(cache_line_size) std::array<decltype(unknown), size> index{};
     std::fill(std::begin(index), std::end(index), unknown);
     for (const auto &symbol : symbols()) {
-      index[utility::pext(utility::as<T>(utility::id(symbol)), mask)] = utility::value(symbol);
+      index[utility::pext<T>(utility::as<T>(utility::id(symbol)), mask)] = utility::value(symbol);
     }
 
     return index;
   }
 
  public:
-  template <const auto unknown, const auto symbols, class T = std::uint64_t, const auto mask = utility::find_mask<T>(symbols())>
+  template <const auto unknown, const auto symbols, class T = std::conditional_t<(utility::max_length<symbols> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(symbols())>
     requires concepts::required_bits_size<mask, max_bits_size> and concepts::all_symbols_size_lt<symbols, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     constexpr auto required_size = [] {
@@ -406,7 +423,7 @@ class pext {
     static constexpr const auto index = make_index<T, unknown, symbols, mask, required_size>();
 
     const auto lhs = utility::copy_required_bytes<T, cache_line_size>(data);
-    const auto ext = _pext_u64(lhs, mask);
+    const auto ext = utility::pext(lhs, mask);
     return result_policy(lookup[ext] == lhs, index[ext], unknown);
   }
 };
@@ -448,7 +465,7 @@ class pext_split {
     alignas(cache_line_size) std::array<std::array<T, size>, split_size> lookup{};
     for (auto i = 0u; i < split_size; ++i) {
       for (auto j = 0u; j < std::size(v[i]); ++j) {
-        lookup[i][utility::pext(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
+        lookup[i][utility::pext<T>(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
       }
     }
 
@@ -468,7 +485,7 @@ class pext_split {
     for (auto i = 0u; i < split_size; ++i) {
       std::fill(std::begin(index[i]), std::end(index[i]), unknown);
       for (auto j = 0u; j < std::size(utility::id(iv[i])); ++j) {
-        index[i][utility::pext(utility::as<T>(utility::id(iv[i][j])), masks[i])] = utility::value(iv[i][j]);
+        index[i][utility::pext<T>(utility::as<T>(utility::id(iv[i][j])), masks[i])] = utility::value(iv[i][j]);
       }
     }
 
@@ -476,7 +493,7 @@ class pext_split {
   }
 
  public:
-  template <const auto unknown, const auto symbols, class T = std::uint64_t, const auto masks = make_masks<T, symbols>()>
+  template <const auto unknown, const auto symbols, class T = std::conditional_t<(utility::max_length<symbols> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, symbols>()>
     requires concepts::required_symbols_bits_size<masks, max_bits_size> and concepts::all_symbols_size_lt<symbols, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const auto data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     constexpr auto required_size = [] {
@@ -497,7 +514,7 @@ class pext_split {
 
     const auto id = data[N];
     const auto lhs = utility::copy_required_bytes<T, cache_line_size>(data);
-    const auto ext = _pext_u64(lhs, masks[id]);
+    const auto ext = utility::pext(lhs, masks[id]);
     return result_policy(lookup[id][ext] == lhs, index[id][ext], unknown);
   }
 };
