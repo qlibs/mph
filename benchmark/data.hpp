@@ -28,7 +28,7 @@ inline constexpr std::array random_5_len_8{
   std::pair{std::array{'S', 'P', 'C', 'B', ' ', ' ', ' ', ' ',}, 5},
 };
 
-inline constexpr std::array random_6_len_3_5{
+inline constexpr std::array random_6_len_2_5{
   std::pair{std::string_view{"ftp"}, 1},
   std::pair{std::string_view{"file"}, 2},
   std::pair{std::string_view{"http"}, 3},

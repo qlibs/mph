@@ -14,10 +14,10 @@ int main() {
   using std::literals::operator""sv;
 
   enum class color {
-    unknown,
-    red,
-    green,
-    blue,
+    unknown = 0,
+    red = 1,
+    green = 2,
+    blue = 3,
   };
 
   static constexpr auto colors = std::array{

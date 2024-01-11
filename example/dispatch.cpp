@@ -22,13 +22,13 @@ class dispatch {
   static constexpr auto hash = mph::hash<0, [] { return symbols; }>;
 
  public:
-  ~dispatch() {
+  constexpr ~dispatch() {
     for (const auto& e : v) {
       std::clog << e << '\n';
     }
   }
 
-  auto on(const auto data) { ++v[hash(data)]; }
+  constexpr auto on(const auto data) { ++v[hash(data)]; }
 
  private:
   std::array<std::size_t, std::size(symbols) + 1> v{};  // 0 is special for branchless code continuation

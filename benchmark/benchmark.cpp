@@ -200,7 +200,7 @@ int main() {
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> distribution(0, std::size(data::random_6_len_3_5) - 1);
+    std::uniform_int_distribution<int> distribution(0, std::size(data::random_6_len_2_5) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -209,9 +209,9 @@ int main() {
 
     auto next = [&, i = 0](const auto &symbols) mutable { return symbols[ids[i++ % iterations]].first; };
 
-    bench_std_map("random_6_len_3_5", data::random_6_len_3_5, next);
-    bench_std_unordered_map("random_6_len_3_5", data::random_6_len_3_5, next);
-    bench_boost_unordered_map("random_6_len_3_5", data::random_6_len_3_5, next);
+    bench_std_map("random_6_len_2_5", data::random_6_len_2_5, next);
+    bench_std_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
+    bench_boost_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 2;
@@ -249,8 +249,8 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_6_len_3_5", data::random_6_len_3_5, next);
-    bench_mph(mph::hash<0, [] { return data::random_6_len_3_5; }>, "random_6_len_3_5", data::random_6_len_3_5, next);
+        "random_6_len_2_5", data::random_6_len_2_5, next);
+    bench_mph(mph::hash<0, [] { return data::random_6_len_2_5; }>, "random_6_len_2_5", data::random_6_len_2_5, next);
   }
 
   {
