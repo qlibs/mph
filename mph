@@ -284,7 +284,10 @@ template<class T>
   }
 
   T t{};
-  __builtin_memcpy(std::addressof(t), std::data(data), sizeof(T)); // safe now
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+  __builtin_memcpy(std::addressof(t), std::data(data), sizeof(T)); // should be safe
+#pragma GCC diagnostic pop
   if constexpr (sizeof(T) == sizeof(std::uint32_t)) {
     return T(_bzhi_u32(t, std::size(data) * CHAR_BIT));
   } else if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
