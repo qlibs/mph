@@ -1,0 +1,44 @@
+---
+name: Linux
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CTEST_OUTPUT_ON_FAILURE: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+
+      - name: configure_debug
+        run: cmake -S . -B build_debug -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=DEBUG
+
+      - name: build_debug
+        run: cmake --build build_debug -j4
+
+      - name: test_debug
+        run: |
+          cd build_debug
+          ctest --build-config Debug
+
+      - name: configure_release
+        run: cmake -S . -B build_release -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=RELEASE -DMPH_BUILD_BENCHMARKS=1
+
+      - name: build_release
+        run: cmake --build build_release -j4
+
+      - name: test_release
+        run: |
+          cd build_release
+          ctest --build-config Release
