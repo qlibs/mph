@@ -352,7 +352,7 @@ class pext_split {
 - I'm getting santiziers warnings?
 
     > When passing run-time size input and when `MPH_ALLOW_UNSAFE_MEMCPY` is enabled (default) `mph` will do potentially unsafe memory reads.
-      If you concern about the performacne verify that the unsafe memory reads are okay, otherwise set `MPH_ALLOW_UNSAFE_MEMCPY=0`
+      If you concern about the performance verify that the unsafe memory reads are okay (see `MPH_PAGE_SIZE`), otherwise set `MPH_ALLOW_UNSAFE_MEMCPY=0`
       to disable them which will fix the sanitzers warnings.
 
 - Ideas for policies?
