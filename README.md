@@ -41,7 +41,7 @@ cmake --build build
 
 ---
 
-## Hello world (https://godbolt.org/z/rqYz781ev)
+### Hello world (https://godbolt.org/z/rqYz781ev)
 
 ```cpp
 enum class color {
