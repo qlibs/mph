@@ -127,7 +127,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ### Benchmarks ([v1.0.0](https://github.com/boost-ext/mph/tree/v1.0.0))
 
-> `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp`
+> `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
 ```
 |               ns/op |                op/s |    err% |     total | benchmark
@@ -159,7 +159,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 |                5.12 |      195,486,032.03 |    0.1% |      0.06 | `random_100_len_1_8.mph`
 ```
 
-> `g++-12 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp`
+> `g++-12 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
 ```cpp
 |               ns/op |                op/s |    err% |     total | benchmark
