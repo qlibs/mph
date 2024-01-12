@@ -313,6 +313,10 @@ class pext_split {
 
     > [gperf](https://www.gnu.org/software/gperf/), [frozen](https://github.com/serge-sans-paille/frozen)
 
+- Acknowledgments
+
+    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://gcc.gnu.org/onlinedocs/libstdc++, 
+
 ---
 
 **Disclaimer** `mph` is not an official Boost library.
