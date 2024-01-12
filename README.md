@@ -5,7 +5,7 @@
 
 ---------------------------------------
 
-## Minimal perfect hash function
+## Minimal perfect hash function (focused on run-time performance)
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
@@ -217,7 +217,19 @@ constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(tr
  * @param args... args propagated to policies
  * @return second from matched symbol or unknown if not matched
  */
-constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... args);
+constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... args) {
+  if constexpr (constexpr auto min_max = utility::min_max_length<symbols>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(symbols()) < 4u) {
+    return mph::swar<std::uint32_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(symbols()) < 4u) {
+    return mph::swar<std::uint64_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
+    return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, 0u>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
+    return pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+  } else {
+    static_assert(false, "hash can't be created with given policies!");
+  }
+};
 ```
 
 ```cpp
@@ -277,7 +289,7 @@ class pext_split {
 
 - Why symbols are passed by lambda (`[]{ return symbols; }`)?
 
-    C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
+    > C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
 
 - Getting compilation error with longer list (>256) of symbols?
 
