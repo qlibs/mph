@@ -59,13 +59,13 @@ export
  */
 namespace mph::inline v_1_0_0 {
 namespace utility {
-[[nodiscard]] constexpr auto id(auto&& symbol) -> decltype(auto) {
+[[nodiscard]] constexpr auto id(const auto& symbol) -> decltype(auto) {
   if constexpr (requires { symbol.first; }) {
     return symbol.first;
   } else if constexpr (requires { symbol.id; }) {
     return symbol.id;
   } else {
-    return (symbol);
+    return symbol;
   }
 }
 
@@ -74,13 +74,13 @@ static_assert(42 == id(42));
 static_assert(std::string_view{"a"} == id(std::pair{std::string_view{"a"}, 42}));
 // clang-format on
 
-[[nodiscard]] constexpr auto value(auto&& symbol) -> decltype(auto) {
+[[nodiscard]] constexpr auto value(const auto& symbol) -> decltype(auto) {
   if constexpr (requires { symbol.second; }) {
     return symbol.second;
   } else if constexpr (requires { symbol.value; }) {
     return symbol.value;
   } else {
-    return (symbol);
+    return symbol;
   }
 }
 
@@ -286,7 +286,7 @@ template<class T>
   T t{};
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
-  __builtin_memcpy(std::addressof(t), std::data(data), sizeof(T)); // should be safe
+  __builtin_memcpy(std::addressof(t), std::data(data), sizeof(T)); // not at page boundry
 #pragma GCC diagnostic pop
   if constexpr (sizeof(T) == sizeof(std::uint32_t)) {
     return T(_bzhi_u32(t, std::size(data) * CHAR_BIT));
