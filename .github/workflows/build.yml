@@ -38,7 +38,7 @@ jobs:
             name: "linux debug clang++",
             os: ubuntu-latest,
             build_type: "Debug",
-            cxx: "clang++-16",
+            cxx: "clang++-15",
             std: 20,
             benchmarks: "OFF",
             generators: "Ninja"
@@ -47,7 +47,7 @@ jobs:
             name: "linux release clang++",
             os: ubuntu-latest,
             build_type: "Release",
-            cxx: "clang++-16",
+            cxx: "clang++-15",
             std: 20,
             benchmarks: "ON",
             generators: "Ninja"
@@ -61,7 +61,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake g++-12 clang++-16
+          sudo apt-get install -y ninja-build cmake g++-12 clang++-15
           ninja --version
           cmake --version
           g++ --version
