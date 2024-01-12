@@ -61,7 +61,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake g++-12 clang++-15 libboost1.81-dev
+          sudo apt-get install -y ninja-build cmake g++-12 clang++-15 libboost-all-dev
           ninja --version
           cmake --version
           g++ --version
