@@ -52,9 +52,9 @@ enum class color {
 };
 
 constexpr auto colors = std::array{
-  std::pair{"red"sv, color::red},
+  std::pair{"red"sv,   color::red},
   std::pair{"green"sv, color::green},
-  std::pair{"blue"sv, color::blue},
+  std::pair{"blue"sv,  color::blue},
 };
 
 std::print("{}", mph::hash<color::unknown, [] { return colors; }>("green"sv)); // prints 2
