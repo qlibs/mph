@@ -293,7 +293,7 @@ class pext_split {
 
 ### FAQ
 
-- Why simply not `std::unordered_map`?
+- Why not `std::unordered_map`?
 
     > std::unordered_map is a general purpose hash map. `mph` is neither a hash map nor is general purpose.
       To use `mph` keys have to be known at compile-time so that this knowledge can be used to generate
