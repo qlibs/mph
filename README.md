@@ -284,8 +284,8 @@ class pext_split {
 
 ```cpp
 #define MPH 1'0'0 // Current library version (SemVer)
-#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // 64u on x86-64
-#define MPH_ALLOW_UNSAFE_MEMCPY 1 // [Enabled by default] Faster but potentially unsafe memcpy
+#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
+#define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
 ```
 
