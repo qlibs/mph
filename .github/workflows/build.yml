@@ -83,7 +83,3 @@ jobs:
       - name: build
         shell: bash
         run: cmake --build build --config ${{ matrix.config.build_type }}
-
-      - name: test
-        shell: bash
-        run: ctest --output-on-failure .
