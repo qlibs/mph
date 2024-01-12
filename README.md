@@ -349,6 +349,12 @@ class pext_split {
     clang: -fconstexpr-steps=100000000
     ```
 
+- I'm getting santiziers warnings?
+
+    > When passing run-time size input and when `MPH_ALLOW_UNSAFE_MEMCPY` is enabled (default) `mph` will do potentially unsafe memory reads.
+      If you concern about the performacne verify that the unsafe memory reads are okay, otherwise set `MPH_ALLOW_UNSAFE_MEMCPY=0`
+      to disable them which will fix the sanitzers warnings.
+
 - Ideas for policies?
 
     > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [hash](https://en.wikipedia.org/wiki/Hash_function), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
