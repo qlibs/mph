@@ -22,6 +22,7 @@ jobs:
             build_type: "Debug",
             cxx: "g++",
             std: 20,
+            benchmarks: 0,
             generators: "Ninja"
           }
         - {
@@ -30,6 +31,7 @@ jobs:
             build_type: "Release",
             cxx: "g++",
             std: 20,
+            benchmarks: 1,
             generators: "Ninja"
           }
         - {
@@ -38,6 +40,7 @@ jobs:
             build_type: "Debug",
             cxx: "clang++",
             std: 20,
+            benchmarks: 0,
             generators: "Ninja"
           }
         - {
@@ -46,6 +49,7 @@ jobs:
             build_type: "Release",
             cxx: "clang++",
             std: 20,
+            benchmarks: 1,
             generators: "Ninja"
           }
 
@@ -57,7 +61,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake g++-12
+          sudo apt-get install -y ninja-build cmake g++-12 clang++-16
           ninja --version
           cmake --version
           g++ --version
@@ -73,7 +77,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.config.std }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
-            $([[ "${{ matrix.config.build_type }}" == "Release" ]] && echo '-DMPH_BUILD_BENCHMARKS=1') \
+            -DMPH_BUILD_BENCHMARKS=${{ matrx.config.benchmarks }} \
             -G "${{ matrix.config.generators }}"
 
       - name: build
