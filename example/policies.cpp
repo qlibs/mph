@@ -10,14 +10,20 @@
 #include <mph>
 #include <string_view>
 
-constexpr auto policies = []<const auto unknown, const auto symbols>(auto &&data, auto &&...args) {
+constexpr auto policies =
+    []<const auto unknown, const auto symbols>(auto &&data, auto &&...args) {
   if (not std::size(data)) {
     return unknown;
   } else if constexpr (constexpr auto pext = mph::pext<2>{};
-                       requires { pext.template operator()<unknown, symbols>(data, std::forward<decltype(args)>(args)...); }) {
-    return pext.template operator()<unknown, symbols>(data, std::forward<decltype(args)>(args)...);
+                       requires {
+                         pext.template operator()<unknown, symbols>(
+                             data, std::forward<decltype(args)>(args)...);
+                       }) {
+    return pext.template operator()<unknown, symbols>(
+        data, std::forward<decltype(args)>(args)...);
   } else {
-    static_assert([](auto &&) { return false; }(symbols), "hash can't be created with given policies!");
+    static_assert([](auto &&) { return false; }(symbols),
+                  "hash can't be created with given policies!");
   }
 };
 

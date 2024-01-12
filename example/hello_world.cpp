@@ -26,5 +26,6 @@ int main() {
       std::pair{"blue"sv, color::blue},
   };
 
-  std::cout << int(mph::hash<color::unknown, [] { return colors; }>("green"sv));  // prints 2
+  std::cout << int(
+      mph::hash<color::unknown, [] { return colors; }>("green"sv));  // prints 2
 }

@@ -31,14 +31,16 @@ class dispatch {
   constexpr auto on(const auto data) { ++v[hash(data)]; }
 
  private:
-  std::array<std::size_t, std::size(symbols) + 1> v{};  // 0 is special for branchless code continuation
+  std::array<std::size_t, std::size(symbols) + 1>
+      v{};  // 0 is special for branchless code continuation
 };
 
 int main() {
   dispatch d{};
 
   const auto on = [&](const auto symbol) {
-    d.on(std::span<const char, std::size(symbol) - 1>(std::data(symbol), std::data(symbol) + std::size(symbol) - 1));
+    d.on(std::span<const char, std::size(symbol) - 1>(
+        std::data(symbol), std::data(symbol) + std::size(symbol) - 1));
   };
 
   on(std::to_array("APPL    "));
