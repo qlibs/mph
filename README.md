@@ -131,65 +131,65 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 > `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
 ```
-|               ns/op |                op/s |    err% |     total | benchmark
-|--------------------:|--------------------:|--------:|----------:|:----------
-|               24.44 |       40,912,299.48 |    0.1% |      0.29 | `random_5_len_4.std.map`
-|               26.09 |       38,330,550.83 |    0.2% |      0.31 | `random_5_len_4.std.unordered_map`
-|                8.70 |      114,974,145.85 |    0.2% |      0.10 | `random_5_len_4.boost.unordered_map`
-|               16.11 |       62,055,985.84 |    0.2% |      0.19 | `random_5_len_4.gperf`
-|                3.28 |      304,679,001.13 |    0.3% |      0.04 | `random_5_len_4.mph`
-|               30.55 |       32,728,442.69 |    0.7% |      0.37 | `random_5_len_8.std.map`
-|               20.88 |       47,903,643.16 |    0.1% |      0.25 | `random_5_len_8.std.unordered_map`
-|               19.35 |       51,681,776.70 |    0.1% |      0.23 | `random_5_len_8.boost.unordered_map`
-|               15.40 |       64,921,307.63 |    0.0% |      0.18 | `random_5_len_8.gperf`
-|                3.26 |      306,741,194.23 |    0.3% |      0.04 | `random_5_len_8.mph`
-|               50.11 |       19,956,354.65 |    0.4% |      0.60 | `random_6_len_2_5.std.map`
-|               30.07 |       33,257,338.10 |    0.2% |      0.36 | `random_6_len_2_5.std.unordered_map`
-|               28.48 |       35,116,915.87 |    0.1% |      0.34 | `random_6_len_2_5.boost.unordered_map`
-|                6.61 |      151,251,583.09 |    0.1% |      0.08 | `random_6_len_2_5.gperf`
-|                3.99 |      250,395,726.44 |    0.3% |      0.05 | `random_6_len_2_5.mph`
-|               66.54 |       15,028,340.19 |    0.1% |      0.79 | `random_100_len_8.std.map`
-|               30.30 |       33,004,044.86 |    0.1% |      0.36 | `random_100_len_8.std.unordered_map`
-|               20.97 |       47,682,493.48 |    0.1% |      0.25 | `random_100_len_8.boost.unordered_map`
-|               16.42 |       60,906,160.84 |    0.0% |      0.20 | `random_100_len_8.gperf`
-|                4.06 |      246,571,601.74 |    0.2% |      0.05 | `random_100_len_8.mph`
-|              106.73 |        9,369,182.87 |    0.1% |      1.27 | `random_100_len_1_8.std.map`
-|               46.79 |       21,373,549.21 |    0.2% |      0.56 | `random_100_len_1_8.std.unordered_map`
-|               36.67 |       27,268,214.46 |    0.1% |      0.44 | `random_100_len_1_8.boost.unordered_map`
-|               21.40 |       46,730,436.78 |    0.1% |      0.26 | `random_100_len_1_8.gperf`
-|                5.12 |      195,486,032.03 |    0.1% |      0.06 | `random_100_len_1_8.mph`
+|  ns/op |            op/s |  err% | total | benchmark
+|-------:|----------------:|------:|------:|:----------
+|  24.44 |   40,912,299.48 |  0.1% |  0.29 | `random_5_len_4.std.map`
+|  26.09 |   38,330,550.83 |  0.2% |  0.31 | `random_5_len_4.std.unordered_map`
+|   8.70 |  114,974,145.85 |  0.2% |  0.10 | `random_5_len_4.boost.unordered_map`
+|  16.11 |   62,055,985.84 |  0.2% |  0.19 | `random_5_len_4.gperf`
+|   3.28 |  304,679,001.13 |  0.3% |  0.04 | `random_5_len_4.mph`
+|  30.55 |   32,728,442.69 |  0.7% |  0.37 | `random_5_len_8.std.map`
+|  20.88 |   47,903,643.16 |  0.1% |  0.25 | `random_5_len_8.std.unordered_map`
+|  19.35 |   51,681,776.70 |  0.1% |  0.23 | `random_5_len_8.boost.unordered_map`
+|  15.40 |   64,921,307.63 |  0.0% |  0.18 | `random_5_len_8.gperf`
+|   3.26 |  306,741,194.23 |  0.3% |  0.04 | `random_5_len_8.mph`
+|  50.11 |   19,956,354.65 |  0.4% |  0.60 | `random_6_len_2_5.std.map`
+|  30.07 |   33,257,338.10 |  0.2% |  0.36 | `random_6_len_2_5.std.unordered_map`
+|  28.48 |   35,116,915.87 |  0.1% |  0.34 | `random_6_len_2_5.boost.unordered_map`
+|   6.61 |  151,251,583.09 |  0.1% |  0.08 | `random_6_len_2_5.gperf`
+|   3.99 |  250,395,726.44 |  0.3% |  0.05 | `random_6_len_2_5.mph`
+|  66.54 |   15,028,340.19 |  0.1% |  0.79 | `random_100_len_8.std.map`
+|  30.30 |   33,004,044.86 |  0.1% |  0.36 | `random_100_len_8.std.unordered_map`
+|  20.97 |   47,682,493.48 |  0.1% |  0.25 | `random_100_len_8.boost.unordered_map`
+|  16.42 |   60,906,160.84 |  0.0% |  0.20 | `random_100_len_8.gperf`
+|   4.06 |  246,571,601.74 |  0.2% |  0.05 | `random_100_len_8.mph`
+| 106.73 |    9,369,182.87 |  0.1% |  1.27 | `random_100_len_1_8.std.map`
+|  46.79 |   21,373,549.21 |  0.2% |  0.56 | `random_100_len_1_8.std.unordered_map`
+|  36.67 |   27,268,214.46 |  0.1% |  0.44 | `random_100_len_1_8.boost.unordered_map`
+|  21.40 |   46,730,436.78 |  0.1% |  0.26 | `random_100_len_1_8.gperf`
+|   5.12 |  195,486,032.03 |  0.1% |  0.06 | `random_100_len_1_8.mph`
 ```
 
 > `g++-12 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
 ```cpp
-|               ns/op |                op/s |    err% |     total | benchmark
-|--------------------:|--------------------:|--------:|----------:|:----------
-|               25.44 |       39,304,369.85 |    0.2% |      0.30 | `random_5_len_4.std.map`
-|               25.12 |       39,808,829.83 |    0.7% |      0.30 | `random_5_len_4.std.unordered_map`
-|                8.20 |      121,994,006.68 |    0.2% |      0.10 | `random_5_len_4.boost.unordered_map`
-|               15.96 |       62,657,002.43 |    0.5% |      0.19 | `random_5_len_4.gperf`
-|                2.66 |      376,039,584.84 |    0.3% |      0.03 | `random_5_len_4.mph`
-|               28.44 |       35,164,044.10 |    0.3% |      0.34 | `random_5_len_8.std.map`
-|               19.50 |       51,281,320.44 |    0.0% |      0.23 | `random_5_len_8.std.unordered_map`
-|               18.28 |       54,716,160.38 |    0.2% |      0.22 | `random_5_len_8.boost.unordered_map`
-|               16.53 |       60,481,843.86 |    0.3% |      0.20 | `random_5_len_8.gperf`
-|                2.66 |      375,268,799.94 |    0.3% |      0.03 | `random_5_len_8.mph`
-|               42.60 |       23,474,140.38 |    0.1% |      0.51 | `random_6_len_2_5.std.map`
-|               30.26 |       33,046,274.53 |    1.2% |      0.36 | `random_6_len_2_5.std.unordered_map`
-|               26.37 |       37,917,759.95 |    0.2% |      0.31 | `random_6_len_2_5.boost.unordered_map`
-|                6.21 |      161,141,621.93 |    0.1% |      0.07 | `random_6_len_2_5.gperf`
-|                3.95 |      252,854,893.39 |    0.4% |      0.05 | `random_6_len_2_5.mph`
-|               61.03 |       16,384,482.48 |    0.5% |      0.73 | `random_100_len_8.std.map`
-|               28.81 |       34,714,375.67 |    0.4% |      0.34 | `random_100_len_8.std.unordered_map`
-|               20.16 |       49,593,402.00 |    0.2% |      0.24 | `random_100_len_8.boost.unordered_map`
-|               17.11 |       58,457,550.46 |    0.1% |      0.20 | `random_100_len_8.gperf`
-|                3.39 |      294,747,086.69 |    0.3% |      0.04 | `random_100_len_8.mph`
-|               98.70 |       10,131,920.05 |    0.1% |      1.18 | `random_100_len_1_8.std.map`
-|               45.01 |       22,217,741.98 |    0.9% |      0.54 | `random_100_len_1_8.std.unordered_map`
-|               35.51 |       28,161,862.37 |    0.5% |      0.43 | `random_100_len_1_8.boost.unordered_map`
-|               16.15 |       61,903,034.58 |    0.2% |      0.19 | `random_100_len_1_8.gperf`
-|                5.03 |      198,663,744.04 |    0.3% |      0.06 | `random_100_len_1_8.mph`
+|  ns/op |            op/s |  err% | total | benchmark
+|-------:|----------------:|------:|------:|:----------
+|  25.44 |   39,304,369.85 |  0.2% |  0.30 | `random_5_len_4.std.map`
+|  25.12 |   39,808,829.83 |  0.7% |  0.30 | `random_5_len_4.std.unordered_map`
+|   8.20 |  121,994,006.68 |  0.2% |  0.10 | `random_5_len_4.boost.unordered_map`
+|  15.96 |   62,657,002.43 |  0.5% |  0.19 | `random_5_len_4.gperf`
+|   2.66 |  376,039,584.84 |  0.3% |  0.03 | `random_5_len_4.mph`
+|  28.44 |   35,164,044.10 |  0.3% |  0.34 | `random_5_len_8.std.map`
+|  19.50 |   51,281,320.44 |  0.0% |  0.23 | `random_5_len_8.std.unordered_map`
+|  18.28 |   54,716,160.38 |  0.2% |  0.22 | `random_5_len_8.boost.unordered_map`
+|  16.53 |   60,481,843.86 |  0.3% |  0.20 | `random_5_len_8.gperf`
+|   2.66 |  375,268,799.94 |  0.3% |  0.03 | `random_5_len_8.mph`
+|  42.60 |   23,474,140.38 |  0.1% |  0.51 | `random_6_len_2_5.std.map`
+|  30.26 |   33,046,274.53 |  1.2% |  0.36 | `random_6_len_2_5.std.unordered_map`
+|  26.37 |   37,917,759.95 |  0.2% |  0.31 | `random_6_len_2_5.boost.unordered_map`
+|   6.21 |  161,141,621.93 |  0.1% |  0.07 | `random_6_len_2_5.gperf`
+|   3.95 |  252,854,893.39 |  0.4% |  0.05 | `random_6_len_2_5.mph`
+|  61.03 |   16,384,482.48 |  0.5% |  0.73 | `random_100_len_8.std.map`
+|  28.81 |   34,714,375.67 |  0.4% |  0.34 | `random_100_len_8.std.unordered_map`
+|  20.16 |   49,593,402.00 |  0.2% |  0.24 | `random_100_len_8.boost.unordered_map`
+|  17.11 |   58,457,550.46 |  0.1% |  0.20 | `random_100_len_8.gperf`
+|   3.39 |  294,747,086.69 |  0.3% |  0.04 | `random_100_len_8.mph`
+|  98.70 |   10,131,920.05 |  0.1% |  1.18 | `random_100_len_1_8.std.map`
+|  45.01 |   22,217,741.98 |  0.9% |  0.54 | `random_100_len_1_8.std.unordered_map`
+|  35.51 |   28,161,862.37 |  0.5% |  0.43 | `random_100_len_1_8.boost.unordered_map`
+|  16.15 |   61,903,034.58 |  0.2% |  0.19 | `random_100_len_1_8.gperf`
+|   5.03 |  198,663,744.04 |  0.3% |  0.06 | `random_100_len_1_8.mph`
 ```
 
 ---
