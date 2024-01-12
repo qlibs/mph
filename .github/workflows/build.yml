@@ -1,0 +1,85 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "linux debug g++",
+            os: ubuntu-latest,
+            build_type: "Debug",
+            cxx: "g++",
+            std: 20,
+            generators: "Ninja"
+          }
+        - {
+            name: "linux release g++",
+            os: ubuntu-latest,
+            build_type: "Release",
+            cxx: "g++",
+            std: 20,
+            generators: "Ninja"
+          }
+        - {
+            name: "linux debug clang++",
+            os: ubuntu-latest,
+            build_type: "Debug",
+            cxx: "clang++",
+            std: 20,
+            generators: "Ninja"
+          }
+        - {
+            name: "linux release clang++",
+            os: ubuntu-latest,
+            build_type: "Release",
+            cxx: "clang++",
+            std: 20,
+            generators: "Ninja"
+          }
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+
+      - name: install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake g++-12
+          ninja --version
+          cmake --version
+          g++ --version
+          clang++ --version
+
+      - name: configure
+        shell: bash
+        run: |
+          mkdir build
+          cmake \
+            -S . \
+            -B . \
+            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            -DCMAKE_CXX_STANDARD=${{ matrix.config.std }} \
+            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
+            $([[ "${{ matrix.config.build_type }}" == "Release" ]] && echo '-DMPH_BUILD_BENCHMARKS=1') \
+            -G "${{ matrix.config.generators }}"
+
+      - name: build
+        shell: bash
+        run: cmake --build . --config ${{ matrix.config.build_type }}
+
+      - name: test
+        shell: bash
+        run: ctest --output-on-failure .
