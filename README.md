@@ -57,7 +57,7 @@ constexpr auto colors = std::array{
   std::pair{"blue"sv, color::blue},
 };
 
-std::cout << mph::hash<color::unknown, [] { return colors; }>("green"sv); // prints 2
+std::print("{}", mph::hash<color::unknown, [] { return colors; }>("green"sv)); // prints 2
 ```
 
 ---
@@ -84,7 +84,7 @@ int main([[maybe_unused]] int argc, const char** argv) {
     not_found,
     [] { return symbols; },
     []<const auto unknown, const auto symbols>(auto&&... args) {
-      constxpr auto pext = mph::pext<max_bits_size, mph::branchless>{};
+      constexpr auto pext = mph::pext<max_bits_size, mph::branchless>{};
       return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
     }
   >;
@@ -270,8 +270,7 @@ class pext {
  * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size, const auto N,
-          const auto result_policy = conditional>
+template <const std::size_t max_bits_size, const auto N, const auto result_policy = conditional>
 class pext_split {
  public:
   template <const auto unknown, const auto symbols, class T = std::conditional_t<(utility::max_length<symbols> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, symbols>()>
@@ -285,7 +284,7 @@ class pext_split {
 ```cpp
 #define MPH 1'0'0 // Current library version (SemVer)
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // 64u on x86-64
-#define MPH_ALLOW_UNSAFE_MEMCPY 1 // [Enabled by default] Fatser but potentially unsafe memcpy
+#define MPH_ALLOW_UNSAFE_MEMCPY 1 // [Enabled by default] Faster but potentially unsafe memcpy
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
 ```
 
@@ -293,9 +292,9 @@ class pext_split {
 
 ### FAQ
 
-- Why not, simply, `std::unordered_map`?
+- Why simply not `std::unordered_map`?
 
-    > std::unordered_map is general purpose hash map. `mph` is neither a hash map nor is general purpose.
+    > std::unordered_map is a general purpose hash map. `mph` is neither a hash map nor is general purpose.
       To use `mph` keys have to be known at compile-time so that this knowledge can be used to generate
       code with maximized performance - which is the main goal of the library.
 
@@ -305,7 +304,7 @@ class pext_split {
       `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
       `mph, then, picks the 'best' one and apply input data to it.
 
-- Can I do better than `mph`?
+- Can I do better than `mph` (performance wise)?
 
     > Of course! The more knowledge of the input data and the hardware the better potential performance.
       `mph` is a library with flexibility in mind as there is no silver-bullet to the performance (Always measure!).
@@ -313,12 +312,12 @@ class pext_split {
       The main idea is to have different, specialized policies which will perform best in specific circumstances and
       can be chosen at compile-time based on given list of key/value paris.
 
-- Is `mph` cross-platform?
+- Is `mph` working on other platforms than x86-64?
 
     > In priniple the design is not platform specific and it depeonds on available policies.
       Some policies are platform specific such as `pext` as it requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support.
 
-- How long `mph` compiles?
+- How long it the compilation takes with `mph`?
 
     > Depending on the number of keys/symbols and policy used the compilation time may vary. Most use cases should compile in miliesconds/seconds on both gcc/clang.
 
@@ -331,12 +330,12 @@ class pext_split {
 
     > No. `mph` can be either included or imported.
 
-- How to get max performance out of `mph`?
+- How to get the max performance out of `mph`?
 
     > Experiment and measure in the production like environment with policies (See #api).
       For fastest performance consider aligning the input data and passing it with compilie-time size via std::span, std::array.
 
-- Why symbols are passed by lambda (`[]{ return symbols; }`)?
+- Why key/value pairs are passed by lambda (`[]{ return symbols; }`)?
 
     > C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
 
@@ -345,11 +344,11 @@ class pext_split {
     > Likely the constexpr limit computation has been reached. To fix that, the following options can be used to increase the limits.
 
     ```
-    gcc: -fconstexpr-ops-limit=100000000
+    gcc:   -fconstexpr-ops-limit=100000000
     clang: -fconstexpr-steps=100000000
     ```
 
-- I'm getting santiziers warnings?
+- I'm getting santiziers warnings/errors?
 
     > When passing run-time size input and when `MPH_ALLOW_UNSAFE_MEMCPY` is enabled (default) `mph` will do potentially unsafe memory reads.
       If you concern about the performance verify that the unsafe memory reads are okay (see `MPH_PAGE_SIZE`), otherwise set `MPH_ALLOW_UNSAFE_MEMCPY=0`
