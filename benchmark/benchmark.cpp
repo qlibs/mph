@@ -8,7 +8,6 @@
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <algorithm>
 #include <array>
-#include <boost/container/flat_map.hpp>
 #include <boost/container_hash/hash.hpp>
 #include <boost/unordered_map.hpp>
 #include <map>
