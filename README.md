@@ -46,9 +46,9 @@ cmake --build build
 ```cpp
 enum class color {
   unknown = 0,
-  red = 1,
-  green = 2,
-  blue = 3,
+  red     = 1,
+  green   = 2,
+  blue    = 3,
 };
 
 constexpr auto colors = std::array{
@@ -299,6 +299,20 @@ class pext_split {
       To use `mph` keys have to be known at compile-time so that this knowledge can be used to generate
       code with maximized performance - which is the main goal of the library.
 
+- How `mph` works under the hood?
+
+    > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
+      `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
+      `mph, then, picks the 'best' one and apply input data to it.
+
+- Can I do better than `mph`?
+
+    > Of course! The more knowledge of the input data and the hardware the better potential performance.
+      `mph` is a library with flexibility in mind as there is no silver-bullet to the performance (Always measure!).
+      `mph` allows customization (See [API](#api)) for specific use-cases/platforms/etc.
+      The main idea is to have different, specialized policies which will perform best in specific circumstances and
+      can be chosen at compile-time based on given list of key/value paris.
+
 - Is `mph` cross-platform?
 
     > In priniple the design is not platform specific and it depeonds on available policies.
@@ -308,7 +322,7 @@ class pext_split {
 
     > Depending on the number of keys/symbols and policy used the compilation time may vary. Most use cases should compile in miliesconds/seconds on both gcc/clang.
 
-- Why C++20 is required?
+- Is C++20 required to use `mph`?
 
     > Yes, C++20 support of concepts, constexpr std::vector, NTTP and other compile-time features made the implementatin of the library possible.
       However, it's doable to implement `mph` with standard below C++20, although it would require more effort.
@@ -316,6 +330,11 @@ class pext_split {
 - Do I need modules support to use `mph`?
 
     > No. `mph` can be either included or imported.
+
+- How to get max performance out of `mph`?
+
+    > Experiment and measure in the production like environment with policies (See #api).
+      For fastest performance consider aligning the input data and passing it with compilie-time size via std::span, std::array.
 
 - Why symbols are passed by lambda (`[]{ return symbols; }`)?
 
