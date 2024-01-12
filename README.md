@@ -5,7 +5,7 @@
 
 ---------------------------------------
 
-## Minimal perfect hash function (focused on run-time performance)
+## Minimal perfect hash function (focused on the run-time performance)
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
@@ -89,6 +89,7 @@ int main([[maybe_unused]] int argc, const char** argv) {
     }
   >;
 
+  assert(argc > 1);
   return hash(std::span<const char, len>(argv[1], argv[1] + len));
 }
 ```
@@ -348,7 +349,7 @@ class pext_split {
     clang: -fconstexpr-steps=100000000
     ```
 
-- I'm getting santiziers warnings/errors?
+- I'm getting sanitizers warnings/errors?
 
     > When passing run-time size input and when `MPH_ALLOW_UNSAFE_MEMCPY` is enabled (default) `mph` will do potentially unsafe memory reads.
       If you concern about the performance verify that the unsafe memory reads are okay (see `MPH_PAGE_SIZE`), otherwise set `MPH_ALLOW_UNSAFE_MEMCPY=0`
