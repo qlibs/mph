@@ -9,6 +9,10 @@
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
+### Use case
+
+> Given list of N keys (strings known at compile-time) find a perfect hash function (maps keys into range from 0 to N-1) with fastest run-time execution.
+
 ### Features
 
 - Single header/module (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
