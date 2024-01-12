@@ -19,7 +19,7 @@ jobs:
         - {
             name: "linux debug g++",
             os: ubuntu-latest,
-            build_type: "Debug",
+            build_type: "DEBUG",
             cxx: "g++-12",
             std: 20,
             benchmarks: "OFF",
@@ -28,7 +28,7 @@ jobs:
         - {
             name: "linux release g++",
             os: ubuntu-latest,
-            build_type: "Release",
+            build_type: "RELEASE",
             cxx: "g++-12",
             std: 20,
             benchmarks: "ON",
@@ -37,7 +37,7 @@ jobs:
         - {
             name: "linux debug clang++",
             os: ubuntu-latest,
-            build_type: "Debug",
+            build_type: "DEBUG",
             cxx: "clang++-15",
             std: 20,
             benchmarks: "OFF",
@@ -46,7 +46,7 @@ jobs:
         - {
             name: "linux release clang++",
             os: ubuntu-latest,
-            build_type: "Release",
+            build_type: "RELEASE",
             cxx: "clang++-15",
             std: 20,
             benchmarks: "ON",
@@ -73,7 +73,7 @@ jobs:
           mkdir build
           cmake \
             -S . \
-            -B . \
+            -B build \
             -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.config.std }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
@@ -82,7 +82,7 @@ jobs:
 
       - name: build
         shell: bash
-        run: cmake --build . --config ${{ matrix.config.build_type }}
+        run: cmake --build build --config ${{ matrix.config.build_type }}
 
       - name: test
         shell: bash
