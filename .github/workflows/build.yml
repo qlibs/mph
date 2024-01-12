@@ -20,36 +20,36 @@ jobs:
             name: "linux debug g++",
             os: ubuntu-latest,
             build_type: "Debug",
-            cxx: "g++",
+            cxx: "g++-12",
             std: 20,
-            benchmarks: 0,
+            benchmarks: "OFF",
             generators: "Ninja"
           }
         - {
             name: "linux release g++",
             os: ubuntu-latest,
             build_type: "Release",
-            cxx: "g++",
+            cxx: "g++-12",
             std: 20,
-            benchmarks: 1,
+            benchmarks: "ON",
             generators: "Ninja"
           }
         - {
             name: "linux debug clang++",
             os: ubuntu-latest,
             build_type: "Debug",
-            cxx: "clang++",
+            cxx: "clang++-16",
             std: 20,
-            benchmarks: 0,
+            benchmarks: "OFF",
             generators: "Ninja"
           }
         - {
             name: "linux release clang++",
             os: ubuntu-latest,
             build_type: "Release",
-            cxx: "clang++",
+            cxx: "clang++-16",
             std: 20,
-            benchmarks: 1,
+            benchmarks: "ON",
             generators: "Ninja"
           }
 
