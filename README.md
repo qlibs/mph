@@ -28,14 +28,14 @@
 > Running tests
 
 ```sh
-cmake -S . -B build
+cmake -S . -B build -DMPH_ENABLE_SANITIZERS=ON
 cmake --build build
 ```
 
 > Running benchmarks
 
 ```sh
-cmake -S. -B build -DCMAKE_BUILD_TYPE=RELEASE -DMPH_BUILD_BENCHMARKS=ON ..
+cmake -S. -B build -DCMAKE_BUILD_TYPE=RELEASE -DMPH_BUILD_BENCHMARKS=ON
 cmake --build build
 ```
 

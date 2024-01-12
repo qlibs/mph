@@ -24,7 +24,6 @@ option(MPH_ENABLE_SANITIZERS "Run static analysis" OFF)
 option(MPH_BUILD_BENCHMARKS "Build the benchmarks" OFF)
 option(MPH_BUILD_EXAMPLES "Build the examples" ${PROJECT_IS_TOP_LEVEL})
 option(MPH_BUILD_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
-option(MPH_USE_WARNINGS_AS_ERORS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
 
 add_library(mph INTERFACE)
 
@@ -34,9 +33,7 @@ endif()
 target_include_directories(mph INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
 target_compile_features(mph INTERFACE cxx_std_20)
 
-if(MPH_USE_WARNINGS_AS_ERORS)
-  include(cmake/WarningsAsErrors.cmake)
-endif()
+include(cmake/WarningsAsErrors.cmake)
 
 add_custom_target(style)
 add_custom_command(
