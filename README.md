@@ -307,7 +307,7 @@ class pext_split {
 
 - Ideas for policies?
 
-    > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
+    > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [hash](https://en.wikipedia.org/wiki/Hash_function), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
 
 - Similar projects?
 
@@ -315,7 +315,7 @@ class pext_split {
 
 - Acknowledgments
 
-    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://gcc.gnu.org/onlinedocs/libstdc++, 
+    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://gcc.gnu.org/onlinedocs/libstdc++
 
 ---
 
