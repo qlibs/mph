@@ -77,7 +77,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.config.std }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
-            -DMPH_BUILD_BENCHMARKS=${{ matrx.config.benchmarks }} \
+            -DMPH_BUILD_BENCHMARKS=${{ matrix.config.benchmarks }} \
             -G "${{ matrix.config.generators }}"
 
       - name: build
