@@ -160,11 +160,11 @@ static_assert(2 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(boo
  * https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
  *
  * DO WHILE m < 64
- * 	IF mask[m] == 1
- * 		dst[k] := tmp[m]
- * 		k := k + 1
- * 	FI
- * 	m := m + 1
+ *   IF mask[m] == 1
+ *     dst[k] := tmp[m]
+ *     k := k + 1
+ *   FI
+ *   m := m + 1
  * OD
  */
 template <class T, const auto endian = std::endian::native>
