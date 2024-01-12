@@ -11,7 +11,7 @@
 
 ### Use case
 
-> Given list of N keys (strings known at compile-time) find a perfect hash function (maps keys into range from 0 to N-1) with fastest run-time execution.
+> Given a list of N keys (strings known at compile-time) find a perfect hash function (maps keys into range from 0 to N-1) with the fastest run-time execution.
 
 ### Features
 
@@ -83,8 +83,9 @@ int main([[maybe_unused]] int argc, const char** argv) {
   constexpr auto hash = mph::hash<
     not_found,
     [] { return symbols; },
-    []<const auto... ts>(auto&&... args) {
-      return mph::pext<max_bits_size, mph::branchless>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+    []<const auto unknown, const auto symbols>(auto&&... args) {
+      constxpr auto pext = mph::pext<max_bits_size, mph::branchless>{};
+      return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
     }
   >;
 
@@ -292,11 +293,35 @@ class pext_split {
 
 ### FAQ
 
+- Why simply not use `std::unordered_map`?
+
+    > std::unordered_map is general purpose hash map. `mph` is neither a hash map nor is general purpose.
+      To use `mph` keys have to be known at compile-time so that this knowledge can be used to generate
+      code with maximized performance - which is the main goal of the library.
+
+- Is `mph` cross-platform?
+
+    > In priniple the design is not platform specific and it depeonds on available policies.
+      Some policies are platform specific such as `pext` as it requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support.
+
+- How long `mph` compiles?
+
+    > Depending on the number of keys/symbols and policy used the compilation time may vary. Most use cases should compile in miliesconds/seconds on both gcc/clang.
+
+- Why C++20 is required?
+
+    > Yes, C++20 support of concepts, constexpr std::vector, NTTP and other compile-time features made the implementatin of the library possible.
+      However, it's doable to implement `mph` with standard below C++20, although it would require more effort.
+
+- Do I need modules support to use `mph`?
+
+    > No. `mph` can be either included or imported.
+
 - Why symbols are passed by lambda (`[]{ return symbols; }`)?
 
     > C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
 
-- Getting compilation error with longer list (>256) of symbols?
+- I'm getting compilation error with longer list (>256) of symbols?
 
     > Likely the constexpr limit computation has been reached. To fix that, the following options can be used to increase the limits.
 
@@ -311,11 +336,15 @@ class pext_split {
 
 - Similar projects?
 
-    > [gperf](https://www.gnu.org/software/gperf/), [frozen](https://github.com/serge-sans-paille/frozen)
+    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen)
 
-- Acknowledgments
+- How can I contribute?
 
-    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++
+    > Please follow [CONTRIBUTING.md](.github/CONTRIBUTING.md)
+
+- Acknowledgments / Inspirations
+
+    > http://0x80.pl, https://lemire.me/blog, https://www.youtube.com/watch?v=DMQ_HcNSOAI&ab_channel=strager, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++
 
 ---
 
