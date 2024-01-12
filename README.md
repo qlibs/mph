@@ -120,7 +120,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ---
 
-### Benchmarks (v1.0.0)
+### Benchmarks ([v1.0.0](https://github.com/boost-ext/mph/tree/v1.0.0))
 
 > `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp`
 
@@ -278,6 +278,7 @@ class pext_split {
 > Configuration
 
 ```cpp
+#define MPH 1'0'0 // Current library version (SemVer)
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // 64u on x86-64
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [Enabled by default] Fatser but potentially unsafe memcpy
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
