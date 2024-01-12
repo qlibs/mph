@@ -75,6 +75,7 @@ int main([[maybe_unused]] int argc, const char** argv) {
   constexpr auto not_found = 0;
   constexpr auto max_bits_size = 7;
   constexpr auto len = 8u;
+
   constexpr auto hash = mph::hash<
     not_found,
     [] { return symbols; },
@@ -265,9 +266,9 @@ class pext_split {
 > Configuration
 
 ```cpp
-#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size
-#define MPH_ALLOW_UNSAFE_MEMCPY 1 // enabled by default
-#define MPH_PAGE_SIZE 4096u // only used with MPH_ALLOW_UNSAFE_MEMCPY
+#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // 64u on x86-64
+#define MPH_ALLOW_UNSAFE_MEMCPY 1 // [Enabled by default] Fatser but potentially unsafe memcpy
+#define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
 ```
 
 ---
@@ -291,7 +292,7 @@ class pext_split {
 
     > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
 
-> Similar projects?
+- Similar projects?
 
     > [gperf](https://www.gnu.org/software/gperf/), [frozen](https://github.com/serge-sans-paille/frozen)
 
