@@ -35,6 +35,8 @@ cmake -S. -B build -DCMAKE_BUILD_TYPE=RELEASE -DMPH_BUILD_BENCHMARKS=ON ..
 cmake --build build
 ```
 
+---
+
 ## Hello world (https://godbolt.org/z/rqYz781ev)
 
 ```cpp
@@ -54,13 +56,15 @@ constexpr auto colors = std::array{
 std::cout << mph::hash<color::unknown, [] { return colors; }>("green"sv); // prints 2
 ```
 
+---
+
 ### Performance
 
 ```cpp
 int main([[maybe_unused]] int argc, const char** argv) {
   using std::literals::operator""sv;
 
-  static constexpr std::array symbols{
+  constexpr std::array symbols{
     std::pair{"AAPL    "sv, 1},
     std::pair{"AMZN    "sv, 2},
     std::pair{"GOOGL   "sv, 3},
@@ -69,15 +73,16 @@ int main([[maybe_unused]] int argc, const char** argv) {
   };
 
   constexpr auto not_found = 0;
+  constexpr auto max_bits_size = 7;
+  constexpr auto len = 8u;
   constexpr auto hash = mph::hash<
     not_found,
     [] { return symbols; },
     []<const auto... ts>(auto&&... args) {
-      return mph::pext<7, mph::branchless>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+      return mph::pext<max_bits_size, mph::branchless>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
     }
   >;
 
-  constexpr auto len = 8u;
   return hash(std::span<const char, len>(argv[1], argv[1] + len));
 }
 ```
@@ -116,9 +121,9 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ### Benchmarks (v1.0.0)
 
-```
-clang++-16 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp
+> `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp`
 
+```
 |               ns/op |                op/s |    err% |     total | benchmark
 |--------------------:|--------------------:|--------:|----------:|:----------
 |               24.44 |       40,912,299.48 |    0.1% |      0.29 | `random_5_len_4.std.map`
@@ -148,9 +153,9 @@ clang++-16 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp
 |                5.12 |      195,486,032.03 |    0.1% |      0.06 | `random_100_len_1_8.mph`
 ```
 
-```cpp
-g++-12 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp
+> `g++-12 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp`
 
+```cpp
 |               ns/op |                op/s |    err% |     total | benchmark
 |--------------------:|--------------------:|--------:|----------:|:----------
 |               25.44 |       39,304,369.85 |    0.2% |      0.30 | `random_5_len_4.std.map`
@@ -178,7 +183,6 @@ g++-12 -std=c++20 -Ofast -DNDEBUG -march=native benchmark.cpp
 |               35.51 |       28,161,862.37 |    0.5% |      0.43 | `random_100_len_1_8.boost.unordered_map`
 |               16.15 |       61,903,034.58 |    0.2% |      0.19 | `random_100_len_1_8.gperf`
 |                5.03 |      198,663,744.04 |    0.3% |      0.06 | `random_100_len_1_8.mph`
-
 ```
 
 ---
@@ -285,16 +289,11 @@ class pext_split {
 
 - Ideas for policies?
 
-- [radix-tree](https://en.wikipedia.org/wiki/Radix_tree)
-- [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine)
-- [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf)
-- [mph](http://stevehanov.ca/blog/index.php?id=119)
-- [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
+    > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
 
 > Similar projects?
 
-- [gperf](https://www.gnu.org/software/gperf/)
-- [frozen](https://github.com/serge-sans-paille/frozen)
+    > [gperf](https://www.gnu.org/software/gperf/), [frozen](https://github.com/serge-sans-paille/frozen)
 
 ---
 
