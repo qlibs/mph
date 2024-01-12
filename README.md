@@ -315,7 +315,7 @@ class pext_split {
 
 - Acknowledgments
 
-    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://gcc.gnu.org/onlinedocs/libstdc++
+    > http://0x80.pl, https://lemire.me/blog, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++
 
 ---
 
