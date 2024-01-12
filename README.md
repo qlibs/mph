@@ -78,7 +78,6 @@ int main([[maybe_unused]] int argc, const char** argv) {
 
   constexpr auto not_found = 0;
   constexpr auto max_bits_size = 7;
-  constexpr auto len = 8u;
 
   constexpr auto hash = mph::hash<
     not_found,
@@ -89,6 +88,7 @@ int main([[maybe_unused]] int argc, const char** argv) {
     }
   >;
 
+  constexpr auto len = 8u;
   assert(argc > 1);
   return hash(std::span<const char, len>(argv[1], argv[1] + len));
 }
