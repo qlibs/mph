@@ -371,7 +371,7 @@ class pext_split {
 
 - Similar projects?
 
-    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen)
+    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf)
 
 - How can I contribute?
 
