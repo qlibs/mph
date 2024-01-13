@@ -243,8 +243,7 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
   } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<symbols>>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
     return pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
   } else {
-    constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
-    static_assert(hash_cant_be_created, "hash can't be created with given policies!");
+    static_assert(false, "hash can't be created with given policies!");
   }
 };
 ```
