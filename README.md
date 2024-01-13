@@ -68,7 +68,7 @@ std::print("{}", mph::hash<color::unknown, [] { return colors; }>("green"sv)); /
 int main([[maybe_unused]] int argc, const char** argv) {
   using std::literals::operator""sv;
 
-  constexpr std::array symbols{
+  constexpr std::array keys{
     std::pair{"AAPL    "sv, 1},
     std::pair{"AMZN    "sv, 2},
     std::pair{"GOOGL   "sv, 3},
@@ -81,10 +81,10 @@ int main([[maybe_unused]] int argc, const char** argv) {
 
   constexpr auto hash = mph::hash<
     not_found,
-    [] { return symbols; },
-    []<const auto unknown, const auto symbols>(auto&&... args) {
+    [] { return keys; },
+    []<const auto unknown, const auto keys>(auto&&... args) {
       constexpr auto pext = mph::pext<max_bits_size, mph::branchless>{};
-      return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+      return pext.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
     }
   >;
 
@@ -211,14 +211,14 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
  * Minimal perfect hashing function
  *
  * @tparam unknown returned if there is no match
- * @tparam symbols constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
+ * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
  * @tparam policies invocable which returns the hash
  * @param data continuous input data such as std::string_view, std::span, std::array
  * @param args... optional args propagated to policies
  * @return result of executing policies
  */
-template<const auto unknown, const auto symbols, const auto policies = mph::policies>
-  requires (std::size(symbols()) > 0u) and std::same_as<decltype(utility::value(symbols()[0])), decltype(unknown)>
+template<const auto unknown, const auto keys, const auto policies = mph::policies>
+  requires (std::size(keys()) > 0u) and std::same_as<decltype(utility::value(keys()[0])), decltype(unknown)>
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 ```
 
@@ -229,19 +229,19 @@ constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(tr
  * Default policies
  *
  * @tparam unknown returned if there is no match
- * @tparam symbols constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
+ * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
  * @param args... args propagated to policies
- * @return second from matched symbol or unknown if not matched
+ * @return second from matched key or unknown if not matched
  */
-constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... args) {
-  if constexpr (constexpr auto min_max = utility::min_max_length<symbols>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(symbols()) < 4u) {
-    return mph::swar<std::uint32_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
-  } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(symbols()) < 4u) {
-    return mph::swar<std::uint64_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
-  } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
-    return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
-  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<symbols>>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
-    return pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
+constexpr auto policies = []<const auto unknown, const auto keys>(auto&&... args) {
+  if constexpr (constexpr auto min_max = utility::min_max_length<keys>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(keys()) < 4u) {
+    return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys()) < 4u) {
+    return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...); }) {
+    return pext.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
+  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<keys>>{}; requires { pext_split.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...); }) {
+    return pext_split.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
   } else {
     static_assert(false, "hash can't be created with given policies!");
   }
@@ -256,8 +256,8 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
 template<class T>
 class swar {
  public:
-  template <const auto unknown, const auto symbols>
-    requires concepts::all_symbols_size_lt<symbols, sizeof(T)>
+  template <const auto unknown, const auto keys>
+    requires concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
 };
 ```
@@ -270,8 +270,8 @@ class swar {
 template <const std::size_t max_bits_size, const auto result_policy = conditional>
 class pext {
  public:
-  template <const auto unknown, const auto symbols, class T = std::conditional_t<(utility::max_length<symbols> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(symbols())>
-    requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_symbols_size_lt<symbols, sizeof(T)>
+  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(keys())>
+    requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
 };
 ```
@@ -284,8 +284,8 @@ class pext {
 template <const std::size_t max_bits_size, const auto N, const auto result_policy = conditional>
 class pext_split {
  public:
-  template <const auto unknown, const auto symbols, class T = std::conditional_t<(utility::max_length<symbols> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, symbols>()>
-    requires concepts::symbols_bits_size_lt<masks, max_bits_size> and concepts::all_symbols_size_lt<symbols, sizeof(T)>
+  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, keys>()>
+    requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const auto data, [[maybe_unused]] auto &&...args) const noexcept(true);
 };
 ```
@@ -330,7 +330,7 @@ class pext_split {
 
 - How long it the compilation takes with `mph`?
 
-    > Depending on the number of keys/symbols and policy used the compilation time may vary. Most use cases should compile in miliesconds/seconds on both gcc/clang.
+    > Depending on the number of keys/keys and policy used the compilation time may vary. Most use cases should compile in miliesconds/seconds on both gcc/clang.
 
 - Is C++20 required to use `mph`?
 
@@ -346,11 +346,11 @@ class pext_split {
     > Experiment and measure in the production like environment with policies (See #api).
       For fastest performance consider aligning the input data and passing it with compilie-time size via std::span, std::array.
 
-- Why key/value pairs are passed by lambda (`[]{ return symbols; }`)?
+- Why key/value pairs are passed by lambda (`[]{ return keys; }`)?
 
     > C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
 
-- I'm getting compilation error with longer list (>256) of symbols?
+- I'm getting compilation error with longer list (>256) of keys?
 
     > Likely the constexpr limit computation has been reached. To fix that, the following options can be used to increase the limits.
 

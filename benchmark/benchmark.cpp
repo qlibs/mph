@@ -24,15 +24,15 @@ int main() {
 
   static constexpr auto iterations = 1'000'000;
 
-  const auto bench_std_map = [](const auto name, const auto &symbols, auto fn) {
-    using key_type = std::remove_cvref_t<decltype(symbols[0].first)>;
-    using value_type = std::remove_cvref_t<decltype(symbols[0].second)>;
+  const auto bench_std_map = [](const auto name, const auto &keys, auto fn) {
+    using key_type = std::remove_cvref_t<decltype(keys[0].first)>;
+    using value_type = std::remove_cvref_t<decltype(keys[0].second)>;
     std::map<key_type, value_type> map{};
-    for (const auto &[id, value] : symbols) {
+    for (const auto &[id, value] : keys) {
       map[id] = value;
     }
-    const auto hash = [&](const auto &symbol) {
-      if (const auto index = map.find(symbol); index != std::cend(map)) {
+    const auto hash = [&](const auto &key) {
+      if (const auto index = map.find(key); index != std::cend(map)) {
         return index->second;
       }
       return typename decltype(map)::value_type::second_type{};
@@ -40,20 +40,19 @@ int main() {
     Bench()
         .minEpochIterations(iterations)
         .run(std::string(name) + ".std.map",
-             [&] { doNotOptimizeAway(hash(fn(symbols))); });
+             [&] { doNotOptimizeAway(hash(fn(keys))); });
   };
 
-  const auto bench_std_unordered_map = [](const auto name, const auto &symbols,
+  const auto bench_std_unordered_map = [](const auto name, const auto &keys,
                                           auto fn) {
-    using key_type = std::remove_cvref_t<decltype(symbols[0].first)>;
-    using value_type = std::remove_cvref_t<decltype(symbols[0].second)>;
+    using key_type = std::remove_cvref_t<decltype(keys[0].first)>;
+    using value_type = std::remove_cvref_t<decltype(keys[0].second)>;
     std::unordered_map<key_type, value_type, boost::hash<key_type>> hash_map{};
-    for (const auto &[id, value] : symbols) {
+    for (const auto &[id, value] : keys) {
       hash_map[id] = value;
     }
-    const auto hash = [&](const auto &symbol) {
-      if (const auto index = hash_map.find(symbol);
-          index != std::cend(hash_map)) {
+    const auto hash = [&](const auto &key) {
+      if (const auto index = hash_map.find(key); index != std::cend(hash_map)) {
         return index->second;
       }
       return typename decltype(hash_map)::value_type::second_type{};
@@ -61,20 +60,19 @@ int main() {
     Bench()
         .minEpochIterations(iterations)
         .run(std::string(name) + ".std.unordered_map",
-             [&] { doNotOptimizeAway(hash(fn(symbols))); });
+             [&] { doNotOptimizeAway(hash(fn(keys))); });
   };
 
-  const auto bench_boost_unordered_map = [](const auto name,
-                                            const auto &symbols, auto fn) {
-    using key_type = std::remove_cvref_t<decltype(symbols[0].first)>;
-    using value_type = std::remove_cvref_t<decltype(symbols[0].second)>;
+  const auto bench_boost_unordered_map = [](const auto name, const auto &keys,
+                                            auto fn) {
+    using key_type = std::remove_cvref_t<decltype(keys[0].first)>;
+    using value_type = std::remove_cvref_t<decltype(keys[0].second)>;
     boost::unordered_map<key_type, value_type> hash_map{};
-    for (const auto &[id, value] : symbols) {
+    for (const auto &[id, value] : keys) {
       hash_map[id] = value;
     }
-    const auto hash = [&](const auto &symbol) {
-      if (const auto index = hash_map.find(symbol);
-          index != std::cend(hash_map)) {
+    const auto hash = [&](const auto &key) {
+      if (const auto index = hash_map.find(key); index != std::cend(hash_map)) {
         return index->second;
       }
       return typename decltype(hash_map)::value_type::second_type{};
@@ -82,20 +80,19 @@ int main() {
     Bench()
         .minEpochIterations(iterations)
         .run(std::string(name) + ".boost.unordered_map",
-             [&] { doNotOptimizeAway(hash(fn(symbols))); });
+             [&] { doNotOptimizeAway(hash(fn(keys))); });
   };
 
-  const auto bench_boost_flat_map = [](const auto name, const auto &symbols,
+  const auto bench_boost_flat_map = [](const auto name, const auto &keys,
                                        auto fn) {
-    using key_type = std::remove_cvref_t<decltype(symbols[0].first)>;
-    using value_type = std::remove_cvref_t<decltype(symbols[0].second)>;
+    using key_type = std::remove_cvref_t<decltype(keys[0].first)>;
+    using value_type = std::remove_cvref_t<decltype(keys[0].second)>;
     boost::container::flat_map<key_type, value_type> hash_map{};
-    for (const auto &[id, value] : symbols) {
+    for (const auto &[id, value] : keys) {
       hash_map[id] = value;
     }
-    const auto hash = [&](const auto &symbol) {
-      if (const auto index = hash_map.find(symbol);
-          index != std::cend(hash_map)) {
+    const auto hash = [&](const auto &key) {
+      if (const auto index = hash_map.find(key); index != std::cend(hash_map)) {
         return index->second;
       }
       return typename decltype(hash_map)::value_type::second_type{};
@@ -103,23 +100,23 @@ int main() {
     Bench()
         .minEpochIterations(iterations)
         .run(std::string(name) + ".boost.flat_map",
-             [&] { doNotOptimizeAway(hash(fn(symbols))); });
+             [&] { doNotOptimizeAway(hash(fn(keys))); });
   };
 
   const auto bench_gperf = [](const auto &hash, const auto name,
-                              const auto &symbols, auto fn) {
+                              const auto &keys, auto fn) {
     Bench()
         .minEpochIterations(iterations)
         .run(std::string(name) + ".gperf", [&] {
-          const auto symbol = fn(symbols);
-          doNotOptimizeAway(hash(std::data(symbol), std::size(symbol)));
+          const auto key = fn(keys);
+          doNotOptimizeAway(hash(std::data(key), std::size(key)));
         });
   };
 
-  const auto bench_mph = [](const auto &hash, const auto name,
-                            const auto &symbols, auto fn) {
+  const auto bench_mph = [](const auto &hash, const auto name, const auto &keys,
+                            auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(hash(fn(symbols)));
+      doNotOptimizeAway(hash(fn(keys)));
     });
   };
 
@@ -134,8 +131,8 @@ int main() {
       ids.push_back(distribution(gen));
     }
 
-    auto next = [&, i = 0](const auto &symbols) mutable {
-      return symbols[ids[i++ % iterations]].first;
+    auto next = [&, i = 0](const auto &keys) mutable {
+      return keys[ids[i++ % iterations]].first;
     };
 
     bench_std_map("random_5_len_4", data::random_5_len_4, next);
@@ -202,8 +199,8 @@ int main() {
       ids.push_back(distribution(gen));
     }
 
-    auto next = [&, i = 0](const auto &symbols) mutable {
-      return symbols[ids[i++ % iterations]].first;
+    auto next = [&, i = 0](const auto &keys) mutable {
+      return keys[ids[i++ % iterations]].first;
     };
 
     bench_std_map("random_5_len_8", data::random_5_len_8, next);
@@ -271,8 +268,8 @@ int main() {
       ids.push_back(distribution(gen));
     }
 
-    auto next = [&, i = 0](const auto &symbols) mutable {
-      return symbols[ids[i++ % iterations]].first;
+    auto next = [&, i = 0](const auto &keys) mutable {
+      return keys[ids[i++ % iterations]].first;
     };
 
     bench_std_map("random_6_len_2_5", data::random_6_len_2_5, next);
@@ -341,8 +338,8 @@ int main() {
       ids.push_back(distribution(gen));
     }
 
-    auto next = [&, i = 0](const auto &symbols) mutable {
-      return symbols[ids[i++ % iterations]].first;
+    auto next = [&, i = 0](const auto &keys) mutable {
+      return keys[ids[i++ % iterations]].first;
     };
 
     bench_std_map("random_100_len_8", data::random_100_len_8, next);
@@ -496,8 +493,8 @@ int main() {
       ids.push_back(distribution(gen));
     }
 
-    auto next = [&, i = 0](const auto &symbols) mutable {
-      return symbols[ids[i++ % iterations]].first;
+    auto next = [&, i = 0](const auto &keys) mutable {
+      return keys[ids[i++ % iterations]].first;
     };
 
     bench_std_map("random_100_len_1_8", data::random_100_len_1_8, next);

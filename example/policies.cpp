@@ -11,18 +11,18 @@
 #include <string_view>
 
 constexpr auto policies =
-    []<const auto unknown, const auto symbols>(auto &&data, auto &&...args) {
+    []<const auto unknown, const auto keys>(auto &&data, auto &&...args) {
   if (not std::size(data)) {
     return unknown;
   } else if constexpr (constexpr auto pext = mph::pext<2>{};
                        requires {
-                         pext.template operator()<unknown, symbols>(
+                         pext.template operator()<unknown, keys>(
                              data, std::forward<decltype(args)>(args)...);
                        }) {
-    return pext.template operator()<unknown, symbols>(
+    return pext.template operator()<unknown, keys>(
         data, std::forward<decltype(args)>(args)...);
   } else {
-    static_assert([](auto &&) { return false; }(symbols),
+    static_assert([](auto &&) { return false; }(keys),
                   "hash can't be created with given policies!");
   }
 };
@@ -30,13 +30,13 @@ constexpr auto policies =
 int main() {
   using std::literals::operator""sv;
 
-  static constexpr std::array symbols{
+  static constexpr std::array keys{
       std::pair{"FBC"sv, 0},
       std::pair{"SPY"sv, 1},
       std::pair{"CDC"sv, 2},
   };
 
-  constexpr auto hash = mph::hash<-1, [] { return symbols; }, policies>;
+  constexpr auto hash = mph::hash<-1, [] { return keys; }, policies>;
 
   std::cout << hash(""sv);     // -1
   std::cout << hash("FO"sv);   // -1

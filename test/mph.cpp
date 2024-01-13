@@ -13,8 +13,8 @@ int main() {
   using namespace boost::ut;
   using std::literals::operator""sv;
 
-  constexpr auto verify = [](const auto &symbols, const auto &hash) {
-    for (auto expected = 1; const auto &[symbol, _] : symbols) {
+  constexpr auto verify = [](const auto &keys, const auto &hash) {
+    for (auto expected = 1; const auto &[symbol, _] : keys) {
       expect(_i(expected++) == hash(symbol));
     }
   };
@@ -45,15 +45,15 @@ int main() {
   };
 
   "[hash] policies"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
         std::pair{"C"sv, 3},
     };
 
-    constexpr auto hash = mph::hash<0, [] { return symbols; }, mph::policies>;
+    constexpr auto hash = mph::hash<0, [] { return keys; }, mph::policies>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("D"sv));
@@ -62,20 +62,20 @@ int main() {
   };
 
   "[hash] custom policies - pext"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
         std::pair{"C"sv, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::pext<5>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("D"sv));
@@ -84,20 +84,20 @@ int main() {
   };
 
   "[hash] custom policies - pext_split"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
         std::pair{"C"sv, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<5, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash("D"sv));
     expect(0_i == hash("a"sv));
@@ -105,54 +105,54 @@ int main() {
   };
 
   "[hash] custom policies - pext_split<N>"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"AAPL    "sv, 1}, std::pair{"AMZN    "sv, 2},
         std::pair{"GOOGL   "sv, 3}, std::pair{"MSFT    "sv, 4},
         std::pair{"NVDA    "sv, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
   };
 
   "[hash] custom policies - pext_split<len(N)-1>"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"    AAPL"sv, 1}, std::pair{"    AMZN"sv, 2},
         std::pair{"   GOOGL"sv, 3}, std::pair{"    MSFT"sv, 4},
         std::pair{"    NVDA"sv, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 7u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
   };
 
   "[hash] custom policies - swar32"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
         std::pair{"C"sv, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash("D"sv));
     expect(0_i == hash("a"sv));
@@ -160,17 +160,17 @@ int main() {
   };
 
   "[hash] custom policies - swar64"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"foobar"sv, 1}, std::pair{"bar"sv, 2}, std::pair{"foo"sv, 3}};
 
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("xxx"sv));
@@ -178,21 +178,21 @@ int main() {
   };
 
   "[hash] custom policies - swar64 / std::span"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A       "sv, 1},
         std::pair{"B       "sv, 2},
         std::pair{"C       "sv, 3},
     };
 
-    constexpr auto size = std::size(symbols[0].first);
-    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+    constexpr auto size = std::size(keys[0].first);
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("D "sv));
@@ -207,17 +207,17 @@ int main() {
   };
 
   "[hash] std::span data"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"A       "sv, 1},
         std::pair{"B       "sv, 2},
         std::pair{"C       "sv, 3},
     };
 
-    constexpr auto size = std::size(symbols[0].first);
+    constexpr auto size = std::size(keys[0].first);
 
-    auto hash = mph::hash<0, [] { return symbols; }>;
+    auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("D "sv));
@@ -232,15 +232,15 @@ int main() {
   };
 
   "[hash] std::span variable length"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{std::span<const char, 8>("enter  "), 1},
         std::pair{std::span<const char, 8>("delete "), 2},
         std::pair{std::span<const char, 8>("esc    "), 3},
     };
 
-    const auto hash = mph::hash<0, [] { return symbols; }>;
+    const auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(std::span("")));
     expect(0_i == hash(std::span("  ")));
@@ -252,15 +252,15 @@ int main() {
   };
 
   "[hash] std::array"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{std::array{'A', 'a'}, 1},
         std::pair{std::array{'B', 'b'}, 2},
         std::pair{std::array{'C', 'c'}, 3},
     };
 
-    const auto hash = mph::hash<0, [] { return symbols; }>;
+    const auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(std::array{'A'}));
     expect(0_i == hash(std::array{'X'}));
@@ -271,15 +271,15 @@ int main() {
   };
 
   "[hash] std::string_view"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{"AA "sv, 1},
         std::pair{"BB "sv, 2},
         std::pair{"CC "sv, 3},
     };
 
-    auto hash = mph::hash<0, [] { return symbols; }>;
+    auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("   "sv));
@@ -291,15 +291,15 @@ int main() {
   };
 
   "[hash] fail case - variable length"_test = [verify] {
-    static constexpr std::array symbols{
+    static constexpr std::array keys{
         std::pair{" AA "sv, 1},
         std::pair{" AB "sv, 2},
         std::pair{" AC "sv, 3},
     };
 
-    auto hash = mph::hash<0, [] { return symbols; }>;
+    auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash(" aa "sv));
@@ -311,16 +311,16 @@ int main() {
   };
 
   "[hash] variable length"_test = [verify] {
-    static constexpr std::array<std::pair<std::string_view, int>, 6> symbols{
+    static constexpr std::array<std::pair<std::string_view, int>, 6> keys{
         {{"ftp", 1},
          {"file", 2},
          {"http", 3},
          {"https", 4},
          {"ws", 5},
          {"wss", 6}}};
-    static constexpr auto hash = mph::hash<0, [] { return symbols; }>;
+    static constexpr auto hash = mph::hash<0, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_i == hash(""sv));
     expect(0_i == hash("udp"sv));
@@ -331,7 +331,7 @@ int main() {
 
   "[hash] multiple policies trigger"_test = [verify] {
     static constexpr std::array<std::pair<std::string_view, std::uint8_t>, 100>
-        symbols{
+        keys{
             std::pair{"III     "sv, 1},  std::pair{"AGM-C   "sv, 2},
             std::pair{"LOPE    "sv, 3},  std::pair{"FEMS    "sv, 4},
             std::pair{"IEA     "sv, 5},  std::pair{"VYMI    "sv, 6},
@@ -384,9 +384,9 @@ int main() {
             std::pair{"NURE    "sv, 99}, std::pair{"WEAT    "sv, 100},
         };
 
-    const auto hash = mph::hash<std::uint8_t{}, [] { return symbols; }>;
+    const auto hash = mph::hash<std::uint8_t{}, [] { return keys; }>;
 
-    verify(symbols, hash);
+    verify(keys, hash);
 
     expect(0_u == hash("        "sv));
     expect(0_u == hash(" III    "sv));
