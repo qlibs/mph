@@ -28,6 +28,7 @@ export module mph;
 #include <span>
 #include <type_traits>
 #include <vector>
+#include <tuple>
 
 #if __has_include(<x86intrin.h>)
 #include <x86intrin.h>
@@ -147,13 +148,13 @@ static_assert(std::is_same_v<std::uint32_t, decltype(as<std::uint32_t>(std::arra
 static_assert(((std::uint32_t('b') << CHAR_BIT*3) | std::uint32_t('a') << CHAR_BIT*2) == as<std::uint32_t>(std::array<std::uint8_t, 4>{0, 0, 'a', 'b'}));
 // clang-format on
 
-template<class... Ts> struct overloaded final : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template<class... Ts> struct overload final : Ts... { using Ts::operator()...; };
+template<class... Ts> overload(Ts...) -> overload<Ts...>;
 
 // clang-format off
-static_assert(42 == overloaded{[](auto v) { return v; }}(42));
-static_assert(1 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(int{}));
-static_assert(2 == overloaded{[](int) { return 1; }, [](bool) { return 2; }}(bool{}));
+static_assert(42 == overload{[](auto v) { return v; }}(42));
+static_assert(1 == overload{[](int) { return 1; }, [](bool) { return 2; }}(int{}));
+static_assert(2 == overload{[](int) { return 1; }, [](bool) { return 2; }}(bool{}));
 // clang-format on
 
 /**
@@ -245,12 +246,12 @@ static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::arra
 // clang-format on
 
 template<const auto symbols>
+  requires (std::size(symbols()) > 0u)
 inline constexpr auto min_max_length = [](const auto& v) { // std::minmax_element is not constexpr
   auto min = std::size(utility::id(v[0]));
   auto max = std::size(utility::id(v[0]));
   for (const auto& symbol : v) {
-    min = std::min(min, std::size(utility::id(symbol)));
-    max = std::max(max, std::size(utility::id(symbol)));
+    std::tie(min, max) = std::pair{std::min(min, std::size(utility::id(symbol))), std::max(max, std::size(utility::id(symbol)))};
   }
   return std::pair{min, max};
 }(symbols());
@@ -264,22 +265,44 @@ static_assert(std::pair{1ul, 2ul} == min_max_length<[] { return std::array{std::
 template<const auto symbols>
 inline constexpr auto max_length = [](const auto& v) { return std::size(utility::id(*std::max_element(std::cbegin(v), std::cend(v), [](const auto& lhs, const auto& rhs) { return std::size(utility::id(lhs)) < std::size(utility::id(rhs)); }))); }(symbols());
 
-template<const auto symbols>
-inline constexpr auto find_unique_char = [](const auto& ) {
-  return 0u;
-}(symbols());
-
-// clang-format off
-// clang-format on
-
 // clang-format off
 static_assert(0u == max_length<[] { return std::array{std::string_view{""}}; }>);
 static_assert(1u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
 static_assert(2u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}, std::string_view{"ab"}}; }>);
 // clang-format on
 
+template<const auto symbols>
+inline constexpr auto find_unique_char_max_dist = [](const auto &v) -> std::size_t {
+  if constexpr (constexpr auto min_max = utility::min_max_length<symbols>; min_max.second <= 1u) {
+    return {};
+  } else {
+    std::array<std::size_t, min_max.first> counts{};
+    for (auto i = 0u; i < min_max.first; ++i) {
+      std::vector<std::remove_cvref_t<decltype(id(v[0])[i])>> chars{};
+      std::transform(std::cbegin(v), std::cend(v), std::back_inserter(chars), [i](const auto& symbol) { return id(symbol)[i]; });
+      std::sort(std::begin(chars), std::end(chars));
+      counts[i] = std::distance(std::begin(chars), std::unique(std::begin(chars), std::end(chars)));
+    }
+    return std::distance(std::cbegin(counts), std::max_element(std::cbegin(counts), std::cend(counts)));
+  }
+}(symbols());
+
+// clang-format off
+static_assert(0u == find_unique_char_max_dist<[] { return std::array{std::string_view{"a"}}; }>);
+static_assert(0u == find_unique_char_max_dist<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
+static_assert(1u == find_unique_char_max_dist<[] { return std::array{std::string_view{"ab"}, std::string_view{"ac"}}; } >);
+static_assert(1u == find_unique_char_max_dist<[] { return std::array{std::string_view{"ba"}, std::string_view{"bb"}}; } >);
+// clang-format on
+
 template<class T>
-[[nodiscard]] constexpr auto copy_required_bytes(const auto data, std::false_type) {
+[[nodiscard]] [[gnu::cold]] constexpr auto copy_required_bytes(const auto data, std::type_identity<class cold>) {
+  T t{};
+  __builtin_memcpy(std::addressof(t), std::data(data), std::size(data));
+  return t;
+}
+
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto copy_required_bytes(const auto data, std::false_type) {
   T t{};
   __builtin_memcpy(std::addressof(t), std::data(data), std::size(data));
   return t;
@@ -288,7 +311,7 @@ template<class T>
 template<class T>
 [[nodiscard]] [[gnu::target("bmi2")]] auto copy_required_bytes(const auto data, std::true_type) {
   if ((std::uint64_t(std::data(data)) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-    return copy_required_bytes<T>(data, std::false_type{});
+    return copy_required_bytes<T>(data, std::type_identity<class cold>{});
   }
 
   T t{};
@@ -305,7 +328,7 @@ template<class T>
 }
 
 template<class T>
-[[nodiscard]] constexpr auto copy_required_bytes(const auto data) {
+[[nodiscard]] [[gnu::always_inline]] constexpr auto copy_required_bytes(const auto data) {
   if constexpr (requires { std::bool_constant<(std::size(data), true)>{}; }) {
     if constexpr (std::size(data) == sizeof(T)) {
       return *std::bit_cast<const T*>(std::data(data));
@@ -555,7 +578,7 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
     return mph::swar<std::uint64_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
   } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
     return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
-  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char<symbols>>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
+  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<symbols>>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
     return pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23
@@ -577,7 +600,7 @@ template<const auto unknown, const auto symbols, const auto policies = mph::poli
     requires (std::size(symbols()) > 0u) and std::same_as<decltype(utility::value(symbols()[0])), decltype(unknown)>
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&...args) noexcept(true) { // attributes on lambdas is C++23
   constexpr auto min_max = utility::min_max_length<symbols>;
-  return utility::overloaded{
+  return utility::overload{
     [&]<class T, class... Ts> (const std::basic_string_view<T, Ts...> sv) {
       if (const auto size = std::size(sv); size < min_max.first or size > min_max.second) {
         return unknown;
