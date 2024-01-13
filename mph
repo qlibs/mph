@@ -264,6 +264,14 @@ static_assert(std::pair{1ul, 2ul} == min_max_length<[] { return std::array{std::
 template<const auto symbols>
 inline constexpr auto max_length = [](const auto& v) { return std::size(utility::id(*std::max_element(std::cbegin(v), std::cend(v), [](const auto& lhs, const auto& rhs) { return std::size(utility::id(lhs)) < std::size(utility::id(rhs)); }))); }(symbols());
 
+template<const auto symbols>
+inline constexpr auto find_unique_char = [](const auto& ) {
+  return 0u;
+}(symbols());
+
+// clang-format off
+// clang-format on
+
 // clang-format off
 static_assert(0u == max_length<[] { return std::array{std::string_view{""}}; }>);
 static_assert(1u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
@@ -358,11 +366,11 @@ static_assert(all_symbols_size_lt<[] { return std::array{std::array<char, 2>{}, 
 // clang-format on
 }  // namespace concepts
 
-constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
+inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
 
-constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return cond * lhs; // generates cmov (x86-64)
 };
 
@@ -547,7 +555,7 @@ constexpr auto policies = []<const auto unknown, const auto symbols>(auto&&... a
     return mph::swar<std::uint64_t>{}.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
   } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
     return pext.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
-  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, 0u>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
+  } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char<symbols>>{}; requires { pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...); }) {
     return pext_split.template operator()<unknown, symbols>(std::forward<decltype(args)>(args)...);
   } else {
     constexpr auto hash_cant_be_created = [](auto &&) { return false; }(symbols);  // static_assert(false) support is C++23

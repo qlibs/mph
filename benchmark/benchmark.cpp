@@ -8,6 +8,7 @@
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <algorithm>
 #include <array>
+#include <boost/container/flat_map.hpp>
 #include <boost/container_hash/hash.hpp>
 #include <boost/unordered_map.hpp>
 #include <map>
@@ -84,6 +85,27 @@ int main() {
              [&] { doNotOptimizeAway(hash(fn(symbols))); });
   };
 
+  const auto bench_boost_flat_map = [](const auto name, const auto &symbols,
+                                       auto fn) {
+    using key_type = std::remove_cvref_t<decltype(symbols[0].first)>;
+    using value_type = std::remove_cvref_t<decltype(symbols[0].second)>;
+    boost::container::flat_map<key_type, value_type> hash_map{};
+    for (const auto &[id, value] : symbols) {
+      hash_map[id] = value;
+    }
+    const auto hash = [&](const auto &symbol) {
+      if (const auto index = hash_map.find(symbol);
+          index != std::cend(hash_map)) {
+        return index->second;
+      }
+      return typename decltype(hash_map)::value_type::second_type{};
+    };
+    Bench()
+        .minEpochIterations(iterations)
+        .run(std::string(name) + ".boost.flat_map",
+             [&] { doNotOptimizeAway(hash(fn(symbols))); });
+  };
+
   const auto bench_gperf = [](const auto &hash, const auto name,
                               const auto &symbols, auto fn) {
     Bench()
@@ -119,6 +141,7 @@ int main() {
     bench_std_map("random_5_len_4", data::random_5_len_4, next);
     bench_std_unordered_map("random_5_len_4", data::random_5_len_4, next);
     bench_boost_unordered_map("random_5_len_4", data::random_5_len_4, next);
+    bench_boost_flat_map("random_5_len_4", data::random_5_len_4, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 4;
@@ -186,6 +209,7 @@ int main() {
     bench_std_map("random_5_len_8", data::random_5_len_8, next);
     bench_std_unordered_map("random_5_len_8", data::random_5_len_8, next);
     bench_boost_unordered_map("random_5_len_8", data::random_5_len_8, next);
+    bench_boost_flat_map("random_5_len_8", data::random_5_len_8, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 8;
@@ -254,6 +278,7 @@ int main() {
     bench_std_map("random_6_len_2_5", data::random_6_len_2_5, next);
     bench_std_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
     bench_boost_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
+    bench_boost_flat_map("random_6_len_2_5", data::random_6_len_2_5, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 2;
@@ -323,6 +348,7 @@ int main() {
     bench_std_map("random_100_len_8", data::random_100_len_8, next);
     bench_std_unordered_map("random_100_len_8", data::random_100_len_8, next);
     bench_boost_unordered_map("random_100_len_8", data::random_100_len_8, next);
+    bench_boost_flat_map("random_100_len_8", data::random_100_len_8, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 8;
@@ -479,6 +505,7 @@ int main() {
                             next);
     bench_boost_unordered_map("random_100_len_1_8", data::random_100_len_1_8,
                               next);
+    bench_boost_flat_map("random_100_len_1_8", data::random_100_len_1_8, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 1;

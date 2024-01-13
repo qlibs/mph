@@ -104,6 +104,40 @@ int main() {
     expect(0_i == hash("b"sv));
   };
 
+  "[hash] custom policies - pext_split<N>"_test = [verify] {
+    static constexpr std::array symbols{
+        std::pair{"AAPL    "sv, 1}, std::pair{"AMZN    "sv, 2},
+        std::pair{"GOOGL   "sv, 3}, std::pair{"MSFT    "sv, 4},
+        std::pair{"NVDA    "sv, 5},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::pext_split<7, 0u>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(symbols, hash);
+  };
+
+  "[hash] custom policies - pext_split<len(N)-1>"_test = [verify] {
+    static constexpr std::array symbols{
+        std::pair{"    AAPL"sv, 1}, std::pair{"    AMZN"sv, 2},
+        std::pair{"   GOOGL"sv, 3}, std::pair{"    MSFT"sv, 4},
+        std::pair{"    NVDA"sv, 5},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return symbols; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::pext_split<7, 7u>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(symbols, hash);
+  };
+
   "[hash] custom policies - swar32"_test = [verify] {
     static constexpr std::array symbols{
         std::pair{"A"sv, 1},
@@ -256,7 +290,7 @@ int main() {
     expect(0_i == hash(" cc"sv));
   };
 
-  "[hash] fail case - different sizes"_test = [verify] {
+  "[hash] fail case - variable length"_test = [verify] {
     static constexpr std::array symbols{
         std::pair{" AA "sv, 1},
         std::pair{" AB "sv, 2},
@@ -276,7 +310,7 @@ int main() {
     expect(0_i == hash("_AA_"sv));
   };
 
-  "[hash] different sizes"_test = [verify] {
+  "[hash] variable length"_test = [verify] {
     static constexpr std::array<std::pair<std::string_view, int>, 6> symbols{
         {{"ftp", 1},
          {"file", 2},
