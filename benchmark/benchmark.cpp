@@ -124,7 +124,7 @@ int main() {
     std::random_device rd{};
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> distribution(
-        0, std::size(data::random_5_len_4) - 1);
+        0, std::size(data::random_strings_5_len_4) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -135,10 +135,13 @@ int main() {
       return keys[ids[i++ % iterations]].first;
     };
 
-    bench_std_map("random_5_len_4", data::random_5_len_4, next);
-    bench_std_unordered_map("random_5_len_4", data::random_5_len_4, next);
-    bench_boost_unordered_map("random_5_len_4", data::random_5_len_4, next);
-    bench_boost_flat_map("random_5_len_4", data::random_5_len_4, next);
+    bench_std_map("random_strings_5_len_4", data::random_strings_5_len_4, next);
+    bench_std_unordered_map("random_strings_5_len_4",
+                            data::random_strings_5_len_4, next);
+    bench_boost_unordered_map("random_strings_5_len_4",
+                              data::random_strings_5_len_4, next);
+    bench_boost_flat_map("random_strings_5_len_4", data::random_strings_5_len_4,
+                         next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 4;
@@ -183,16 +186,16 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_5_len_4", data::random_5_len_4, next);
-    bench_mph(mph::hash<0, [] { return data::random_5_len_4; }>,
-              "random_5_len_4", data::random_5_len_4, next);
+        "random_strings_5_len_4", data::random_strings_5_len_4, next);
+    bench_mph(mph::hash<0, [] { return data::random_strings_5_len_4; }>,
+              "random_strings_5_len_4", data::random_strings_5_len_4, next);
   }
 
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> distribution(
-        0, std::size(data::random_5_len_8) - 1);
+        0, std::size(data::random_strings_5_len_8) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -203,10 +206,13 @@ int main() {
       return keys[ids[i++ % iterations]].first;
     };
 
-    bench_std_map("random_5_len_8", data::random_5_len_8, next);
-    bench_std_unordered_map("random_5_len_8", data::random_5_len_8, next);
-    bench_boost_unordered_map("random_5_len_8", data::random_5_len_8, next);
-    bench_boost_flat_map("random_5_len_8", data::random_5_len_8, next);
+    bench_std_map("random_strings_5_len_8", data::random_strings_5_len_8, next);
+    bench_std_unordered_map("random_strings_5_len_8",
+                            data::random_strings_5_len_8, next);
+    bench_boost_unordered_map("random_strings_5_len_8",
+                              data::random_strings_5_len_8, next);
+    bench_boost_flat_map("random_strings_5_len_8", data::random_strings_5_len_8,
+                         next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 8;
@@ -252,16 +258,16 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_5_len_8", data::random_5_len_8, next);
-    bench_mph(mph::hash<0, [] { return data::random_5_len_8; }>,
-              "random_5_len_8", data::random_5_len_8, next);
+        "random_strings_5_len_8", data::random_strings_5_len_8, next);
+    bench_mph(mph::hash<0, [] { return data::random_strings_5_len_8; }>,
+              "random_strings_5_len_8", data::random_strings_5_len_8, next);
   }
 
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> distribution(
-        0, std::size(data::random_6_len_2_5) - 1);
+        0, std::size(data::random_strings_6_len_2_5) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -272,10 +278,14 @@ int main() {
       return keys[ids[i++ % iterations]].first;
     };
 
-    bench_std_map("random_6_len_2_5", data::random_6_len_2_5, next);
-    bench_std_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
-    bench_boost_unordered_map("random_6_len_2_5", data::random_6_len_2_5, next);
-    bench_boost_flat_map("random_6_len_2_5", data::random_6_len_2_5, next);
+    bench_std_map("random_strings_6_len_2_5", data::random_strings_6_len_2_5,
+                  next);
+    bench_std_unordered_map("random_strings_6_len_2_5",
+                            data::random_strings_6_len_2_5, next);
+    bench_boost_unordered_map("random_strings_6_len_2_5",
+                              data::random_strings_6_len_2_5, next);
+    bench_boost_flat_map("random_strings_6_len_2_5",
+                         data::random_strings_6_len_2_5, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 2;
@@ -322,16 +332,16 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_6_len_2_5", data::random_6_len_2_5, next);
-    bench_mph(mph::hash<0, [] { return data::random_6_len_2_5; }>,
-              "random_6_len_2_5", data::random_6_len_2_5, next);
+        "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
+    bench_mph(mph::hash<0, [] { return data::random_strings_6_len_2_5; }>,
+              "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
   }
 
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> distribution(
-        0, std::size(data::random_100_len_8) - 1);
+        0, std::size(data::random_strings_100_len_8) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -342,10 +352,14 @@ int main() {
       return keys[ids[i++ % iterations]].first;
     };
 
-    bench_std_map("random_100_len_8", data::random_100_len_8, next);
-    bench_std_unordered_map("random_100_len_8", data::random_100_len_8, next);
-    bench_boost_unordered_map("random_100_len_8", data::random_100_len_8, next);
-    bench_boost_flat_map("random_100_len_8", data::random_100_len_8, next);
+    bench_std_map("random_strings_100_len_8", data::random_strings_100_len_8,
+                  next);
+    bench_std_unordered_map("random_strings_100_len_8",
+                            data::random_strings_100_len_8, next);
+    bench_boost_unordered_map("random_strings_100_len_8",
+                              data::random_strings_100_len_8, next);
+    bench_boost_flat_map("random_strings_100_len_8",
+                         data::random_strings_100_len_8, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 8;
@@ -477,16 +491,16 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_100_len_8", data::random_100_len_8, next);
-    bench_mph(mph::hash<0, [] { return data::random_100_len_8; }>,
-              "random_100_len_8", data::random_100_len_8, next);
+        "random_strings_100_len_8", data::random_strings_100_len_8, next);
+    bench_mph(mph::hash<0, [] { return data::random_strings_100_len_8; }>,
+              "random_strings_100_len_8", data::random_strings_100_len_8, next);
   }
 
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> distribution(
-        0, std::size(data::random_100_len_8) - 1);
+        0, std::size(data::random_strings_100_len_8) - 1);
     std::vector<int> ids{};
     ids.reserve(iterations);
     for (auto i = 0; i < iterations; ++i) {
@@ -497,12 +511,14 @@ int main() {
       return keys[ids[i++ % iterations]].first;
     };
 
-    bench_std_map("random_100_len_1_8", data::random_100_len_1_8, next);
-    bench_std_unordered_map("random_100_len_1_8", data::random_100_len_1_8,
-                            next);
-    bench_boost_unordered_map("random_100_len_1_8", data::random_100_len_1_8,
-                              next);
-    bench_boost_flat_map("random_100_len_1_8", data::random_100_len_1_8, next);
+    bench_std_map("random_strings_100_len_1_8",
+                  data::random_strings_100_len_1_8, next);
+    bench_std_unordered_map("random_strings_100_len_1_8",
+                            data::random_strings_100_len_1_8, next);
+    bench_boost_unordered_map("random_strings_100_len_1_8",
+                              data::random_strings_100_len_1_8, next);
+    bench_boost_flat_map("random_strings_100_len_1_8",
+                         data::random_strings_100_len_1_8, next);
     bench_gperf(
         [](const char *str, std::size_t len) {
           static constexpr auto MIN_WORD_LENGTH = 1;
@@ -621,8 +637,9 @@ int main() {
           }
           return decltype(index[0]){};
         },
-        "random_100_len_1_8", data::random_100_len_1_8, next);
-    bench_mph(mph::hash<0, [] { return data::random_100_len_1_8; }>,
-              "random_100_len_1_8", data::random_100_len_1_8, next);
+        "random_strings_100_len_1_8", data::random_strings_100_len_1_8, next);
+    bench_mph(mph::hash<0, [] { return data::random_strings_100_len_1_8; }>,
+              "random_strings_100_len_1_8", data::random_strings_100_len_1_8,
+              next);
   }
 }

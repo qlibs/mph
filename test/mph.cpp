@@ -44,6 +44,107 @@ int main() {
     expect(color::unknown == hash("b"sv));
   };
 
+  "[hash] integral"_test = [verify] {
+    static constexpr auto keys = std::array{
+        std::pair{23423ul, 1},
+        std::pair{432432ul, 2},
+        std::pair{31232ul, 3},
+    };
+
+    constexpr auto hash = mph::hash<0, [] { return keys; }>;
+
+    verify(keys, hash);
+
+    expect(0 == hash(0ul));
+    expect(0 == hash(1234ul));
+    expect(0 == hash(42ul));
+  };
+
+  "[hash] integral - custom policies - pext"_test = [verify] {
+    static constexpr auto keys = std::array{
+        std::pair{23423ul, 1},
+        std::pair{432432ul, 2},
+        std::pair{31232ul, 3},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::pext<5>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(keys, hash);
+
+    expect(0 == hash(0ul));
+    expect(0 == hash(1234ul));
+    expect(0 == hash(42ul));
+  };
+
+  "[hash] integral - custom policies - swar<std::uint32_t>"_test = [verify] {
+    static constexpr auto keys = std::array{
+        std::pair{3, 1},
+        std::pair{4, 2},
+        std::pair{7, 3},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::swar<std::uint32_t>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(keys, hash);
+
+    expect(0 == hash(0));
+    expect(0 == hash(2));
+    expect(0 == hash(5));
+    expect(0 == hash(6));
+  };
+
+  "[hash] integral - custom policies - swar32"_test = [verify] {
+    static constexpr auto keys = std::array{
+        std::pair{3, 1},
+        std::pair{4, 2},
+        std::pair{7, 3},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::swar<std::uint32_t>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(keys, hash);
+
+    expect(0 == hash(0));
+    expect(0 == hash(2));
+    expect(0 == hash(5));
+    expect(0 == hash(6));
+  };
+
+  "[hash] integral - custom policies - swar64"_test = [verify] {
+    static constexpr auto keys = std::array{
+        std::pair{std::uint64_t(11111), 1},
+        std::pair{std::uint64_t(22222), 2},
+        std::pair{std::uint64_t(33333), 3},
+    };
+
+    constexpr auto hash = mph::hash < 0, [] { return keys; },
+                   []<const auto... ts>(auto &&...args) {
+      return mph::swar<std::uint64_t>{}.template operator()<ts...>(
+          std::forward<decltype(args)>(args)...);
+    }
+    > ;
+
+    verify(keys, hash);
+
+    expect(0 == hash(std::uint64_t(0)));
+    expect(0 == hash(std::uint64_t(44444)));
+  };
+
   "[hash] policies"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"A"sv, 1},
@@ -61,7 +162,7 @@ int main() {
     expect(0_i == hash("b"sv));
   };
 
-  "[hash] custom policies - pext"_test = [verify] {
+  "[hash] strings - custom policies - pext"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
@@ -83,7 +184,7 @@ int main() {
     expect(0_i == hash("b"sv));
   };
 
-  "[hash] custom policies - pext_split"_test = [verify] {
+  "[hash] strings - custom policies - pext_split"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
@@ -104,7 +205,7 @@ int main() {
     expect(0_i == hash("b"sv));
   };
 
-  "[hash] custom policies - pext_split<N>"_test = [verify] {
+  "[hash] strings - custom policies - pext_split<N>"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"AAPL    "sv, 1}, std::pair{"AMZN    "sv, 2},
         std::pair{"GOOGL   "sv, 3}, std::pair{"MSFT    "sv, 4},
@@ -121,7 +222,7 @@ int main() {
     verify(keys, hash);
   };
 
-  "[hash] custom policies - pext_split<len(N)-1>"_test = [verify] {
+  "[hash] strings - custom policies - pext_split<len(N)-1>"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"    AAPL"sv, 1}, std::pair{"    AMZN"sv, 2},
         std::pair{"   GOOGL"sv, 3}, std::pair{"    MSFT"sv, 4},
@@ -138,7 +239,7 @@ int main() {
     verify(keys, hash);
   };
 
-  "[hash] custom policies - swar32"_test = [verify] {
+  "[hash] strings - custom policies - swar32"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"A"sv, 1},
         std::pair{"B"sv, 2},
@@ -159,7 +260,7 @@ int main() {
     expect(0_i == hash("b"sv));
   };
 
-  "[hash] custom policies - swar64"_test = [verify] {
+  "[hash] strings - custom policies - swar64"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"foobar"sv, 1}, std::pair{"bar"sv, 2}, std::pair{"foo"sv, 3}};
 
@@ -177,7 +278,7 @@ int main() {
     expect(0_i == hash("baz"sv));
   };
 
-  "[hash] custom policies - swar64 / std::span"_test = [verify] {
+  "[hash] strings - custom policies - swar64 / std::span"_test = [verify] {
     static constexpr std::array keys{
         std::pair{"A       "sv, 1},
         std::pair{"B       "sv, 2},

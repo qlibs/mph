@@ -12,7 +12,7 @@
 
 namespace data::inline v_1_0_0 {
 // clang-format off
-inline constexpr std::array random_5_len_4{
+inline constexpr std::array random_strings_5_len_4{
   std::pair{std::array{'F', 'X', 'B', ' ',}, 1},
   std::pair{std::array{'C', 'O', 'D', 'I',}, 2},
   std::pair{std::array{'D', 'D', 'M', 'X',}, 3},
@@ -20,7 +20,7 @@ inline constexpr std::array random_5_len_4{
   std::pair{std::array{'S', 'P', 'C', 'B',}, 5},
 };
 
-inline constexpr std::array random_5_len_8{
+inline constexpr std::array random_strings_5_len_8{
   std::pair{std::array{'F', 'X', 'B', ' ', ' ', ' ', ' ', ' ',}, 1},
   std::pair{std::array{'C', 'O', 'D', 'I', ' ', ' ', ' ', ' ',}, 2},
   std::pair{std::array{'D', 'D', 'M', 'X', ' ', ' ', ' ', ' ',}, 3},
@@ -28,7 +28,7 @@ inline constexpr std::array random_5_len_8{
   std::pair{std::array{'S', 'P', 'C', 'B', ' ', ' ', ' ', ' ',}, 5},
 };
 
-inline constexpr std::array random_6_len_2_5{
+inline constexpr std::array random_strings_6_len_2_5{
   std::pair{std::string_view{"ftp"}, 1},
   std::pair{std::string_view{"file"}, 2},
   std::pair{std::string_view{"http"}, 3},
@@ -37,7 +37,7 @@ inline constexpr std::array random_6_len_2_5{
   std::pair{std::string_view{"wss"}, 6},
 };
 
-inline constexpr std::array random_100_len_8{
+inline constexpr std::array random_strings_100_len_8{
   std::pair{std::array{'I','I','I',' ',' ',' ',' ',' ',}, 1},
   std::pair{std::array{'A','G','M','-','C',' ',' ',' ',}, 2},
   std::pair{std::array{'L','O','P','E',' ',' ',' ',' ',}, 3},
@@ -140,7 +140,7 @@ inline constexpr std::array random_100_len_8{
   std::pair{std::array{'W','E','A','T',' ',' ',' ',' ',}, 100},
 };
 
-inline constexpr std::array random_100_len_1_8{
+inline constexpr std::array random_strings_100_len_1_8{
   std::pair{std::string_view{"apple"}, 1},
   std::pair{std::string_view{"Autumn"}, 2},
   std::pair{std::string_view{"Basket"}, 3},

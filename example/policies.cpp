@@ -8,18 +8,15 @@
 #include <array>
 #include <iostream>
 #include <mph>
-#include <string_view>
 
-constexpr auto policies =
-    []<const auto unknown, const auto keys>(auto &&data, auto &&...args) {
-  if (not std::size(data)) {
-    return unknown;
-  } else if constexpr (constexpr auto pext = mph::pext<2>{};
-                       requires {
-                         pext.template operator()<unknown, keys>(
-                             data, std::forward<decltype(args)>(args)...);
-                       }) {
-    return pext.template operator()<unknown, keys>(
+constexpr auto policies = []<const auto unknown, const auto keys, class T>(
+    const T data, auto &&...args) {
+  if constexpr (constexpr auto pext = mph::pext<2>{};
+                requires {
+                  pext.template operator()<unknown, keys, T>(
+                      data, std::forward<decltype(args)>(args)...);
+                }) {
+    return pext.template operator()<unknown, keys, T>(
         data, std::forward<decltype(args)>(args)...);
   } else {
     static_assert([](auto &&) { return false; }(keys),
@@ -28,21 +25,18 @@ constexpr auto policies =
 };
 
 int main() {
-  using std::literals::operator""sv;
-
   static constexpr std::array keys{
-      std::pair{"FBC"sv, 0},
-      std::pair{"SPY"sv, 1},
-      std::pair{"CDC"sv, 2},
+      std::pair{1, 0},
+      std::pair{100, 1},
+      std::pair{1000, 2},
   };
 
   constexpr auto hash = mph::hash<-1, [] { return keys; }, policies>;
 
-  std::cout << hash(""sv);     // -1
-  std::cout << hash("FO"sv);   // -1
-  std::cout << hash("FOO"sv);  // -1
+  std::cout << hash(0);   // -1
+  std::cout << hash(42);  // -1
 
-  std::cout << hash("FBC"sv);  // 0
-  std::cout << hash("SPY"sv);  // 1
-  std::cout << hash("CDC"sv);  // 2
+  std::cout << hash(1);     // 0
+  std::cout << hash(100);   // 1
+  std::cout << hash(1000);  // 2
 }
