@@ -210,11 +210,11 @@ template <class T, const auto endian = std::endian::native>
   return result;
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] auto pext(const std::uint32_t a, const std::uint32_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const std::uint32_t a, const std::uint32_t mask) {
   return _pext_u32(a, mask);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] auto pext(const std::uint64_t a, const std::uint64_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const std::uint64_t a, const std::uint64_t mask) {
   return _pext_u64(a, mask);
 }
 
