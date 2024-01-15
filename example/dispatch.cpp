@@ -14,12 +14,12 @@ using std::literals::operator""sv;
 
 class dispatch {
   static constexpr std::array keys{
-      std::pair{"APPL    "sv, 1},
-      std::pair{"GOOGL   "sv, 2},
-      std::pair{"MSFT    "sv, 3},
+      std::pair{mph::fixed_string{"APPL    "}, 1},
+      std::pair{mph::fixed_string{"GOOGL   "}, 2},
+      std::pair{mph::fixed_string{"MSFT    "}, 3},
   };
 
-  static constexpr auto hash = mph::hash<0, [] { return keys; }>;
+  static constexpr auto hash = mph::hash<0, keys>;
 
  public:
   constexpr ~dispatch() {

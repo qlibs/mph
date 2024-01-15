@@ -25,13 +25,13 @@ constexpr auto policies = []<const auto unknown, const auto keys, class T>(
 };
 
 int main() {
-  static constexpr std::array keys{
+  constexpr std::array keys{
       std::pair{1, 0},
       std::pair{100, 1},
       std::pair{1000, 2},
   };
 
-  constexpr auto hash = mph::hash<-1, [] { return keys; }, policies>;
+  constexpr auto hash = mph::hash<-1, keys, policies>;
 
   std::cout << hash(0);   // -1
   std::cout << hash(42);  // -1

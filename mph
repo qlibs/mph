@@ -44,6 +44,10 @@ export module mph;
 #endif
 #endif
 
+#if not defined(MPH_FIXED_STRING_MAX_SIZE)
+#define MPH_FIXED_STRING_MAX_SIZE 32u
+#endif
+
 #if not defined(MPH_ALLOW_UNSAFE_MEMCPY)
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // enabled by default, only required for string based keys
 #endif
@@ -60,15 +64,36 @@ export
  * Minimal perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
  */
 namespace mph::inline v_1_0_0 {
+template<class T, const std::size_t max_size> struct basic_fixed_string final {
+  template<const std::size_t Size>
+  constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) requires (Size <= max_size) : size_{Size-1} {
+    std::copy_n(input, Size-1, data_.data()); // no null termination
+  }
+
+  [[nodiscard]] constexpr auto data() const { return std::data(data_); }
+  [[nodiscard]] constexpr auto size() const { return size_; }
+  [[nodiscard]] constexpr auto operator[](const auto i) const { return data_[i]; }
+  [[nodiscard]] constexpr explicit(true) operator std::string_view() const { return std::string_view{std::data(data_), size()}; }
+
+  std::size_t size_{};
+  std::array<T, max_size> data_{};
+};
+
+using fixed_string = basic_fixed_string<char, MPH_FIXED_STRING_MAX_SIZE>;
+
+// clang-format off
+static_assert(0u == std::size(fixed_string{""}));
+static_assert(3u == std::size(fixed_string{"abc"}));
+static_assert('a' == fixed_string{"abc"}[0]);
+static_assert('b' == fixed_string{"abc"}[1]);
+static_assert('c' == fixed_string{"abc"}[2]);
+static_assert(std::string_view{"abc"} == static_cast<std::string_view>(fixed_string{"abc"}));
+// clang-format on
+
 namespace utility {
-/**
- * Customization point for custom entries (instead of std::pair)
- */
 [[nodiscard]] constexpr auto id(const auto& key) -> decltype(auto) {
   if constexpr (requires { key.first; }) {
     return key.first;
-  } else if constexpr (requires { key.id; }) {
-    return key.id;
   } else {
     return key;
   }
@@ -79,14 +104,9 @@ static_assert(42 == id(42));
 static_assert(std::string_view{"a"} == id(std::pair{std::string_view{"a"}, 42}));
 // clang-format on
 
-/**
- * Customization point for custom entries (instead of std::pair)
- */
 [[nodiscard]] constexpr auto value(const auto& key) -> decltype(auto) {
   if constexpr (requires { key.second; }) {
     return key.second;
-  } else if constexpr (requires { key.value; }) {
-    return key.value;
   } else {
     return key;
   }
@@ -101,7 +121,7 @@ static_assert(42 == value(std::pair{std::string_view{"a"}, 42}));
   if constexpr (requires { std::size(value); }) {
     return std::size(value);
   } else {
-    return sizeof(value);
+    return sizeof(std::remove_cvref_t<decltype(value)>);
   }
 }
 
@@ -272,7 +292,7 @@ static_assert(0b00000000'00000001'00000001 == find_mask<std::uint16_t>(std::arra
 // clang-format on
 
 template<const auto keys>
-  requires (std::size(keys()) > 0u)
+  requires (std::size(keys) > 0u)
 inline constexpr auto min_max_length = [](const auto& v) { // std::minmax_element is not constexpr
   auto min = utility::size(utility::id(v[0]));
   auto max = utility::size(utility::id(v[0]));
@@ -280,21 +300,21 @@ inline constexpr auto min_max_length = [](const auto& v) { // std::minmax_elemen
     std::tie(min, max) = std::pair{std::min(min, utility::size(utility::id(key))), std::max(max, utility::size(utility::id(key)))};
   }
   return std::pair{min, max};
-}(keys());
+}(keys);
 
 // clang-format off
-static_assert(std::pair{0ul, 0ul} == min_max_length<[] { return std::array{std::string_view{""}}; }>);
-static_assert(std::pair{1ul, 1ul} == min_max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
-static_assert(std::pair{1ul, 2ul} == min_max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}, std::string_view{"ab"}}; }>);
+static_assert(std::pair{0ul, 0ul} == min_max_length<std::array{fixed_string{""}}>);
+static_assert(std::pair{1ul, 1ul} == min_max_length<std::array{fixed_string{"a"}, fixed_string{"b"}}>);
+static_assert(std::pair{1ul, 2ul} == min_max_length<std::array{fixed_string{"a"}, fixed_string{"b"}, fixed_string{"ab"}}>);
 // clang-format on
 
 template<const auto keys>
-inline constexpr auto max_length = [](const auto& v) { return utility::size(utility::id(*std::max_element(std::cbegin(v), std::cend(v), [](const auto& lhs, const auto& rhs) { return utility::size(utility::id(lhs)) < utility::size(utility::id(rhs)); }))); }(keys());
+inline constexpr auto max_length = [](const auto& v) { return utility::size(utility::id(*std::max_element(std::cbegin(v), std::cend(v), [](const auto& lhs, const auto& rhs) { return utility::size(utility::id(lhs)) < utility::size(utility::id(rhs)); }))); }(keys);
 
 // clang-format off
-static_assert(0u == max_length<[] { return std::array{std::string_view{""}}; }>);
-static_assert(1u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
-static_assert(2u == max_length<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}, std::string_view{"ab"}}; }>);
+static_assert(0u == max_length<std::array{fixed_string{""}}>);
+static_assert(1u == max_length<std::array{fixed_string{"a"}, fixed_string{"b"}}>);
+static_assert(2u == max_length<std::array{fixed_string{"a"}, fixed_string{"b"}, fixed_string{"ab"}}>);
 // clang-format on
 
 template<const auto keys>
@@ -311,13 +331,13 @@ inline constexpr auto find_unique_char_max_dist = [](const auto &v) -> std::size
     }
     return std::distance(std::cbegin(counts), std::max_element(std::cbegin(counts), std::cend(counts)));
   }
-}(keys());
+}(keys);
 
 // clang-format off
-static_assert(0u == find_unique_char_max_dist<[] { return std::array{std::string_view{"a"}}; }>);
-static_assert(0u == find_unique_char_max_dist<[] { return std::array{std::string_view{"a"}, std::string_view{"b"}}; } >);
-static_assert(1u == find_unique_char_max_dist<[] { return std::array{std::string_view{"ab"}, std::string_view{"ac"}}; } >);
-static_assert(1u == find_unique_char_max_dist<[] { return std::array{std::string_view{"ba"}, std::string_view{"bb"}}; } >);
+static_assert(0u == find_unique_char_max_dist<std::array{fixed_string{"a"}}>);
+static_assert(0u == find_unique_char_max_dist<std::array{fixed_string{"a"}, fixed_string{"b"}}>);
+static_assert(1u == find_unique_char_max_dist<std::array{fixed_string{"ab"}, fixed_string{"ac"}}>);
+static_assert(1u == find_unique_char_max_dist<std::array{fixed_string{"ba"}, fixed_string{"bb"}}>);
 // clang-format on
 
 template<class T>
@@ -404,15 +424,15 @@ static_assert(not keys_bits_size_lt<std::array{0b11u, 0b11u}, 1u>);
 template <const auto keys, std::size_t size>
 concept all_keys_size_lt = [](const auto &v) {
   return std::all_of(std::cbegin(v), std::cend(v), [](const auto &key) { return utility::size(utility::id(key)) <= size; });
-}(keys());
+}(keys);
 
 // clang-format off
-static_assert(not all_keys_size_lt<[] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }, 0u>);
-static_assert(not all_keys_size_lt<[] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }, 1u>);
-static_assert(all_keys_size_lt<[] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }, 1u>);
-static_assert(all_keys_size_lt<[] { return std::array{std::array<char, 1>{}, std::array<char, 1>{}}; }, 2u>);
-static_assert(all_keys_size_lt<[] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }, 2u>);
-static_assert(all_keys_size_lt<[] { return std::array{std::array<char, 2>{}, std::array<char, 2>{}}; }, 3u>);
+static_assert(not all_keys_size_lt<std::array{std::array<char, 2>{}, std::array<char, 2>{}}, 0u>);
+static_assert(not all_keys_size_lt<std::array{std::array<char, 2>{}, std::array<char, 2>{}}, 1u>);
+static_assert(all_keys_size_lt<std::array{std::array<char, 1>{}, std::array<char, 1>{}}, 1u>);
+static_assert(all_keys_size_lt<std::array{std::array<char, 1>{}, std::array<char, 1>{}}, 2u>);
+static_assert(all_keys_size_lt<std::array{std::array<char, 2>{}, std::array<char, 2>{}}, 2u>);
+static_assert(all_keys_size_lt<std::array{std::array<char, 2>{}, std::array<char, 2>{}}, 3u>);
 // clang-format on
 }  // namespace concepts
 
@@ -435,9 +455,9 @@ class swar {
     requires concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     if constexpr (requires { std::size(data); }) {
-      return dispatch<unknown, keys>(utility::copy_required_bytes<T>(data), std::make_index_sequence<std::size(keys())>{});
+      return dispatch<unknown, keys>(utility::copy_required_bytes<T>(data), std::make_index_sequence<std::size(keys)>{});
     } else {
-      return dispatch<unknown, keys>(data, std::make_index_sequence<std::size(keys())>{});
+      return dispatch<unknown, keys>(data, std::make_index_sequence<std::size(keys)>{});
     }
   }
 
@@ -451,8 +471,8 @@ private:
         } else {
           return dispatch<unknown, keys>(value, std::index_sequence<Ns...>{});
         }
-      case utility::as<T>(utility::id(keys()[N])):
-        return utility::value(keys()[N]);
+      case utility::as<T>(utility::id(keys[N])):
+        return utility::value(keys[N]);
     }
   }
 };
@@ -466,7 +486,7 @@ class pext {
   template <class T, const auto keys, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_lookup() {
     alignas(MPH_CACHE_LINE_SIZE) std::array<T, size> lookup{};
-    for (const auto &key : keys()) {
+    for (const auto &key : keys) {
       lookup[utility::pext<T>(utility::as<T>(utility::id(key)), mask)] = utility::as<T>(utility::id(key));
     }
     return lookup;
@@ -474,17 +494,18 @@ class pext {
 
   template <class T, const auto unknown, const auto keys, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_index() {
-    alignas(MPH_CACHE_LINE_SIZE) std::array<decltype(unknown), size> index{};
+    using type = std::remove_cvref_t<decltype(unknown)>;
+    alignas(MPH_CACHE_LINE_SIZE) std::array<type, size> index{};
     std::fill(std::begin(index), std::end(index), unknown);
-    for (const auto &key : keys()) {
-      index[utility::pext<T>(utility::as<T>(utility::id(key)), mask)] = utility::value(key);
+    for (const auto &key : keys) {
+      index[utility::pext<T>(utility::as<T>(utility::id(key)), mask)] = static_cast<type>(utility::value(key));
     }
 
     return index;
   }
 
  public:
-  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(keys())>
+  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(keys)>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     constexpr auto required_size = [] {
@@ -519,10 +540,10 @@ template <const std::size_t max_bits_size, const auto N,
 class pext_split {
   template<class T, const auto keys>
   [[nodiscard]] static consteval auto make_masks() {
-    constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys()[0])[0])>>::max();
+    constexpr auto size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys[0])[0])>>::max();
 
-    std::vector<std::vector<std::remove_cvref_t<decltype(utility::id(keys()[0]))>>> v(size);
-    for (const auto &key : keys()) {
+    std::vector<std::vector<std::remove_cvref_t<decltype(utility::id(keys[0]))>>> v(size);
+    for (const auto &key : keys) {
       v[std::size_t(utility::id(key)[N])].push_back(utility::id(key));
     }
 
@@ -536,10 +557,10 @@ class pext_split {
 
   template <class T, const auto keys, const auto masks, const std::size_t size>
   [[nodiscard]] static consteval auto make_lookups() {
-    constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys()[0])[0])>>::max();
+    constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys[0])[0])>>::max();
 
-    std::array<std::vector<std::remove_cvref_t<decltype(utility::id(keys()[0]))>>, split_size> v{};
-    for (const auto &key : keys()) {
+    std::array<std::vector<std::remove_cvref_t<decltype(utility::id(keys[0]))>>, split_size> v{};
+    for (const auto &key : keys) {
       v[std::size_t(utility::id(key)[N])].push_back(utility::id(key));
     }
 
@@ -555,18 +576,19 @@ class pext_split {
 
   template <class T, const auto unknown, const auto keys, const auto masks, const std::size_t size>
   [[nodiscard]] static consteval auto make_indexes() {
-    constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys()[0])[0])>>::max();
+    constexpr auto split_size = std::numeric_limits<std::remove_cvref_t<decltype(utility::id(keys[0])[0])>>::max();
 
-    std::array<std::vector<std::remove_cvref_t<decltype(keys()[0])>>, split_size> iv{};
-    for (const auto &key : keys()) {
+    std::array<std::vector<std::remove_cvref_t<decltype(keys[0])>>, split_size> iv{};
+    for (const auto &key : keys) {
       iv[std::size_t(utility::id(key)[N])].push_back(key);
     }
 
-    alignas(MPH_CACHE_LINE_SIZE) std::array<std::array<decltype(unknown), size>, split_size> index{};
+    using type = std::remove_cvref_t<decltype(unknown)>;
+    alignas(MPH_CACHE_LINE_SIZE) std::array<std::array<type, size>, split_size> index{};
     for (auto i = 0u; i < split_size; ++i) {
       std::fill(std::begin(index[i]), std::end(index[i]), unknown);
       for (auto j = 0u; j < std::size(utility::id(iv[i])); ++j) {
-        index[i][utility::pext<T>(utility::as<T>(utility::id(iv[i][j])), masks[i])] = utility::value(iv[i][j]);
+        index[i][utility::pext<T>(utility::as<T>(utility::id(iv[i][j])), masks[i])] = static_cast<type>(utility::value(iv[i][j]));
       }
     }
 
@@ -601,11 +623,6 @@ class pext_split {
 };
 
 /**
- * Minimal perfect hashing based on compress, hash, and displace (CHD) - http://cmph.sourceforge.net/papers/esa09.pdf
- */
-struct chd;
-
-/**
  * Default policies
  *
  * @tparam unknown returned if there is no match
@@ -619,9 +636,9 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
   constexpr auto hash_cant_be_created = [](auto &&) { return false; }(keys);  // static_assert(false) support is C++23
 
   if constexpr (requires { std::size(data); }) {
-    if constexpr (constexpr auto min_max = utility::min_max_length<keys>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(keys()) < 4u) {
+    if constexpr (constexpr auto min_max = utility::min_max_length<keys>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys()) < 4u) {
+    } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
       return pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
@@ -631,9 +648,9 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
       static_assert(hash_cant_be_created, "string hash can't be created with given policies!");
     }
   } else if constexpr (std::integral<T>) {
-    if constexpr (sizeof(T) <= sizeof(std::uint32_t) and std::size(keys()) < 4u) {
+    if constexpr (sizeof(T) <= sizeof(std::uint32_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (sizeof(T) <= sizeof(std::uint64_t) and std::size(keys()) < 4u) {
+    } else if constexpr (sizeof(T) <= sizeof(std::uint64_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys, T>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
       return pext.template operator()<unknown, keys, T>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
@@ -656,11 +673,25 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
  * @return result of executing policies
  */
 template<const auto unknown, const auto keys, const auto policies = mph::policies>
-    requires (std::size(keys()) > 1u) and std::same_as<decltype(utility::value(keys()[0])), decltype(unknown)>
+    requires (std::size(keys) > 1u)
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&... args) noexcept(true) { // attributes on lambdas is C++23
   return utility::overload{
-    [&]<class T> requires std::integral<T> and std::same_as<T, decltype(utility::id(keys()[0]))> (const T value) {
+    [&]<class T> requires std::integral<T> and std::same_as<T, decltype(utility::id(keys[0]))> (const T value) {
       return policies.template operator()<unknown, keys>(value, std::forward<decltype(args)>(args)...);
+    },
+    [&]<class T, const std::size_t Size> (const T (&v)[Size]) {
+      if (constexpr auto min_max = utility::min_max_length<keys>; Size-1 < min_max.first or Size-1 > min_max.second) {
+        return unknown;
+      }
+      assert(Size-1 > 0u);
+      return policies.template operator()<unknown, keys>(std::span<const T, Size-1>{v, v + Size-1}, std::forward<decltype(args)>(args)...);
+    },
+    [&]<class T, const std::size_t MaxSize> (const basic_fixed_string<T, MaxSize> fs) {
+      if (constexpr auto min_max = utility::min_max_length<keys>; std::size(fs) < min_max.first or std::size(fs) > min_max.second) {
+        return unknown;
+      }
+      assert(std::size(fs) > 0u);
+      return policies.template operator()<unknown, keys>(fs, std::forward<decltype(args)>(args)...);
     },
     [&]<class T, class... Ts> (const std::basic_string_view<T, Ts...> sv) {
       if (constexpr auto min_max = utility::min_max_length<keys>; std::size(sv) < min_max.first or std::size(sv) > min_max.second) {
@@ -689,6 +720,47 @@ constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&... args) noexce
     },
   }(std::forward<decltype(data)>(data));
 };
+
+namespace detail {
+template <class T1, class T2>
+struct pair {
+    constexpr explicit(false) pair(const T1 t1, const T2 t2) : first{t1}, second{t2} {}
+    T1 first{};
+    T2 second{};
+};
+
+// clang-format off
+static_assert(int(4) == pair{int(4), short(2)}.first);
+static_assert(short(2) == pair{int(4), short(2)}.second);
+// clang-format on
+
+template <class T2>
+struct pair<const char*, T2> {
+    constexpr explicit(false) pair(const fixed_string t1, const T2 t2) : first{t1}, second{t2} {}
+    fixed_string first;
+    T2 second;
+};
+
+// clang-format off
+static_assert(std::string_view{"foo"} == std::string_view{pair{"foo", 42}.first});
+// clang-format on
+
+template<class T>
+struct unknown {
+  T otherwise{};
+};
+
+template<const auto unknown, const auto keys>
+struct hash_map final {
+  [[nodiscard]] constexpr auto operator[](auto&&... args) const {
+    return mph::hash<unknown, keys>(std::forward<decltype(args)>(args)...);
+  }
+};
+} // namespace detail
+
+template <const detail::unknown unknown, const detail::pair... values>
+inline constexpr auto hash_map = detail::hash_map<unknown.otherwise, std::array{values...}>{};
+
 }  // namespace mph::inline v_1_0_0
 #endif  // MPH
 #endif  //  __cplusplus

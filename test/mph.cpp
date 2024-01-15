@@ -21,37 +21,36 @@ int main() {
 
   "[hash] enum"_test = [] {
     enum class color {
-      unknown,
       red,
       green,
       blue,
     };
 
-    static constexpr auto colors = std::array{
-        std::pair{"red"sv, color::red},
-        std::pair{"green"sv, color::green},
-        std::pair{"blue"sv, color::blue},
+    constexpr auto colors = std::array{
+        std::pair{mph::fixed_string{"red"}, color::red},
+        std::pair{mph::fixed_string{"green"}, color::green},
+        std::pair{mph::fixed_string{"blue"}, color::blue},
     };
 
-    constexpr auto hash = mph::hash<color::unknown, [] { return colors; }>;
+    constexpr auto hash = mph::hash<color{-1}, colors>;
 
-    expect(color::red == hash("red"sv));
-    expect(color::green == hash("green"sv));
-    expect(color::blue == hash("blue"sv));
-    expect(color::unknown == hash(""sv));
-    expect(color::unknown == hash("D"sv));
-    expect(color::unknown == hash("a"sv));
-    expect(color::unknown == hash("b"sv));
+    expect(color::red == hash("red"));
+    expect(color::green == hash("green"));
+    expect(color::blue == hash("blue"));
+    expect(color{-1} == hash(""));
+    expect(color{-1} == hash("D"));
+    expect(color{-1} == hash("a"));
+    expect(color{-1} == hash("b"));
   };
 
   "[hash] integral"_test = [verify] {
-    static constexpr auto keys = std::array{
+    constexpr auto keys = std::array{
         std::pair{23423ul, 1},
         std::pair{432432ul, 2},
         std::pair{31232ul, 3},
     };
 
-    constexpr auto hash = mph::hash<0, [] { return keys; }>;
+    constexpr auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -60,14 +59,31 @@ int main() {
     expect(0 == hash(42ul));
   };
 
+  "[hash] policies"_test = [verify] {
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A"}, 1},
+        std::pair{mph::fixed_string{"B"}, 2},
+        std::pair{mph::fixed_string{"C"}, 3},
+    };
+
+    constexpr auto hash = mph::hash<0, keys, mph::policies>;
+
+    verify(keys, hash);
+
+    expect(0_i == hash(""sv));
+    expect(0_i == hash("D"sv));
+    expect(0_i == hash("a"sv));
+    expect(0_i == hash("b"sv));
+  };
+
   "[hash] integral - custom policies - pext"_test = [verify] {
-    static constexpr auto keys = std::array{
+    constexpr auto keys = std::array{
         std::pair{23423ul, 1},
         std::pair{432432ul, 2},
         std::pair{31232ul, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext<5>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -82,13 +98,13 @@ int main() {
   };
 
   "[hash] integral - custom policies - swar<std::uint32_t>"_test = [verify] {
-    static constexpr auto keys = std::array{
+    constexpr auto keys = std::array{
         std::pair{3, 1},
         std::pair{4, 2},
         std::pair{7, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -104,13 +120,13 @@ int main() {
   };
 
   "[hash] integral - custom policies - swar32"_test = [verify] {
-    static constexpr auto keys = std::array{
+    constexpr auto keys = std::array{
         std::pair{3, 1},
         std::pair{4, 2},
         std::pair{7, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -126,13 +142,13 @@ int main() {
   };
 
   "[hash] integral - custom policies - swar64"_test = [verify] {
-    static constexpr auto keys = std::array{
+    constexpr auto keys = std::array{
         std::pair{std::uint64_t(11111), 1},
         std::pair{std::uint64_t(22222), 2},
         std::pair{std::uint64_t(33333), 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -142,34 +158,19 @@ int main() {
     verify(keys, hash);
 
     expect(0 == hash(std::uint64_t(0)));
-    expect(0 == hash(std::uint64_t(44444)));
-  };
-
-  "[hash] policies"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A"sv, 1},
-        std::pair{"B"sv, 2},
-        std::pair{"C"sv, 3},
-    };
-
-    constexpr auto hash = mph::hash<0, [] { return keys; }, mph::policies>;
-
-    verify(keys, hash);
-
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("D"sv));
-    expect(0_i == hash("a"sv));
-    expect(0_i == hash("b"sv));
+    expect(0 == hash(std::uint64_t(2)));
+    expect(0 == hash(std::uint64_t(5)));
+    expect(0 == hash(std::uint64_t(6)));
   };
 
   "[hash] strings - custom policies - pext"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A"sv, 1},
-        std::pair{"B"sv, 2},
-        std::pair{"C"sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A"}, 1},
+        std::pair{mph::fixed_string{"B"}, 2},
+        std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext<5>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -185,13 +186,13 @@ int main() {
   };
 
   "[hash] strings - custom policies - pext_split"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A"sv, 1},
-        std::pair{"B"sv, 2},
-        std::pair{"C"sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A"}, 1},
+        std::pair{mph::fixed_string{"B"}, 2},
+        std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<5, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -206,13 +207,15 @@ int main() {
   };
 
   "[hash] strings - custom policies - pext_split<N>"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"AAPL    "sv, 1}, std::pair{"AMZN    "sv, 2},
-        std::pair{"GOOGL   "sv, 3}, std::pair{"MSFT    "sv, 4},
-        std::pair{"NVDA    "sv, 5},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"AAPL    "}, 1},
+        std::pair{mph::fixed_string{"AMZN    "}, 2},
+        std::pair{mph::fixed_string{"GOOGL   "}, 3},
+        std::pair{mph::fixed_string{"MSFT    "}, 4},
+        std::pair{mph::fixed_string{"NVDA    "}, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -223,13 +226,15 @@ int main() {
   };
 
   "[hash] strings - custom policies - pext_split<len(N)-1>"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"    AAPL"sv, 1}, std::pair{"    AMZN"sv, 2},
-        std::pair{"   GOOGL"sv, 3}, std::pair{"    MSFT"sv, 4},
-        std::pair{"    NVDA"sv, 5},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"    AAPL"}, 1},
+        std::pair{mph::fixed_string{"    AMZN"}, 2},
+        std::pair{mph::fixed_string{"   GOOGL"}, 3},
+        std::pair{mph::fixed_string{"    MSFT"}, 4},
+        std::pair{mph::fixed_string{"    NVDA"}, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 7u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -240,13 +245,13 @@ int main() {
   };
 
   "[hash] strings - custom policies - swar32"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A"sv, 1},
-        std::pair{"B"sv, 2},
-        std::pair{"C"sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A"}, 1},
+        std::pair{mph::fixed_string{"B"}, 2},
+        std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -261,10 +266,11 @@ int main() {
   };
 
   "[hash] strings - custom policies - swar64"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"foobar"sv, 1}, std::pair{"bar"sv, 2}, std::pair{"foo"sv, 3}};
+    constexpr std::array keys{std::pair{mph::fixed_string{"foobar"}, 1},
+                              std::pair{mph::fixed_string{"bar"}, 2},
+                              std::pair{mph::fixed_string{"foo"}, 3}};
 
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -279,14 +285,14 @@ int main() {
   };
 
   "[hash] strings - custom policies - swar64 / std::span"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A       "sv, 1},
-        std::pair{"B       "sv, 2},
-        std::pair{"C       "sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A       "}, 1},
+        std::pair{mph::fixed_string{"B       "}, 2},
+        std::pair{mph::fixed_string{"C       "}, 3},
     };
 
     constexpr auto size = std::size(keys[0].first);
-    constexpr auto hash = mph::hash < 0, [] { return keys; },
+    constexpr auto hash = mph::hash < 0, keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -308,15 +314,15 @@ int main() {
   };
 
   "[hash] std::span data"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"A       "sv, 1},
-        std::pair{"B       "sv, 2},
-        std::pair{"C       "sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"A       "}, 1},
+        std::pair{mph::fixed_string{"B       "}, 2},
+        std::pair{mph::fixed_string{"C       "}, 3},
     };
 
     constexpr auto size = std::size(keys[0].first);
 
-    auto hash = mph::hash<0, [] { return keys; }>;
+    auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -333,13 +339,13 @@ int main() {
   };
 
   "[hash] std::span variable length"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{std::span<const char, 8>("enter  "), 1},
-        std::pair{std::span<const char, 8>("delete "), 2},
-        std::pair{std::span<const char, 8>("esc    "), 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string("enter  "), 1},
+        std::pair{mph::fixed_string("delete "), 2},
+        std::pair{mph::fixed_string("esc    "), 3},
     };
 
-    const auto hash = mph::hash<0, [] { return keys; }>;
+    const auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -353,13 +359,13 @@ int main() {
   };
 
   "[hash] std::array"_test = [verify] {
-    static constexpr std::array keys{
+    constexpr std::array keys{
         std::pair{std::array{'A', 'a'}, 1},
         std::pair{std::array{'B', 'b'}, 2},
         std::pair{std::array{'C', 'c'}, 3},
     };
 
-    const auto hash = mph::hash<0, [] { return keys; }>;
+    const auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -372,13 +378,13 @@ int main() {
   };
 
   "[hash] std::string_view"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{"AA "sv, 1},
-        std::pair{"BB "sv, 2},
-        std::pair{"CC "sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{"AA "}, 1},
+        std::pair{mph::fixed_string{"BB "}, 2},
+        std::pair{mph::fixed_string{"CC "}, 3},
     };
 
-    auto hash = mph::hash<0, [] { return keys; }>;
+    auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -392,13 +398,13 @@ int main() {
   };
 
   "[hash] fail case - variable length"_test = [verify] {
-    static constexpr std::array keys{
-        std::pair{" AA "sv, 1},
-        std::pair{" AB "sv, 2},
-        std::pair{" AC "sv, 3},
+    constexpr std::array keys{
+        std::pair{mph::fixed_string{" AA "}, 1},
+        std::pair{mph::fixed_string{" AB "}, 2},
+        std::pair{mph::fixed_string{" AC "}, 3},
     };
 
-    auto hash = mph::hash<0, [] { return keys; }>;
+    auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -412,14 +418,14 @@ int main() {
   };
 
   "[hash] variable length"_test = [verify] {
-    static constexpr std::array<std::pair<std::string_view, int>, 6> keys{
+    constexpr std::array<std::pair<mph::fixed_string, int>, 6> keys{
         {{"ftp", 1},
          {"file", 2},
          {"http", 3},
          {"https", 4},
          {"ws", 5},
          {"wss", 6}}};
-    static constexpr auto hash = mph::hash<0, [] { return keys; }>;
+    constexpr auto hash = mph::hash<0, keys>;
 
     verify(keys, hash);
 
@@ -431,61 +437,110 @@ int main() {
   };
 
   "[hash] multiple policies trigger"_test = [verify] {
-    static constexpr std::array<std::pair<std::string_view, std::uint8_t>, 100>
-        keys{
-            std::pair{"III     "sv, 1},  std::pair{"AGM-C   "sv, 2},
-            std::pair{"LOPE    "sv, 3},  std::pair{"FEMS    "sv, 4},
-            std::pair{"IEA     "sv, 5},  std::pair{"VYMI    "sv, 6},
-            std::pair{"BHK     "sv, 7},  std::pair{"SIEB    "sv, 8},
-            std::pair{"DGBP    "sv, 9},  std::pair{"INFN    "sv, 10},
-            std::pair{"USRT    "sv, 11}, std::pair{"BCOR    "sv, 12},
-            std::pair{"TWM     "sv, 13}, std::pair{"BVSN    "sv, 14},
-            std::pair{"STBA    "sv, 15}, std::pair{"GPK     "sv, 16},
-            std::pair{"LVHD    "sv, 17}, std::pair{"FTEK    "sv, 18},
-            std::pair{"GLBS    "sv, 19}, std::pair{"CUBB    "sv, 20},
-            std::pair{"LRCX    "sv, 21}, std::pair{"HTGM    "sv, 22},
-            std::pair{"RYN     "sv, 23}, std::pair{"IPG     "sv, 24},
-            std::pair{"PNNTG   "sv, 25}, std::pair{"ZIG     "sv, 26},
-            std::pair{"IVR-A   "sv, 27}, std::pair{"INVA    "sv, 28},
-            std::pair{"MNE     "sv, 29}, std::pair{"KRA     "sv, 30},
-            std::pair{"BRMK    "sv, 31}, std::pair{"ARKG    "sv, 32},
-            std::pair{"FFR     "sv, 33}, std::pair{"QTRX    "sv, 34},
-            std::pair{"XTN     "sv, 35}, std::pair{"BAC-A   "sv, 36},
-            std::pair{"CYBE    "sv, 37}, std::pair{"ETJ     "sv, 38},
-            std::pair{"JHCS    "sv, 39}, std::pair{"RBCAA   "sv, 40},
-            std::pair{"GDS     "sv, 41}, std::pair{"WTID    "sv, 42},
-            std::pair{"TCO     "sv, 43}, std::pair{"BWA     "sv, 44},
-            std::pair{"MIE     "sv, 45}, std::pair{"GENY    "sv, 46},
-            std::pair{"TDOC    "sv, 47}, std::pair{"MCRO    "sv, 48},
-            std::pair{"QFIN    "sv, 49}, std::pair{"NBTB    "sv, 50},
-            std::pair{"PWC     "sv, 51}, std::pair{"FQAL    "sv, 52},
-            std::pair{"NJAN    "sv, 53}, std::pair{"IWB     "sv, 54},
-            std::pair{"GXGXW   "sv, 55}, std::pair{"EDUC    "sv, 56},
-            std::pair{"RETL    "sv, 57}, std::pair{"VIACA   "sv, 58},
-            std::pair{"KLDO    "sv, 59}, std::pair{"NEE-I   "sv, 60},
-            std::pair{"FBC     "sv, 61}, std::pair{"JW.A    "sv, 62},
-            std::pair{"BSMX    "sv, 63}, std::pair{"FMNB    "sv, 64},
-            std::pair{"EXR     "sv, 65}, std::pair{"TAC     "sv, 66},
-            std::pair{"FDL     "sv, 67}, std::pair{"SWIR    "sv, 68},
-            std::pair{"CLWT    "sv, 69}, std::pair{"LMHB    "sv, 70},
-            std::pair{"IRTC    "sv, 71}, std::pair{"CDMO    "sv, 72},
-            std::pair{"HMLP-A  "sv, 73}, std::pair{"LVUS    "sv, 74},
-            std::pair{"UMRX    "sv, 75}, std::pair{"GJH     "sv, 76},
-            std::pair{"FRME    "sv, 77}, std::pair{"CEIX    "sv, 78},
-            std::pair{"IHD     "sv, 79}, std::pair{"GHSI    "sv, 80},
-            std::pair{"DCP-B   "sv, 81}, std::pair{"SB      "sv, 82},
-            std::pair{"DSE     "sv, 83}, std::pair{"CPRT    "sv, 84},
-            std::pair{"NRZ     "sv, 85}, std::pair{"VLYPO   "sv, 86},
-            std::pair{"TDAC    "sv, 87}, std::pair{"ZXZZT   "sv, 88},
-            std::pair{"IWX     "sv, 89}, std::pair{"NCSM    "sv, 90},
-            std::pair{"WIRE    "sv, 91}, std::pair{"SFST    "sv, 92},
-            std::pair{"EWD     "sv, 93}, std::pair{"DEACW   "sv, 94},
-            std::pair{"TRPX    "sv, 95}, std::pair{"UCTT    "sv, 96},
-            std::pair{"ZAZZT   "sv, 97}, std::pair{"CYD     "sv, 98},
-            std::pair{"NURE    "sv, 99}, std::pair{"WEAT    "sv, 100},
-        };
+    constexpr std::array<std::pair<mph::fixed_string, std::uint8_t>, 100> keys{
+        std::pair{mph::fixed_string{"III     "}, 1},
+        std::pair{mph::fixed_string{"AGM-C   "}, 2},
+        std::pair{mph::fixed_string{"LOPE    "}, 3},
+        std::pair{mph::fixed_string{"FEMS    "}, 4},
+        std::pair{mph::fixed_string{"IEA     "}, 5},
+        std::pair{mph::fixed_string{"VYMI    "}, 6},
+        std::pair{mph::fixed_string{"BHK     "}, 7},
+        std::pair{mph::fixed_string{"SIEB    "}, 8},
+        std::pair{mph::fixed_string{"DGBP    "}, 9},
+        std::pair{mph::fixed_string{"INFN    "}, 10},
+        std::pair{mph::fixed_string{"USRT    "}, 11},
+        std::pair{mph::fixed_string{"BCOR    "}, 12},
+        std::pair{mph::fixed_string{"TWM     "}, 13},
+        std::pair{mph::fixed_string{"BVSN    "}, 14},
+        std::pair{mph::fixed_string{"STBA    "}, 15},
+        std::pair{mph::fixed_string{"GPK     "}, 16},
+        std::pair{mph::fixed_string{"LVHD    "}, 17},
+        std::pair{mph::fixed_string{"FTEK    "}, 18},
+        std::pair{mph::fixed_string{"GLBS    "}, 19},
+        std::pair{mph::fixed_string{"CUBB    "}, 20},
+        std::pair{mph::fixed_string{"LRCX    "}, 21},
+        std::pair{mph::fixed_string{"HTGM    "}, 22},
+        std::pair{mph::fixed_string{"RYN     "}, 23},
+        std::pair{mph::fixed_string{"IPG     "}, 24},
+        std::pair{mph::fixed_string{"PNNTG   "}, 25},
+        std::pair{mph::fixed_string{"ZIG     "}, 26},
+        std::pair{mph::fixed_string{"IVR-A   "}, 27},
+        std::pair{mph::fixed_string{"INVA    "}, 28},
+        std::pair{mph::fixed_string{"MNE     "}, 29},
+        std::pair{mph::fixed_string{"KRA     "}, 30},
+        std::pair{mph::fixed_string{"BRMK    "}, 31},
+        std::pair{mph::fixed_string{"ARKG    "}, 32},
+        std::pair{mph::fixed_string{"FFR     "}, 33},
+        std::pair{mph::fixed_string{"QTRX    "}, 34},
+        std::pair{mph::fixed_string{"XTN     "}, 35},
+        std::pair{mph::fixed_string{"BAC-A   "}, 36},
+        std::pair{mph::fixed_string{"CYBE    "}, 37},
+        std::pair{mph::fixed_string{"ETJ     "}, 38},
+        std::pair{mph::fixed_string{"JHCS    "}, 39},
+        std::pair{mph::fixed_string{"RBCAA   "}, 40},
+        std::pair{mph::fixed_string{"GDS     "}, 41},
+        std::pair{mph::fixed_string{"WTID    "}, 42},
+        std::pair{mph::fixed_string{"TCO     "}, 43},
+        std::pair{mph::fixed_string{"BWA     "}, 44},
+        std::pair{mph::fixed_string{"MIE     "}, 45},
+        std::pair{mph::fixed_string{"GENY    "}, 46},
+        std::pair{mph::fixed_string{"TDOC    "}, 47},
+        std::pair{mph::fixed_string{"MCRO    "}, 48},
+        std::pair{mph::fixed_string{"QFIN    "}, 49},
+        std::pair{mph::fixed_string{"NBTB    "}, 50},
+        std::pair{mph::fixed_string{"PWC     "}, 51},
+        std::pair{mph::fixed_string{"FQAL    "}, 52},
+        std::pair{mph::fixed_string{"NJAN    "}, 53},
+        std::pair{mph::fixed_string{"IWB     "}, 54},
+        std::pair{mph::fixed_string{"GXGXW   "}, 55},
+        std::pair{mph::fixed_string{"EDUC    "}, 56},
+        std::pair{mph::fixed_string{"RETL    "}, 57},
+        std::pair{mph::fixed_string{"VIACA   "}, 58},
+        std::pair{mph::fixed_string{"KLDO    "}, 59},
+        std::pair{mph::fixed_string{"NEE-I   "}, 60},
+        std::pair{mph::fixed_string{"FBC     "}, 61},
+        std::pair{mph::fixed_string{"JW.A    "}, 62},
+        std::pair{mph::fixed_string{"BSMX    "}, 63},
+        std::pair{mph::fixed_string{"FMNB    "}, 64},
+        std::pair{mph::fixed_string{"EXR     "}, 65},
+        std::pair{mph::fixed_string{"TAC     "}, 66},
+        std::pair{mph::fixed_string{"FDL     "}, 67},
+        std::pair{mph::fixed_string{"SWIR    "}, 68},
+        std::pair{mph::fixed_string{"CLWT    "}, 69},
+        std::pair{mph::fixed_string{"LMHB    "}, 70},
+        std::pair{mph::fixed_string{"IRTC    "}, 71},
+        std::pair{mph::fixed_string{"CDMO    "}, 72},
+        std::pair{mph::fixed_string{"HMLP-A  "}, 73},
+        std::pair{mph::fixed_string{"LVUS    "}, 74},
+        std::pair{mph::fixed_string{"UMRX    "}, 75},
+        std::pair{mph::fixed_string{"GJH     "}, 76},
+        std::pair{mph::fixed_string{"FRME    "}, 77},
+        std::pair{mph::fixed_string{"CEIX    "}, 78},
+        std::pair{mph::fixed_string{"IHD     "}, 79},
+        std::pair{mph::fixed_string{"GHSI    "}, 80},
+        std::pair{mph::fixed_string{"DCP-B   "}, 81},
+        std::pair{mph::fixed_string{"SB      "}, 82},
+        std::pair{mph::fixed_string{"DSE     "}, 83},
+        std::pair{mph::fixed_string{"CPRT    "}, 84},
+        std::pair{mph::fixed_string{"NRZ     "}, 85},
+        std::pair{mph::fixed_string{"VLYPO   "}, 86},
+        std::pair{mph::fixed_string{"TDAC    "}, 87},
+        std::pair{mph::fixed_string{"ZXZZT   "}, 88},
+        std::pair{mph::fixed_string{"IWX     "}, 89},
+        std::pair{mph::fixed_string{"NCSM    "}, 90},
+        std::pair{mph::fixed_string{"WIRE    "}, 91},
+        std::pair{mph::fixed_string{"SFST    "}, 92},
+        std::pair{mph::fixed_string{"EWD     "}, 93},
+        std::pair{mph::fixed_string{"DEACW   "}, 94},
+        std::pair{mph::fixed_string{"TRPX    "}, 95},
+        std::pair{mph::fixed_string{"UCTT    "}, 96},
+        std::pair{mph::fixed_string{"ZAZZT   "}, 97},
+        std::pair{mph::fixed_string{"CYD     "}, 98},
+        std::pair{mph::fixed_string{"NURE    "}, 99},
+        std::pair{mph::fixed_string{"WEAT    "}, 100},
+    };
 
-    const auto hash = mph::hash<std::uint8_t{}, [] { return keys; }>;
+    const auto hash = mph::hash<std::uint8_t{}, keys>;
 
     verify(keys, hash);
 
@@ -496,4 +551,20 @@ int main() {
     expect(0_u == hash("    III "sv));
     expect(0_u == hash("     III"sv));
   };
+
+#if (defined(__GNUC__) and not defined(__clang__)) or \
+    (defined(__clang__) and (__clang_major__ >= 18))
+  "hash_map"_test = [verify] {
+    auto keys = mph::hash_map<{.otherwise = 0}, {"a", 1}, {"b", 2}, {"c", 3}>;
+
+    expect(1_i == keys["a"sv]);
+    expect(2_i == keys["b"]);
+    expect(3_i == keys["c"]);
+
+    expect(0_i == keys[""sv]);
+    expect(0_i == keys["foo"sv]);
+    expect(0_i == keys["bar"sv]);
+    expect(0_i == keys["d"sv]);
+  };
+#endif
 }

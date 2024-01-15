@@ -44,20 +44,16 @@ cmake --build build
 ### Hello world (https://godbolt.org/z/rqYz781ev)
 
 ```cpp
-enum class color {
-  unknown = 0,
-  red     = 1,
-  green   = 2,
-  blue    = 3,
-};
+enum class color { red, green, blue };
 
-constexpr auto colors = std::array{
-  std::pair{"red"sv,   color::red},
-  std::pair{"green"sv, color::green},
-  std::pair{"blue"sv,  color::blue},
-};
+auto colors = mph::hash_map<
+  {.otherwise = color{-1}},
+  {"red", color::red},
+  {"green", color::green},
+  {"blue", color::blue}
+>;
 
-std::print("{}", mph::hash<color::unknown, [] { return colors; }>("green"sv)); // prints 2
+std::print("{}", colors["green"]); // prints 1
 ```
 
 ---
@@ -65,32 +61,16 @@ std::print("{}", mph::hash<color::unknown, [] { return colors; }>("green"sv)); /
 ### Performance
 
 ```cpp
-int main([[maybe_unused]] int argc, const char** argv) {
-  using std::literals::operator""sv;
-
-  constexpr std::array keys{
-    std::pair{"AAPL    "sv, 1},
-    std::pair{"AMZN    "sv, 2},
-    std::pair{"GOOGL   "sv, 3},
-    std::pair{"MSFT    "sv, 4},
-    std::pair{"NVDA    "sv, 5},
-  };
-
-  constexpr auto not_found = 0;
-  constexpr auto max_bits_size = 7;
-
-  constexpr auto hash = mph::hash<
-    not_found,
-    [] { return keys; },
-    []<const auto unknown, const auto keys>(auto&&... args) {
-      constexpr auto pext = mph::pext<max_bits_size, mph::branchless>{};
-      return pext.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
-    }
+int main(int argc, const char** argv) {
+  auto symbols = mph::hash_map<
+    {.otherwise = 0},
+    {"AAPL    ",  1},
+    {"AMZN    ",  2},
+    {"GOOGL   ",  3},
+    {"MSFT    ",  4},
+    {"NVDA    ",  5}
   >;
-
-  constexpr auto len = 8u;
-  assert(argc > 1);
-  return hash(std::span<const char, len>(argv[1], argv[1] + len));
+  return symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
 }
 ```
 
@@ -220,6 +200,13 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 template<const auto unknown, const auto keys, const auto policies = mph::policies>
   requires (std::size(keys()) > 0u) and std::same_as<decltype(utility::value(keys()[0])), decltype(unknown)>
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
+
+/**
+ * @tparam unknown returned if there is no match
+ * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
+ */
+template <const auto unknown, const auto... values>
+inline constexpr auto hash_map = detail::hash_map<unknown, std::array{values...}>{};
 ```
 
 > Policies
@@ -310,6 +297,7 @@ class pext_split {
 ```cpp
 #define MPH 1'0'0 // Current library version (SemVer)
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
+#define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
 ```
@@ -335,6 +323,10 @@ class pext_split {
     > Yes, `mph` can generate minimal perfect hash for either strings or integral types.
       Note, that not all policies support both types.
       There is also different path for policies discovery in the default policies.
+
+- How can I return an optional?
+
+    > example/optional.cpp
 
 - Can I do better than `mph` (performance wise)?
 
@@ -366,10 +358,6 @@ class pext_split {
 
     > Experiment and measure in the production like environment with policies (See #api).
       For fastest performance consider aligning the input data and passing it with compilie-time size via std::span, std::array.
-
-- Why key/value pairs are passed by lambda (`[]{ return keys; }`)?
-
-    > C++ only allows to pass an array of variable and/or functions via NTTP (https://godbolt.org/z/4xeKKoM9Y).
 
 - I'm getting compilation error with longer list (>256) of keys?
 

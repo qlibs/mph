@@ -5,27 +5,29 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
-#include <array>
 #include <iostream>
 #include <mph>
-#include <string_view>
 
+#if (defined(__GNUC__) and not defined(__clang__)) or \
+    (defined(__clang__) and (__clang_major__ >= 18))
 int main() {
-  using std::literals::operator""sv;
+  enum class color { red, green, blue };
 
-  enum class color {
-    unknown = 0,
-    red = 1,
-    green = 2,
-    blue = 3,
-  };
+  auto colors = mph::hash_map<{.otherwise = color{-1}}, {"red", color::red},
+                              {"green", color::green}, {"blue", color::blue}>;
 
-  static constexpr auto colors = std::array{
-      std::pair{"red"sv, color::red},
-      std::pair{"green"sv, color::green},
-      std::pair{"blue"sv, color::blue},
-  };
-
-  std::cout << int(
-      mph::hash<color::unknown, [] { return colors; }>("green"sv));  // prints 2
+  std::cout << int(colors["green"]);  // prints 1
 }
+#else
+int main() {
+  enum class color { red, green, blue };
+
+  constexpr auto colors = std::array{
+      std::pair{mph::fixed_string{"red"}, color::red},
+      std::pair{mph::fixed_string{"green"}, color::green},
+      std::pair{mph::fixed_string{"blue"}, color::blue},
+  };
+
+  std::cout << int(mph::hash<color{-1}, colors>("green"));  // prints 1
+}
+#endif
