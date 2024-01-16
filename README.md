@@ -46,7 +46,7 @@ cmake --build build
 ```cpp
 enum class color { red, green, blue };
 
-auto colors = mph::hash_map<
+auto colors = mph::map<
   {"red",   color::red},
   {"green", color::green},
   {"blue",  color::blue}
@@ -205,11 +205,10 @@ template<const auto unknown, const auto keys, const auto policies = mph::policie
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 
 /**
- * @tparam unknown returned if there is no match
  * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
  */
-template <const auto unknown, const auto... values>
-inline constexpr auto hash_map = detail::hash_map<unknown, std::array{values...}>{};
+template <const auto... values>
+inline constexpr auto map = detail::map<std::array{values...}>{};
 ```
 
 > Policies
