@@ -56,6 +56,10 @@ export module mph;
 #define MPH_PAGE_SIZE 4096u // only used with MPH_ALLOW_UNSAFE_MEMCPY
 #endif
 
+#if not defined(MPH_DEFAULT_UNKNOWN)
+#define MPH_DEFAULT_UNKNOWN -1
+#endif
+
 #if defined(__cpp_modules)
 export
 #endif
@@ -745,21 +749,44 @@ struct pair<const char*, T2> {
 static_assert(std::string_view{"foo"} == std::string_view{pair{"foo", 42}.first});
 // clang-format on
 
-template<class T>
-struct unknown {
-  T otherwise{};
-};
+template<const auto unknown_, const auto keys_>
+struct map final {
+  static constexpr auto keys = keys_;
+  static constexpr auto unknown = static_cast<std::remove_cvref_t<decltype(utility::value(keys[0]))>>(unknown_);
 
-template<const auto unknown, const auto keys>
-struct hash_map final {
-  [[nodiscard]] constexpr auto operator[](auto&&... args) const {
-    return mph::hash<unknown, keys>(std::forward<decltype(args)>(args)...);
+  [[nodiscard]] constexpr auto operator[](auto&& data) const {
+    if (std::is_constant_evaluated()) { // if consteval is C++23
+      for (const auto& key : keys) {
+        if (std::string_view{key.first} == data) {
+          return key.second;
+        }
+      }
+      return unknown;
+    } else {
+      return hash(std::forward<decltype(data)>(data));
+    }
+  }
+
+  [[nodiscard]] constexpr auto contains(auto&&... args) const {
+    return this->operator[](std::forward<decltype(args)>(args)...) != unknown;
+  }
+
+  template<const auto unknown__ = unknown, const auto policies = mph::policies>
+  [[nodiscard]] constexpr auto hash(auto&&... args) const {
+    return mph::hash<unknown__, keys, policies>(std::forward<decltype(args)>(args)...);
   }
 };
 } // namespace detail
 
-template <const detail::unknown unknown, const detail::pair... values>
-inline constexpr auto hash_map = detail::hash_map<unknown.otherwise, std::array{values...}>{};
+template <const detail::pair... values>
+inline constexpr auto map = detail::map<MPH_DEFAULT_UNKNOWN, std::array{values...}>{};
+
+// clang-format off
+static_assert(1 == map<{"foo", 1}, {"bar", 2}>["foo"]);
+static_assert(2 == map<{"foo", 1}, {"bar", 2}>["bar"]);
+static_assert(-1 == map<{"foo", 1}, {"bar", 2}>[""]);
+static_assert(-1 == map<{"foo", 1}, {"bar", 2}>["baz"]);
+// clang-format on
 
 }  // namespace mph::inline v_1_0_0
 #endif  // MPH

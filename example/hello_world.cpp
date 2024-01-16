@@ -13,8 +13,17 @@
 int main() {
   enum class color { red, green, blue };
 
-  auto colors = mph::hash_map<{.otherwise = color{-1}}, {"red", color::red},
-                              {"green", color::green}, {"blue", color::blue}>;
+  // clang-format off
+  auto colors = mph::map<
+    {"red",   color::red},
+    {"green", color::green},
+    {"blue",  color::blue}
+  >;
+  // clang-format on
+
+  static_assert(color::green == colors["green"]);
+  static_assert(color::red == colors["red"]);
+  static_assert(color::blue == colors["blue"]);
 
   std::cout << int(colors["green"]);  // prints 1
 }

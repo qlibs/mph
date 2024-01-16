@@ -555,16 +555,16 @@ int main() {
 #if (defined(__GNUC__) and not defined(__clang__)) or \
     (defined(__clang__) and (__clang_major__ >= 18))
   "hash_map"_test = [verify] {
-    auto keys = mph::hash_map<{.otherwise = 0}, {"a", 1}, {"b", 2}, {"c", 3}>;
+    auto keys = mph::map<{"a", 0}, {"b", 1}, {"c", 2}>;
 
-    expect(1_i == keys["a"sv]);
-    expect(2_i == keys["b"]);
-    expect(3_i == keys["c"]);
+    expect(0_i == keys["a"sv]);
+    expect(1_i == keys["b"]);
+    expect(2_i == keys["c"]);
 
-    expect(0_i == keys[""sv]);
-    expect(0_i == keys["foo"sv]);
-    expect(0_i == keys["bar"sv]);
-    expect(0_i == keys["d"sv]);
+    expect(-1_i == keys[""sv]);
+    expect(-1_i == keys["foo"sv]);
+    expect(-1_i == keys["bar"sv]);
+    expect(-1_i == keys["d"sv]);
   };
 #endif
 }

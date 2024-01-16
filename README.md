@@ -47,13 +47,30 @@ cmake --build build
 enum class color { red, green, blue };
 
 auto colors = mph::hash_map<
-  {.otherwise = color{-1}},
-  {"red", color::red},
+  {"red",   color::red},
   {"green", color::green},
-  {"blue", color::blue}
+  {"blue",  color::blue}
 >;
 
+static_assert(color::green == colors["green"]);
+static_assert(color::red   == colors["red"]);
+static_assert(color::blue  == colors["blue"]);
+
 std::print("{}", colors["green"]); // prints 1
+```
+
+which is the same as...
+
+```cpp
+enum class color { red, green, blue };
+
+constexpr auto colors = std::array{
+  std::pair{mph::fixed_string{"red"},   color::red},
+  std::pair{mph::fixed_string{"green"}, color::green},
+  std::pair{mph::fixed_string{"blue"},  color::blue},
+};
+
+std::print("{}", mph::hash<color{-1}, colors>("green"));  // prints 1
 ```
 
 ---
@@ -62,14 +79,14 @@ std::print("{}", colors["green"]); // prints 1
 
 ```cpp
 int main(int argc, const char** argv) {
-  auto symbols = mph::hash_map<
-    {.otherwise = 0},
-    {"AAPL    ",  1},
-    {"AMZN    ",  2},
-    {"GOOGL   ",  3},
-    {"MSFT    ",  4},
-    {"NVDA    ",  5}
+  auto symbols = mph::map<
+    {"AAPL    ", 1},
+    {"AMZN    ", 2},
+    {"GOOGL   ", 3},
+    {"MSFT    ", 4},
+    {"NVDA    ", 5}
   >;
+
   return symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
 }
 ```
