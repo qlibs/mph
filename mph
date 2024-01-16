@@ -793,10 +793,10 @@ template <const detail::pair... values>
 inline constexpr auto map = detail::map<MPH_DEFAULT_UNKNOWN, std::array{values...}>{};
 
 // clang-format off
-static_assert(1 == map<{"foo", 1}, {"bar", 2}>["foo"]);
-static_assert(2 == map<{"foo", 1}, {"bar", 2}>["bar"]);
-static_assert(-1 == map<{"foo", 1}, {"bar", 2}>[""]);
-static_assert(-1 == map<{"foo", 1}, {"bar", 2}>["baz"]);
+static_assert(1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
+static_assert(2 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
+static_assert(-1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>[""]);
+static_assert(-1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["baz"]);
 // clang-format on
 
 }  // namespace mph::inline v_1_0_0
