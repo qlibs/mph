@@ -749,16 +749,25 @@ struct pair<const char*, T2> {
 static_assert(std::string_view{"foo"} == std::string_view{pair{"foo", 42}.first});
 // clang-format on
 
-constexpr auto cmp(const auto& lhs, const auto& rhs) {
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) {
   return lhs == rhs;
 }
-constexpr auto cmp(const fixed_string lhs, const auto& rhs) {
+[[nodiscard]] constexpr auto cmp(const fixed_string lhs, const auto& rhs) {
   if constexpr (requires { rhs.data(); rhs.size(); }) {
     return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
   } else {
     return std::string_view{lhs} == rhs;
   }
 }
+
+// clang-format off
+static_assert(cmp(42, 42));
+static_assert(not cmp(4, 2));
+static_assert(cmp(mph::fixed_string{"foo"}, "foo"));
+static_assert(not cmp(mph::fixed_string{"foo"}, "bar"));
+static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
+static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
+// clang-format on
 
 template<const auto unknown_, const auto keys_>
 struct map final {
