@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://github.com/boost-ext/mph/actions/workflows/build.yml" target="_blank">![build](https://github.com/boost-ext/mph/actions/workflows/build.yml/badge.svg)</a>
-<a href="https://godbolt.org/z/YrErzz59T">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/9TsKa16x8">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -41,7 +41,7 @@ cmake --build build
 
 ---
 
-### Hello world (https://godbolt.org/z/rqYz781ev)
+### Hello world (https://godbolt.org/z/TraGbccfq)
 
 ```cpp
 enum class color { red, green, blue };
@@ -91,7 +91,7 @@ int main(int argc, const char** argv) {
 }
 ```
 
-### x86-64 assembly (https://godbolt.org/z/E5KbbT76a)
+### x86-64 assembly (https://godbolt.org/z/hszTdeWx8)
 
 ```
 main:
