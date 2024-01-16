@@ -73,6 +73,12 @@ int main(int argc, const char** argv) {
     {"NVDA    ", 5}
   >;
 
+  static_assert(1 == symbols["AAPL    "]);
+  static_assert(2 == symbols["AMZN    "]);
+  static_assert(3 == symbols["GOOGL   "]);
+  static_assert(4 == symbols["MSFT    "]);
+  static_assert(5 == symbols["NVDA    "]);
+
   constexpr auto default_value = 0;
   constexpr auto size = 8u;
 
