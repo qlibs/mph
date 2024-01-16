@@ -82,7 +82,9 @@ int main(int argc, const char** argv) {
   constexpr auto default_value = 0;
   constexpr auto size = 8u;
 
-  return symbols.hash<default_value, mph::policies>(std::span<const char, size>(argv[1], argv[1] + size));
+  return symbols.hash<default_value, mph::policies>(
+    std::span<const char, size>(argv[1], argv[1] + size)
+  );
 }
 ```
 
