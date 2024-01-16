@@ -73,14 +73,10 @@ int main(int argc, const char** argv) {
     {"NVDA    ", 5}
   >;
 
-  constexpr auto policies = []<const auto unknown, const auto keys>(auto&&... args) {
-    constexpr auto max_bits_size = 7u;
-    return mph::pext<max_bits_size, mph::branchless>{}.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
-  };
   constexpr auto default_value = 0;
   constexpr auto size = 8u;
 
-  return symbols.hash<default_value, policies>(std::span<const char, size>(argv[1], argv[1] + size));
+  return symbols.hash<default_value, mph::policies>(std::span<const char, size>(argv[1], argv[1] + size));
 }
 ```
 
@@ -198,6 +194,43 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ```cpp
 /**
+ * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
+ */
+template <const auto... values>
+inline constexpr auto map = detail::map<std::array{values...}>{};
+
+/**
+ * Map utility to easily create array of keys
+ */
+template<const auto unknown, const auto keys>
+struct map final {
+  static constexpr auto keys = keys;
+  static constexpr auto unknown = unknown;
+
+  /**
+   * Eaxmple: map["foo"]
+   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
+   * @return result of executing policies
+   */
+  [[nodiscard]] constexpr auto operator[](auto&&... args) const;
+
+  /**
+   * Example: map.contains("foo")
+   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
+   * @return true if the map contains the key
+   */
+  [[nodiscard]] constexpr auto contains(auto&&... args) const;
+
+  /**
+   * Example: map.hash<0, policies>("foo")
+   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
+   * @return result of executing policies
+   */
+  template<const auto unknown = unknown, const auto policies = mph::policies>
+  [[nodiscard]] constexpr auto hash(auto&&... args) const;
+};
+
+/**
  * Minimal perfect hashing function
  *
  * @tparam unknown returned if there is no match
@@ -210,12 +243,6 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 template<const auto unknown, const auto keys, const auto policies = mph::policies>
   requires (std::size(keys()) > 0u) and std::same_as<decltype(utility::value(keys()[0])), decltype(unknown)>
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
-
-/**
- * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
- */
-template <const auto... values>
-inline constexpr auto map = detail::map<std::array{values...}>{};
 ```
 
 > Policies
@@ -309,6 +336,7 @@ class pext_split {
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
+#define MPH_DEFAULT_UNKNOWN -1 // default value when key is not found
 ```
 
 ---
@@ -395,7 +423,7 @@ class pext_split {
 
     > Please follow [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 
-- Acknowledgments / Inspirations
+- Acknowledgments
 
     > http://0x80.pl, https://lemire.me/blog, https://www.youtube.com/watch?v=DMQ_HcNSOAI&ab_channel=strager, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://cmph.sourceforge.net/papers, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++, https://github.com/rurban/smhasher, http://stevehanov.ca/blog/index.php?id=119
 
