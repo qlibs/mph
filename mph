@@ -78,6 +78,7 @@ template<class T, const std::size_t max_size> struct basic_fixed_string final {
   [[nodiscard]] constexpr auto size() const { return size_; }
   [[nodiscard]] constexpr auto operator[](const auto i) const { return data_[i]; }
   [[nodiscard]] constexpr explicit(true) operator std::string_view() const { return std::string_view{std::data(data_), size()}; }
+  [[nodiscard]] constexpr auto operator<=>(const basic_fixed_string&) const = default;
 
   std::size_t size_{};
   std::array<T, max_size> data_{};
@@ -91,6 +92,8 @@ static_assert(3u == std::size(fixed_string{"abc"}));
 static_assert('a' == fixed_string{"abc"}[0]);
 static_assert('b' == fixed_string{"abc"}[1]);
 static_assert('c' == fixed_string{"abc"}[2]);
+static_assert(fixed_string{"abc"} == fixed_string{"abc"});
+static_assert(fixed_string{"foo"} != fixed_string{"bar"});
 static_assert(std::string_view{"abc"} == static_cast<std::string_view>(fixed_string{"abc"}));
 // clang-format on
 

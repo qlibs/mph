@@ -14,10 +14,18 @@
 #include <map>
 #include <mph>
 #include <random>
+#include <string_view>
 #include <unordered_map>
 
 #include "data.hpp"
 #include "nanobench.h"
+
+template <>
+struct boost::hash<mph::fixed_string> {
+  std::size_t operator()(const mph::fixed_string key) const {
+    return boost::hash<std::string_view>{}(std::string_view{key});
+  }
+};
 
 int main() {
   using namespace ankerl::nanobench;

@@ -73,11 +73,18 @@ int main(int argc, const char** argv) {
     {"NVDA    ", 5}
   >;
 
-  return symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
+  constexpr auto policies = []<const auto unknown, const auto keys>(auto&&... args) {
+    constexpr auto max_bits_size = 7u;
+    return mph::pext<max_bits_size, mph::branchless>{}.template operator()<unknown, keys>(std::forward<decltype(args)>(args)...);
+  };
+  constexpr auto default_value = 0;
+  constexpr auto size = 8u;
+
+  return symbols.hash<default_value, policies>(std::span<const char, size>(argv[1], argv[1] + size));
 }
 ```
 
-### x86-64 assembly (https://godbolt.org/z/hszTdeWx8)
+### x86-64 assembly (https://godbolt.org/z/5jYqrjeKK)
 
 ```
 main:
