@@ -59,20 +59,6 @@ static_assert(color::blue  == colors["blue"]);
 std::print("{}", colors["green"]); // prints 1
 ```
 
-which is the same as...
-
-```cpp
-enum class color { red, green, blue };
-
-constexpr auto colors = std::array{
-  std::pair{mph::fixed_string{"red"},   color::red},
-  std::pair{mph::fixed_string{"green"}, color::green},
-  std::pair{mph::fixed_string{"blue"},  color::blue},
-};
-
-std::print("{}", mph::hash<color{-1}, colors>("green"));  // prints 1
-```
-
 ---
 
 ### Performance
