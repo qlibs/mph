@@ -148,7 +148,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ---
 
-### Benchmarks ([v1.0.0](https://github.com/boost-ext/mph/tree/v1.0.0))
+### Benchmarks ([v1.0.1](https://github.com/boost-ext/mph/tree/v1.0.1))
 
 > `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
@@ -360,7 +360,7 @@ class pext_split {
 > Configuration
 
 ```cpp
-#define MPH 1'0'0 // Current library version (SemVer)
+#define MPH 1'0'1 // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
