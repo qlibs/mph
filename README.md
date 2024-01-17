@@ -383,16 +383,6 @@ class pext_split {
       `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
       `mph, then, picks the 'best' one and apply input data to it.
 
-- Does `mph` supports integral types?
-
-    > Yes, `mph` can generate minimal perfect hash for either strings or integral types.
-      Note, that not all policies support both types.
-      There is also different path for policies discovery in the default policies.
-
-- How can I return an optional?
-
-    > example/optional.cpp
-
 - Can I do better than `mph` (performance wise)?
 
     > Of course! The more knowledge of the input data and the hardware the better potential performance.
