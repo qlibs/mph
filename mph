@@ -56,10 +56,6 @@ export module mph;
 #define MPH_PAGE_SIZE 4096u // only used with MPH_ALLOW_UNSAFE_MEMCPY
 #endif
 
-#if not defined(MPH_DEFAULT_UNKNOWN)
-#define MPH_DEFAULT_UNKNOWN -1
-#endif
-
 #if defined(__cpp_modules)
 export
 #endif
@@ -760,46 +756,55 @@ static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
 static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
 // clang-format on
 
-template<const auto unknown_, const auto keys_>
+template <class T>
+struct optional final {
+  constexpr optional() : value{std::numeric_limits<T>::max()} {}
+  constexpr explicit(false) optional(const T v) : value{v} {}
+  [[nodiscard]] constexpr operator bool() const { return value != std::numeric_limits<T>::max(); }
+  [[nodiscard]] constexpr auto operator*() const { return value; }
+  T value{};
+};
+
+// clang-format off
+static_assert(not optional<int>{});
+static_assert(optional{42});
+static_assert(42 == *optional{42});
+// clang-format on
+
+template<const auto Keys>
 struct map final {
-  static constexpr auto keys = keys_;
-  static constexpr auto unknown = static_cast<std::remove_cvref_t<decltype(get<1>(keys[0]))>>(unknown_);
+  static constexpr auto keys = Keys;
+  static constexpr auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>>{};
 
   [[nodiscard]] constexpr auto operator[](auto&& data) const {
     if (std::is_constant_evaluated()) { // if consteval is C++23
       for (const auto& key : keys) {
         if (cmp(key.first, std::forward<decltype(data)>(data))) {
-          return key.second;
+          return optional{key.second};
         }
       }
       return unknown;
     } else {
-      return hash(std::forward<decltype(data)>(data));
+      return hash<unknown>(std::forward<decltype(data)>(data));
     }
   }
 
-  [[nodiscard]] constexpr auto contains(auto&&... args) const {
-    return this->operator[](std::forward<decltype(args)>(args)...) != unknown;
-  }
-
-  template<const auto unk = unknown, const auto policies = mph::policies>
+  template<const auto unknown, const auto policies = mph::policies>
   [[nodiscard]] constexpr auto hash(auto&&... args) const {
-    return mph::hash<unk, keys, policies>(std::forward<decltype(args)>(args)...);
+    return mph::hash<unknown, keys, policies>(std::forward<decltype(args)>(args)...);
   }
 };
 } // namespace detail
 
 template <const detail::pair... values>
-inline constexpr auto map = detail::map<MPH_DEFAULT_UNKNOWN, std::array{values...}>{};
+inline constexpr auto map = detail::map<std::array{values...}>{};
 
 // clang-format off
-static_assert(1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
-static_assert(2 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
-static_assert(-1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>[""]);
-static_assert(-1 == map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["baz"]);
-static_assert(not map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>.contains("baz"));
-static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>.contains("foo"));
-static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>.contains("bar"));
+static_assert(not map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["baz"]);
+static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
+static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
+static_assert(1 == *map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
+static_assert(2 == *map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
 // clang-format on
 
 }  // namespace mph::inline v_1_0_0

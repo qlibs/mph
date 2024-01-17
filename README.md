@@ -52,11 +52,12 @@ auto colors = mph::map<
   {"blue",  color::blue}
 >;
 
-static_assert(color::green == colors["green"]);
-static_assert(color::red   == colors["red"]);
-static_assert(color::blue  == colors["blue"]);
+static_assert(color::green == *colors["green"]);
+static_assert(color::red   == *colors["red"]);
+static_assert(color::blue  == *colors["blue"]);
 
-std::print("{}", colors["green"]); // prints 1
+assert(colors["green"]);
+std::print("{}", *colors["green"]); // prints 1
 ```
 
 ---
@@ -73,11 +74,11 @@ int main(int argc, const char** argv) {
     {"NVDA    ", 5}
   >;
 
-  static_assert(1 == symbols["AAPL    "]);
-  static_assert(2 == symbols["AMZN    "]);
-  static_assert(3 == symbols["GOOGL   "]);
-  static_assert(4 == symbols["MSFT    "]);
-  static_assert(5 == symbols["NVDA    "]);
+  static_assert(1 == *symbols["AAPL    "]);
+  static_assert(2 == *symbols["AMZN    "]);
+  static_assert(3 == *symbols["GOOGL   "]);
+  static_assert(4 == *symbols["MSFT    "]);
+  static_assert(5 == *symbols["NVDA    "]);
 
   constexpr auto default_value = 0;
   constexpr auto size = 8u;
@@ -218,23 +219,16 @@ struct map final {
   /**
    * Eaxmple: map["foo"]
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return result of executing policies
+   * @return optional result of executing policies
    */
   [[nodiscard]] constexpr auto operator[](auto&&... args) const;
-
-  /**
-   * Example: map.contains("foo")
-   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return true if the map contains the key
-   */
-  [[nodiscard]] constexpr auto contains(auto&&... args) const;
 
   /**
    * Example: map.hash<0, policies>("foo")
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
    * @return result of executing policies
    */
-  template<const auto unknown = unknown, const auto policies = mph::policies>
+  template<const auto unknown, const auto policies = mph::policies>
   [[nodiscard]] constexpr auto hash(auto&&... args) const;
 };
 
@@ -344,7 +338,6 @@ class pext_split {
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
-#define MPH_DEFAULT_UNKNOWN -1 // default value when key is not found
 ```
 
 ---

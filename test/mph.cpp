@@ -557,14 +557,25 @@ int main() {
   "map"_test = [verify] {
     auto keys = mph::map<{"a", 0}, {"b", 1}, {"c", 2}>;
 
-    expect(0_i == keys["a"sv]);
-    expect(1_i == keys["b"]);
-    expect(2_i == keys["c"]);
+    expect(not keys["foo"]);
+    expect(not keys[""sv]);
+    expect(not keys["bar"sv]);
+    expect(not keys["baz"sv]);
+    expect(not keys["d"sv]);
 
-    expect(-1_i == keys[""sv]);
-    expect(-1_i == keys["foo"sv]);
-    expect(-1_i == keys["bar"sv]);
-    expect(-1_i == keys["d"sv]);
+    expect(keys["a"]);
+    expect(keys["b"]);
+    expect(keys["c"]);
+
+    expect(0_i == *keys["a"sv]);
+    expect(1_i == *keys["b"]);
+    expect(2_i == *keys["c"]);
+
+    expect(0_i = keys.hash<0>("foo"));
+    expect(-1_i = keys.hash<-1>("foo"));
+    expect(0_i = keys.hash<-1>("a"));
+    expect(0_i = keys.hash<0>("a"));
+    expect(1_i = keys.hash<0>("b"));
   };
 #endif
 }

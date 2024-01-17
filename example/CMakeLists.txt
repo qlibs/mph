@@ -26,5 +26,4 @@ endfunction()
 
 example(hello_world hello_world)
 example(dispatch dispatch)
-example(optional optional)
 example(policies policies)

@@ -5,6 +5,7 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+#include <cassert>
 #include <iostream>
 #include <mph>
 
@@ -21,11 +22,12 @@ int main() {
   >;
   // clang-format on
 
-  static_assert(color::green == colors["green"]);
-  static_assert(color::red == colors["red"]);
-  static_assert(color::blue == colors["blue"]);
+  static_assert(color::green == *colors["green"]);
+  static_assert(color::red == *colors["red"]);
+  static_assert(color::blue == *colors["blue"]);
 
-  std::cout << int(colors["green"]);  // prints 1
+  assert(colors["green"]);
+  std::cout << int(*colors["green"]);  // prints 1
 }
 #else
 int main() {
