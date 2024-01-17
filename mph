@@ -701,9 +701,9 @@ constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&... args) noexce
 namespace detail {
 template <class T1, class T2>
 struct pair {
-    constexpr explicit(false) pair(const T1 t1, const T2 t2) : first{t1}, second{t2} {}
-    T1 first{};
-    T2 second{};
+  constexpr explicit(false) pair(const T1 t1, const T2 t2) : first{t1}, second{t2} {}
+  T1 first{};
+  T2 second{};
 };
 
 // clang-format off
@@ -713,9 +713,9 @@ static_assert(short(2) == pair{int(4), short(2)}.second);
 
 template <class T2>
 struct pair<const char*, T2> {
-    constexpr explicit(false) pair(const fixed_string t1, const T2 t2) : first{t1}, second{t2} {}
-    fixed_string first;
-    T2 second;
+  constexpr explicit(false) pair(const fixed_string t1, const T2 t2) : first{t1}, second{t2} {}
+  fixed_string first;
+  T2 second;
 };
 
 // clang-format off
