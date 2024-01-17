@@ -571,11 +571,11 @@ int main() {
     expect(1_i == *keys["b"]);
     expect(2_i == *keys["c"]);
 
-    expect(0_i = keys.hash<0>("foo"));
-    expect(-1_i = keys.hash<-1>("foo"));
-    expect(0_i = keys.hash<-1>("a"));
-    expect(0_i = keys.hash<0>("a"));
-    expect(1_i = keys.hash<0>("b"));
+    expect(0_i == keys.hash<0>("foo"));
+    expect(-1_i == keys.hash<-1>("foo"));
+    expect(0_i == keys.hash<-1>("a"));
+    expect(0_i == keys.hash<0>("a"));
+    expect(1_i == keys.hash<0>("b"));
   };
 #endif
 }
