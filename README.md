@@ -316,6 +316,16 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 ```
 
 ```cpp
+inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
+  return cond ? lhs : rhs; // generates jmp (x86-64)
+};
+
+inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+  return cond * lhs; // generates cmov (x86-64)
+};
+```
+
+```cpp
 /**
  * Minimal perfect hashing function based on SWAR
  *  reads sizeof(T) bytes and switches on that
