@@ -403,12 +403,12 @@ class pext_split {
 
 - Is `mph` working on other platforms than x86-64?
 
-    > In priniple the design is not platform specific and it depeonds on available policies.
+    > In priniple the design is not platform specific and it depends on available policies.
       Some policies are platform specific such as `pext` as it requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support.
 
 - How long it the compilation takes with `mph`?
 
-    > Depending on the number of keys and chosen policies the compilation time may vary. Most of the use cases should compile in miliesconds/seconds on both gcc/clang.
+    > Depending on the number of keys and chosen policies the compilation times may vary. Most of the use cases should compile in miliesconds/seconds on both gcc/clang.
 
 - Is C++20 required to use `mph`?
 
@@ -421,11 +421,11 @@ class pext_split {
 
 - How to get the max performance out of `mph`?
 
-    > Always measure! Custom polices might be a good place to start. For strings, consider aligning the input data and passing it with compilie-time size via std::span, std::array.
+    > Always measure! Custom polices might be a good place to start. For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
 
 - I'm getting compilation error with longer list (>256) of keys?
 
-    > Likely the constexpr limit computation has been reached. To fix that, the following options can be used to increase the limits.
+    > Likely the constexpr computation limit has been reached. To fix that, the following options can be used to increase the limits.
 
     ```
     gcc:   -fconstexpr-ops-limit=100000000
