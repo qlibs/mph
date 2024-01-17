@@ -41,7 +41,9 @@ cmake --build build
 
 ---
 
-### Hello world (https://godbolt.org/z/5hac3cjj1)
+### Hello world
+
+> Strings (https://godbolt.org/z/5hac3cjj1)
 
 ```cpp
 enum class color { red, green, blue };
@@ -58,6 +60,31 @@ static_assert(color::blue  == *colors["blue"]);
 
 assert(colors["green"]);
 std::print("{}", *colors["green"]); // prints 1
+```
+
+---
+
+> Numbers (https://godbolt.org/z/366xYvYhP)
+
+```cpp
+auto primes = mph::map<
+  {1007887, 0}, {1007891, 1}, {1007921, 2}, {1007933, 3}, {1007939, 4},
+  {1007957, 5}, {1007959, 6}, {1007971, 7}, {1007977, 8}, {1008001, 9}
+>;
+
+static_assert(*primes[1007887] == 0);
+static_assert(*primes[1007891] == 1);
+static_assert(*primes[1007921] == 2);
+static_assert(*primes[1007933] == 3);
+static_assert(*primes[1007939] == 4);
+static_assert(*primes[1007957] == 5);
+static_assert(*primes[1007959] == 6);
+static_assert(*primes[1007971] == 7);
+static_assert(*primes[1007977] == 8);
+static_assert(*primes[1008001] == 9);
+
+assert(primes[1007959]);
+std::print("{}", *primes[1007959]); // prints 6
 ```
 
 ---
