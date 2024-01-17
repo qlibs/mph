@@ -9,15 +9,15 @@
 #include <iostream>
 #include <mph>
 
-constexpr auto policies = []<const auto unknown, const auto keys, class T>(
-    const T data, auto &&...args) {
+constexpr auto policies =
+    []<const auto unknown, const auto keys>(auto &&...args) {
   if constexpr (constexpr auto pext = mph::pext<2>{};
                 requires {
-                  pext.template operator()<unknown, keys, T>(
-                      data, std::forward<decltype(args)>(args)...);
+                  pext.template operator()<unknown, keys>(
+                      std::forward<decltype(args)>(args)...);
                 }) {
-    return pext.template operator()<unknown, keys, T>(
-        data, std::forward<decltype(args)>(args)...);
+    return pext.template operator()<unknown, keys>(
+        std::forward<decltype(args)>(args)...);
   } else {
     static_assert([](auto &&) { return false; }(keys),
                   "hash can't be created with given policies!");

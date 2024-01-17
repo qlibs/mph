@@ -35,6 +35,10 @@ export module mph;
 #include <x86intrin.h>
 #endif
 
+#if not defined(MPH_FIXED_STRING_MAX_SIZE)
+#define MPH_FIXED_STRING_MAX_SIZE 32u
+#endif
+
 #if not defined(MPH_MPH_CACHE_LINE_SIZE)
 #if defined(__cpp_lib_hardware_interference_size)
 #include <new>
@@ -42,10 +46,6 @@ export module mph;
 #else
 #define MPH_CACHE_LINE_SIZE 64u // x86-64
 #endif
-#endif
-
-#if not defined(MPH_FIXED_STRING_MAX_SIZE)
-#define MPH_FIXED_STRING_MAX_SIZE 32u
 #endif
 
 #if not defined(MPH_ALLOW_UNSAFE_MEMCPY)
@@ -481,10 +481,25 @@ class pext {
     return index;
   }
 
+  template<class T, const auto keys>
+  [[nodiscard]] static consteval auto data() {
+    if constexpr (std::integral<T>) {
+      if constexpr (sizeof(T) <= sizeof(std::uint32_t)) {
+        return std::uint32_t{};
+      } else if constexpr (sizeof(T) <= sizeof(std::uint64_t)) {
+        return std::uint64_t{};
+      }
+    } else if constexpr (utility::max_length<keys> <= sizeof(std::uint32_t)) {
+      return std::uint32_t{};
+    } else {
+      return std::uint64_t{};
+    }
+  }
+
  public:
-  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(keys)>
+  template <const auto unknown, const auto keys, class TData, class T = decltype(data<std::remove_cvref_t<TData>, keys>()), const auto mask = utility::find_mask<T>(keys)>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
     constexpr auto required_size = [] {
       auto result{1u};
       for (auto i = 0u; i < std::popcount(std::uint64_t(mask)); ++i) {
@@ -496,11 +511,11 @@ class pext {
     static constexpr const auto lookup = make_lookup<T, keys, mask, required_size>();
     static constexpr const auto index = make_index<T, unknown, keys, mask, required_size>();
 
-    const auto lhs = [&] {
+    const T lhs = [&] {
       if constexpr (requires { std::size(data); }) {
         return utility::copy_required_bytes<T>(data);
       } else {
-        return data;
+        return std::forward<decltype(data)>(data);
       }
     }();
     const auto ext = utility::pext(lhs, mask);
@@ -573,9 +588,9 @@ class pext_split {
   }
 
  public:
-  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, keys>()>
+  template <const auto unknown, const auto keys, class TData, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, keys>()>
     requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const auto data, [[maybe_unused]] auto &&...args) const noexcept(true) requires requires { std::size(data); } {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) requires requires { std::size(data); } {
     constexpr auto required_size = [] {
       std::vector<std::size_t> sizes{};
       std::transform(std::cbegin(masks), std::cend(masks), std::back_inserter(sizes), [](const auto mask) { return std::popcount(mask); });
@@ -609,7 +624,7 @@ class pext_split {
  * @return second from matched key or unknown if not matched
  */
 constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, auto&&... args) {
-  using T = std::remove_cvref_t<decltype(data)>;
+  using type = std::remove_cvref_t<decltype(data)>;
   constexpr auto hash_cant_be_created = [](auto &&) { return false; }(keys);  // static_assert(false) support is C++23
 
   if constexpr (requires { std::size(data); }) {
@@ -624,13 +639,13 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
     } else {
       static_assert(hash_cant_be_created, "string hash can't be created with given policies!");
     }
-  } else if constexpr (std::integral<T>) {
-    if constexpr (sizeof(T) <= sizeof(std::uint32_t) and std::size(keys) < 4u) {
+  } else if constexpr (std::integral<type>) {
+    if constexpr (sizeof(type) <= sizeof(std::uint32_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (sizeof(T) <= sizeof(std::uint64_t) and std::size(keys) < 4u) {
+    } else if constexpr (sizeof(type) <= sizeof(std::uint64_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys, T>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
-      return pext.template operator()<unknown, keys, T>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
+    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+      return pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else {
       static_assert(hash_cant_be_created, "integral hash can't be created with given policies!");
     }
@@ -757,7 +772,7 @@ static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
 // clang-format on
 
 template <class T>
-struct optional final {
+struct optional final { // std::optional is not literal type
   constexpr optional() : value{std::numeric_limits<T>::max()} {}
   constexpr explicit(false) optional(const T v) : value{v} {}
   [[nodiscard]] constexpr operator bool() const { return value != std::numeric_limits<T>::max(); }
