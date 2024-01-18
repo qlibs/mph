@@ -28,7 +28,7 @@ class dispatch {
 
   constexpr auto on(const auto data) {
     ++v[*mph::hash<keys>(data)];
-  }  // dereference not found symbol -> v[size(keys)]
+  }  // dereference not found symbol -> v[max_value<keys>+1u]
 
  private:
   std::array<std::size_t, std::size(keys) + 1> v{};

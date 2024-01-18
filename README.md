@@ -288,14 +288,14 @@ struct map final {
   /**
    * Eaxmple: map["foo"]
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return optional result of executing policies
+   * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
    */
   [[nodiscard]] constexpr auto operator[](auto&&... args) const;
 
   /**
    * Example: map.at<policies>("foo")
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return optional result of executing policies
+   * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
    */
   template<const auto policies = mph::policies>
   [[nodiscard]] constexpr auto at(auto&&... args) const;
@@ -309,7 +309,7 @@ struct map final {
  * @tparam policies invocable which returns the hash
  * @param data continuous input data such as std::string_view, std::span, std::array or intergral value
  * @param args... optional args propagated to policies
- * @return result of executing policies
+ * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
  */
 template<const auto unknown, const auto keys, const auto policies = mph::policies>
   requires (std::size(keys) > 1u)
