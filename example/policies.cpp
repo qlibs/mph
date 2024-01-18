@@ -9,17 +9,16 @@
 #include <iostream>
 #include <mph>
 
-constexpr auto policies =
-    []<const auto unknown, const auto keys>(auto &&...args) {
-  if constexpr (constexpr auto pext = mph::pext<2>{};
+constexpr auto policies = []<const auto... ts>(auto &&...args) {
+  if constexpr (constexpr auto pext = mph::pext<7u>{};
                 requires {
-                  pext.template operator()<unknown, keys>(
+                  pext.template operator()<ts...>(
                       std::forward<decltype(args)>(args)...);
                 }) {
-    return pext.template operator()<unknown, keys>(
+    return pext.template operator()<ts...>(
         std::forward<decltype(args)>(args)...);
   } else {
-    static_assert([](auto &&) { return false; }(keys),
+    static_assert([](auto &&...) { return false; }(ts...),
                   "hash can't be created with given policies!");
   }
 };
@@ -31,12 +30,17 @@ int main() {
       std::pair{1000, 2},
   };
 
-  constexpr auto hash = mph::hash<-1, keys, policies>;
+  constexpr auto hash = mph::hash<keys, policies>;
 
-  std::cout << hash(0);   // -1
-  std::cout << hash(42);  // -1
+  std::cout << hash(0);   // false
+  std::cout << hash(42);  // false
 
-  std::cout << hash(1);     // 0
-  std::cout << hash(100);   // 1
-  std::cout << hash(1000);  // 2
+  std::cout << hash(1);   // true
+  std::cout << *hash(1);  // 0
+
+  std::cout << hash(100);   // true
+  std::cout << *hash(100);  // 1
+
+  std::cout << hash(1000);   // true
+  std::cout << *hash(1000);  // 2
 }

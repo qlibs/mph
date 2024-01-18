@@ -124,7 +124,7 @@ int main() {
   const auto bench_mph = [](const auto &hash, const auto name, const auto &keys,
                             auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(hash(fn(keys)));
+      doNotOptimizeAway(*hash(fn(keys)));
     });
   };
 
@@ -195,8 +195,8 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_5_len_4", data::random_strings_5_len_4, next);
-    bench_mph(mph::hash<0, data::random_strings_5_len_4>,
-              "random_strings_5_len_4", data::random_strings_5_len_4, next);
+    bench_mph(mph::hash<data::random_strings_5_len_4>, "random_strings_5_len_4",
+              data::random_strings_5_len_4, next);
   }
 
   {
@@ -267,8 +267,8 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_5_len_8", data::random_strings_5_len_8, next);
-    bench_mph(mph::hash<0, data::random_strings_5_len_8>,
-              "random_strings_5_len_8", data::random_strings_5_len_8, next);
+    bench_mph(mph::hash<data::random_strings_5_len_8>, "random_strings_5_len_8",
+              data::random_strings_5_len_8, next);
   }
 
   {
@@ -341,7 +341,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
-    bench_mph(mph::hash<0, data::random_strings_6_len_2_5>,
+    bench_mph(mph::hash<data::random_strings_6_len_2_5>,
               "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
   }
 
@@ -500,7 +500,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_100_len_8", data::random_strings_100_len_8, next);
-    bench_mph(mph::hash<0, data::random_strings_100_len_8>,
+    bench_mph(mph::hash<data::random_strings_100_len_8>,
               "random_strings_100_len_8", data::random_strings_100_len_8, next);
   }
 
@@ -646,7 +646,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_100_len_1_8", data::random_strings_100_len_1_8, next);
-    bench_mph(mph::hash<0, data::random_strings_100_len_1_8>,
+    bench_mph(mph::hash<data::random_strings_100_len_1_8>,
               "random_strings_100_len_1_8", data::random_strings_100_len_1_8,
               next);
   }

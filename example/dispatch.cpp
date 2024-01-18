@@ -14,12 +14,10 @@ using std::literals::operator""sv;
 
 class dispatch {
   static constexpr std::array keys{
-      std::pair{mph::fixed_string{"APPL    "}, 1},
-      std::pair{mph::fixed_string{"GOOGL   "}, 2},
-      std::pair{mph::fixed_string{"MSFT    "}, 3},
+      std::pair{mph::fixed_string{"APPL    "}, 0},
+      std::pair{mph::fixed_string{"GOOGL   "}, 1},
+      std::pair{mph::fixed_string{"MSFT    "}, 2},
   };
-
-  static constexpr auto hash = mph::hash<0, keys>;
 
  public:
   constexpr ~dispatch() {
@@ -28,11 +26,12 @@ class dispatch {
     }
   }
 
-  constexpr auto on(const auto data) { ++v[hash(data)]; }
+  constexpr auto on(const auto data) {
+    ++v[*mph::hash<keys>(data)];
+  }  // dereference not found symbol -> v[size(keys)]
 
  private:
-  std::array<std::size_t, std::size(keys) + 1>
-      v{};  // 0 is special for branchless code continuation
+  std::array<std::size_t, std::size(keys) + 1> v{};
 };
 
 int main() {
@@ -46,4 +45,5 @@ int main() {
   on(std::to_array("APPL    "));
   on(std::to_array("GOOGL   "));
   on(std::to_array("MSFT    "));
+  on(std::to_array("UNKNOWN "));
 }

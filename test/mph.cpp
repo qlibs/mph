@@ -15,7 +15,7 @@ int main() {
 
   constexpr auto verify = [](const auto &keys, const auto &hash) {
     for (auto expected = 1; const auto &[symbol, _] : keys) {
-      expect(_i(expected++) == hash(symbol));
+      expect(hash(symbol) and _i(expected++) == *hash(symbol));
     }
   };
 
@@ -32,15 +32,16 @@ int main() {
         std::pair{mph::fixed_string{"blue"}, color::blue},
     };
 
-    constexpr auto hash = mph::hash<color{-1}, colors>;
+    constexpr auto hash = mph::hash<colors>;
 
-    expect(color::red == hash("red"));
-    expect(color::green == hash("green"));
-    expect(color::blue == hash("blue"));
-    expect(color{-1} == hash(""));
-    expect(color{-1} == hash("D"));
-    expect(color{-1} == hash("a"));
-    expect(color{-1} == hash("b"));
+    expect(color::red == *hash("red"));
+    expect(color::green == *hash("green"));
+    expect(color::blue == *hash("blue"));
+    expect(color{3} == *hash(""));
+    expect(not hash(""));
+    expect(not hash("D"));
+    expect(not hash("a"));
+    expect(not hash("b"));
   };
 
   "[hash] integral"_test = [verify] {
@@ -50,13 +51,13 @@ int main() {
         std::pair{31232ul, 3},
     };
 
-    constexpr auto hash = mph::hash<0, keys>;
+    constexpr auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0 == hash(0ul));
-    expect(0 == hash(1234ul));
-    expect(0 == hash(42ul));
+    expect(not hash(0ul));
+    expect(not hash(1234ul));
+    expect(not hash(42ul));
   };
 
   "[hash] policies"_test = [verify] {
@@ -66,14 +67,14 @@ int main() {
         std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash<0, keys, mph::policies>;
+    constexpr auto hash = mph::hash<keys, mph::policies>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("D"sv));
-    expect(0_i == hash("a"sv));
-    expect(0_i == hash("b"sv));
+    expect(not hash(""sv));
+    expect(not hash("D"sv));
+    expect(not hash("a"sv));
+    expect(not hash("b"sv));
   };
 
   "[hash] integral - custom policies - pext"_test = [verify] {
@@ -83,7 +84,7 @@ int main() {
         std::pair{31232ul, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext<5>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -92,9 +93,9 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0 == hash(0ul));
-    expect(0 == hash(1234ul));
-    expect(0 == hash(42ul));
+    expect(not hash(0ul));
+    expect(not hash(1234ul));
+    expect(not hash(42ul));
   };
 
   "[hash] integral - custom policies - swar<std::uint32_t>"_test = [verify] {
@@ -104,7 +105,7 @@ int main() {
         std::pair{7, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -113,10 +114,10 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0 == hash(0));
-    expect(0 == hash(2));
-    expect(0 == hash(5));
-    expect(0 == hash(6));
+    expect(not hash(0));
+    expect(not hash(2));
+    expect(not hash(5));
+    expect(not hash(6));
   };
 
   "[hash] integral - custom policies - swar32"_test = [verify] {
@@ -126,7 +127,7 @@ int main() {
         std::pair{7, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -135,10 +136,10 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0 == hash(0));
-    expect(0 == hash(2));
-    expect(0 == hash(5));
-    expect(0 == hash(6));
+    expect(not hash(0));
+    expect(not hash(2));
+    expect(not hash(5));
+    expect(not hash(6));
   };
 
   "[hash] integral - custom policies - swar64"_test = [verify] {
@@ -148,7 +149,7 @@ int main() {
         std::pair{std::uint64_t(33333), 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -157,10 +158,10 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0 == hash(std::uint64_t(0)));
-    expect(0 == hash(std::uint64_t(2)));
-    expect(0 == hash(std::uint64_t(5)));
-    expect(0 == hash(std::uint64_t(6)));
+    expect(not hash(std::uint64_t(0)));
+    expect(not hash(std::uint64_t(2)));
+    expect(not hash(std::uint64_t(5)));
+    expect(not hash(std::uint64_t(6)));
   };
 
   "[hash] strings - custom policies - pext"_test = [verify] {
@@ -170,7 +171,7 @@ int main() {
         std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext<5>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -179,10 +180,10 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("D"sv));
-    expect(0_i == hash("a"sv));
-    expect(0_i == hash("b"sv));
+    expect(not hash(""sv));
+    expect(not hash("D"sv));
+    expect(not hash("a"sv));
+    expect(not hash("b"sv));
   };
 
   "[hash] strings - custom policies - pext_split"_test = [verify] {
@@ -192,7 +193,7 @@ int main() {
         std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<5, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -201,9 +202,9 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0_i == hash("D"sv));
-    expect(0_i == hash("a"sv));
-    expect(0_i == hash("b"sv));
+    expect(not hash("D"sv));
+    expect(not hash("a"sv));
+    expect(not hash("b"sv));
   };
 
   "[hash] strings - custom policies - pext_split<N>"_test = [verify] {
@@ -215,7 +216,7 @@ int main() {
         std::pair{mph::fixed_string{"NVDA    "}, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 0u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -234,7 +235,7 @@ int main() {
         std::pair{mph::fixed_string{"    NVDA"}, 5},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::pext_split<7, 7u>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -251,7 +252,7 @@ int main() {
         std::pair{mph::fixed_string{"C"}, 3},
     };
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint32_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -260,9 +261,9 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0_i == hash("D"sv));
-    expect(0_i == hash("a"sv));
-    expect(0_i == hash("b"sv));
+    expect(not hash("D"sv));
+    expect(not hash("a"sv));
+    expect(not hash("b"sv));
   };
 
   "[hash] strings - custom policies - swar64"_test = [verify] {
@@ -270,7 +271,7 @@ int main() {
                               std::pair{mph::fixed_string{"bar"}, 2},
                               std::pair{mph::fixed_string{"foo"}, 3}};
 
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -279,9 +280,9 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("xxx"sv));
-    expect(0_i == hash("baz"sv));
+    expect(not hash(""sv));
+    expect(not hash("xxx"sv));
+    expect(not hash("baz"sv));
   };
 
   "[hash] strings - custom policies - swar64 / std::span"_test = [verify] {
@@ -292,7 +293,7 @@ int main() {
     };
 
     constexpr auto size = std::size(keys[0].first);
-    constexpr auto hash = mph::hash < 0, keys,
+    constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
       return mph::swar<std::uint64_t>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
@@ -301,16 +302,16 @@ int main() {
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("D "sv));
-    expect(0_i == hash(" D"sv));
-    expect(0_i == hash(" D "sv));
-    expect(0_i == hash("E"sv));
-    expect(0_i == hash("F"sv));
-    expect(0_i == hash(std::span<const char>("        ", size)));
-    expect(0_i == hash(std::span<const char>("D       ", size)));
-    expect(0_i == hash(std::span<const char>("E       ", size)));
-    expect(0_i == hash(std::span<const char>("F       ", size)));
+    expect(not hash(""sv));
+    expect(not hash("D "sv));
+    expect(not hash(" D"sv));
+    expect(not hash(" D "sv));
+    expect(not hash("E"sv));
+    expect(not hash("F"sv));
+    expect(not hash(std::span<const char>("        ", size)));
+    expect(not hash(std::span<const char>("D       ", size)));
+    expect(not hash(std::span<const char>("E       ", size)));
+    expect(not hash(std::span<const char>("F       ", size)));
   };
 
   "[hash] std::span data"_test = [verify] {
@@ -322,20 +323,20 @@ int main() {
 
     constexpr auto size = std::size(keys[0].first);
 
-    auto hash = mph::hash<0, keys>;
+    auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("D "sv));
-    expect(0_i == hash(" D"sv));
-    expect(0_i == hash(" D "sv));
-    expect(0_i == hash("E"sv));
-    expect(0_i == hash("F"sv));
-    expect(0_i == hash(std::span<const char>("        ", size)));
-    expect(0_i == hash(std::span<const char>("D       ", size)));
-    expect(0_i == hash(std::span<const char>("E       ", size)));
-    expect(0_i == hash(std::span<const char>("F       ", size)));
+    expect(not hash(""sv));
+    expect(not hash("D "sv));
+    expect(not hash(" D"sv));
+    expect(not hash(" D "sv));
+    expect(not hash("E"sv));
+    expect(not hash("F"sv));
+    expect(not hash(std::span<const char>("        ", size)));
+    expect(not hash(std::span<const char>("D       ", size)));
+    expect(not hash(std::span<const char>("E       ", size)));
+    expect(not hash(std::span<const char>("F       ", size)));
   };
 
   "[hash] std::span variable length"_test = [verify] {
@@ -345,17 +346,17 @@ int main() {
         std::pair{mph::fixed_string("esc    "), 3},
     };
 
-    const auto hash = mph::hash<0, keys>;
+    const auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(std::span("")));
-    expect(0_i == hash(std::span("  ")));
-    expect(0_i == hash(std::span("    ")));
-    expect(0_i == hash(std::span("stop")));
-    expect(0_i == hash(std::span("start")));
-    expect(0_i == hash(std::span("foobar")));
-    expect(0_i == hash(std::span("1234567")));
+    expect(not hash(std::span("")));
+    expect(not hash(std::span("  ")));
+    expect(not hash(std::span("    ")));
+    expect(not hash(std::span("stop")));
+    expect(not hash(std::span("start")));
+    expect(not hash(std::span("foobar")));
+    expect(not hash(std::span("1234567")));
   };
 
   "[hash] std::array"_test = [verify] {
@@ -365,16 +366,16 @@ int main() {
         std::pair{std::array{'C', 'c'}, 3},
     };
 
-    const auto hash = mph::hash<0, keys>;
+    const auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(std::array{'A'}));
-    expect(0_i == hash(std::array{'X'}));
-    expect(0_i == hash(std::array{'A', 'A'}));
-    expect(0_i == hash(std::array{'B', 'c'}));
-    expect(0_i == hash(std::array{'C', 'b'}));
-    expect(0_i == hash(std::array{'C', 'b', 'a'}));
+    expect(not hash(std::array{'A'}));
+    expect(not hash(std::array{'X'}));
+    expect(not hash(std::array{'A', 'A'}));
+    expect(not hash(std::array{'B', 'c'}));
+    expect(not hash(std::array{'C', 'b'}));
+    expect(not hash(std::array{'C', 'b', 'a'}));
   };
 
   "[hash] std::string_view"_test = [verify] {
@@ -384,17 +385,17 @@ int main() {
         std::pair{mph::fixed_string{"CC "}, 3},
     };
 
-    auto hash = mph::hash<0, keys>;
+    auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("   "sv));
-    expect(0_i == hash("aa "sv));
-    expect(0_i == hash("aaa"sv));
-    expect(0_i == hash("bb"sv));
-    expect(0_i == hash("bb "sv));
-    expect(0_i == hash(" cc"sv));
+    expect(not hash(""sv));
+    expect(not hash("   "sv));
+    expect(not hash("aa "sv));
+    expect(not hash("aaa"sv));
+    expect(not hash("bb"sv));
+    expect(not hash("bb "sv));
+    expect(not hash(" cc"sv));
   };
 
   "[hash] fail case - variable length"_test = [verify] {
@@ -404,17 +405,17 @@ int main() {
         std::pair{mph::fixed_string{" AC "}, 3},
     };
 
-    auto hash = mph::hash<0, keys>;
+    auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash(" aa "sv));
-    expect(0_i == hash("aaaa"sv));
-    expect(0_i == hash(" AA"sv));
-    expect(0_i == hash("AA "sv));
-    expect(0_i == hash(" AA_"sv));
-    expect(0_i == hash("_AA_"sv));
+    expect(not hash(""sv));
+    expect(not hash(" aa "sv));
+    expect(not hash("aaaa"sv));
+    expect(not hash(" AA"sv));
+    expect(not hash("AA "sv));
+    expect(not hash(" AA_"sv));
+    expect(not hash("_AA_"sv));
   };
 
   "[hash] variable length"_test = [verify] {
@@ -425,15 +426,15 @@ int main() {
          {"https", 4},
          {"ws", 5},
          {"wss", 6}}};
-    constexpr auto hash = mph::hash<0, keys>;
+    constexpr auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_i == hash(""sv));
-    expect(0_i == hash("udp"sv));
-    expect(0_i == hash("HTTP"sv));
-    expect(0_i == hash("http2"sv));
-    expect(0_i == hash("https!"sv));
+    expect(not hash(""sv));
+    expect(not hash("udp"sv));
+    expect(not hash("HTTP"sv));
+    expect(not hash("http2"sv));
+    expect(not hash("https!"sv));
   };
 
   "[hash] multiple policies trigger"_test = [verify] {
@@ -540,16 +541,16 @@ int main() {
         std::pair{mph::fixed_string{"WEAT    "}, 100},
     };
 
-    const auto hash = mph::hash<std::uint8_t{}, keys>;
+    const auto hash = mph::hash<keys>;
 
     verify(keys, hash);
 
-    expect(0_u == hash("        "sv));
-    expect(0_u == hash(" III    "sv));
-    expect(0_u == hash("  III   "sv));
-    expect(0_u == hash("   III  "sv));
-    expect(0_u == hash("    III "sv));
-    expect(0_u == hash("     III"sv));
+    expect(not hash("        "sv));
+    expect(not hash(" III    "sv));
+    expect(not hash("  III   "sv));
+    expect(not hash("   III  "sv));
+    expect(not hash("    III "sv));
+    expect(not hash("     III"sv));
   };
 
 #if (defined(__GNUC__) and not defined(__clang__)) or \
@@ -571,11 +572,19 @@ int main() {
     expect(1_i == *keys["b"]);
     expect(2_i == *keys["c"]);
 
-    expect(0_i == keys.hash<0>("foo"));
-    expect(-1_i == keys.hash<-1>("foo"));
-    expect(0_i == keys.hash<-1>("a"));
-    expect(0_i == keys.hash<0>("a"));
-    expect(1_i == keys.hash<0>("b"));
+    expect(not keys.at("foo"));
+    expect(not keys.at(""sv));
+    expect(not keys.at("bar"sv));
+    expect(not keys.at("baz"sv));
+    expect(not keys.at("d"sv));
+
+    expect(keys.at("a"));
+    expect(keys.at("b"));
+    expect(keys.at("c"));
+
+    expect(0_i == *keys.at("a"sv));
+    expect(1_i == *keys.at("b"));
+    expect(2_i == *keys.at("c"));
   };
 #endif
 }

@@ -39,6 +39,6 @@ int main() {
       std::pair{mph::fixed_string{"blue"}, color::blue},
   };
 
-  std::cout << int(mph::hash<color{-1}, colors>("green"));  // prints 1
+  std::cout << int(*mph::hash<colors>("green"));  // prints 1
 }
 #endif

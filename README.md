@@ -124,14 +124,14 @@ main:
   cmove mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index(,%rdx,4), %eax
   ret
 mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index:
-  .long 5
-  .long 3
-  .long 1
-  .long 2
-  .long 4
-  .long 0
-  .long 0
-  .long 0
+  .byte 5
+  .byte 3
+  .byte 1
+  .byte 2
+  .byte 4
+  .byte 0
+  .byte 0
+  .byte 0
 mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::lookup:
   .quad 2314885531374474830
   .quad 2314885720454418247
@@ -139,6 +139,54 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .quad 2314885531594018113
   .quad 2314885531693372237
   .zero 24
+```
+
+> [potentially unsafe] If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs,
+                       then `direct` policy can be used which will avoid additional comparison
+
+```cpp
+int main(int argc, const char** argv) {
+  auto symbols = mph::map<
+    {"AAPL    ", 1},
+    {"AMZN    ", 2},
+    {"GOOGL   ", 3},
+    {"MSFT    ", 4},
+    {"NVDA    ", 5}
+  >;
+
+  static_assert(1 == *symbols["AAPL    "]);
+  static_assert(2 == *symbols["AMZN    "]);
+  static_assert(3 == *symbols["GOOGL   "]);
+  static_assert(4 == *symbols["MSFT    "]);
+  static_assert(5 == *symbols["NVDA    "]);
+
+  constexpr auto policies = []<cost auto... ts>(auto&&.. args) {
+    return mph::pext<7u, mph::direct>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+  };
+
+  // NOTE: requires symbols.contains(input), otherwise it's unsafe
+  return *symbols.at<policies>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
+}
+```
+
+> x86-64 assembly (https://godbolt.org/z/5jYqrjeKK)
+
+```
+main:
+  movq 8(%rsi), %rax
+  movl $436207616, %edx
+  movq (%rax), %rax
+  pext %rdx, %rax, %rdx
+  ret
+mph::v_1_0_0::pext<7ul, mph::v_1_0_0::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index:
+  .byte 5
+  .byte 3
+  .byte 1
+  .byte 2
+  .byte 4
+  .byte 0
+  .byte 0
+  .byte 0
 ```
 
 ---
@@ -243,12 +291,12 @@ struct map final {
   [[nodiscard]] constexpr auto operator[](auto&&... args) const;
 
   /**
-   * Example: map.hash<0, policies>("foo")
+   * Example: map.at<policies>("foo")
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return result of executing policies
+   * @return optional result of executing policies
    */
-  template<const auto unknown, const auto policies = mph::policies>
-  [[nodiscard]] constexpr auto hash(auto&&... args) const;
+  template<const auto policies = mph::policies>
+  [[nodiscard]] constexpr auto at(auto&&... args) const;
 };
 
 /**
@@ -314,6 +362,10 @@ inline constexpr auto conditional = [](const bool cond, const auto lhs, const au
 
 inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return cond * lhs; // generates cmov (x86-64)
+};
+
+inline constexpr auto direct = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+  return lhs; // [unsafe] return result direclty
 };
 ```
 
