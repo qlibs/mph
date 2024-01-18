@@ -141,8 +141,10 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .zero 24
 ```
 
-> [potentially unsafe] If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs,
-                       then `direct` policy can be used which will avoid additional comparison
+---
+
+#### [potentially unsafe] If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs,
+                          then `direct` policy can be used which will avoid additional comparison
 
 ```cpp
 int main(int argc, const char** argv) {
@@ -415,7 +417,7 @@ class pext_split {
 > Configuration
 
 ```cpp
-#define MPH 1'0'1 // Current library version (SemVer)
+#define MPH 1'0'2 // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
