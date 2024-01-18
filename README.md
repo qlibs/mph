@@ -124,14 +124,14 @@ main:
   cmove mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index(,%rdx,4), %eax
   ret
 mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index:
-  .byte 5
-  .byte 3
-  .byte 1
-  .byte 2
   .byte 4
+  .byte 2
   .byte 0
-  .byte 0
-  .byte 0
+  .byte 1
+  .byte 3
+  .byte 5
+  .byte 5
+  .byte 5
 mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::lookup:
   .quad 2314885531374474830
   .quad 2314885720454418247
