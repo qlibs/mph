@@ -111,7 +111,7 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/o1WGdWj9x)
+> x86-64 assembly (https://godbolt.org/z/5r7fvKo3d)
 
 ```
 main:
