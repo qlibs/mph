@@ -286,7 +286,7 @@ inline constexpr auto map = detail::map<std::array{values...}>{};
 template<const auto unknown, const auto keys>
 struct map final {
   /**
-   * Eaxmple: map["foo"]
+   * Example: map["foo"]
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
    * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
    */
@@ -393,9 +393,9 @@ class swar {
 template <const std::size_t max_bits_size, const auto result_policy = conditional>
 class pext {
  public:
-  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto mask = utility::find_mask<T>(keys())>
+  template <const auto unknown, const auto keys, class T, const auto mask = utility::find_mask<T>(keys())>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(T&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
 };
 ```
 
@@ -407,9 +407,9 @@ class pext {
 template <const std::size_t max_bits_size, const auto N, const auto result_policy = conditional>
 class pext_split {
  public:
-  template <const auto unknown, const auto keys, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, keys>()>
+  template <const auto unknown, const auto keys, class T, const auto masks = make_masks<T, keys>()>
     requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(const auto data, [[maybe_unused]] auto &&...args) const noexcept(true);
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(T&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
 };
 ```
 
