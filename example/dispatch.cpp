@@ -8,9 +8,6 @@
 #include <array>
 #include <iostream>
 #include <mph>
-#include <string_view>
-
-using std::literals::operator""sv;
 
 class dispatch {
   static constexpr std::array keys{
