@@ -111,7 +111,7 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/5jYqrjeKK)
+> x86-64 assembly (https://godbolt.org/z/T66j8zYbM)
 
 ```
 main:
@@ -169,24 +169,25 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/5jYqrjeKK)
+> x86-64 assembly (https://godbolt.org/z/9TvoEr7jP)
 
 ```
 main:
   movq 8(%rsi), %rax
   movl $436207616, %edx
   movq (%rax), %rax
-  pext %rdx, %rax, %rdx
+  pext %rdx, %rax, %rax
+  movl mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 6>{6}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 4}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 5}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index(,%rax,4), %eax
   ret
-mph::v_1_0_0::pext<7ul, mph::v_1_0_0::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index:
+mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 6>{6}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 4}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 5}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index:
   .byte 5
   .byte 3
   .byte 1
   .byte 2
   .byte 4
-  .byte 0
-  .byte 0
-  .byte 0
+  .byte 6
+  .byte 6
+  .byte 6
 ```
 
 ---
