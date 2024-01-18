@@ -161,7 +161,7 @@ int main(int argc, const char** argv) {
   static_assert(3 == *symbols["MSFT    "]);
   static_assert(4 == *symbols["NVDA    "]);
 
-  constexpr auto policies = []<cost auto... ts>(auto&&.. args) {
+  constexpr auto policies = []<const auto... ts>(auto&&.. args) {
     return mph::pext<7u, mph::direct>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   };
 
