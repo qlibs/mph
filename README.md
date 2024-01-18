@@ -141,10 +141,9 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .zero 24
 ```
 
----
+### Performance [potentially unsafe]
 
-#### [potentially unsafe] If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs,
-                          then `direct` policy can be used which will avoid additional comparison
+> If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs, then `direct` policy can be used which will avoid additional comparison
 
 ```cpp
 int main(int argc, const char** argv) {
