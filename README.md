@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://github.com/boost-ext/mph/actions/workflows/build.yml" target="_blank">![build](https://github.com/boost-ext/mph/actions/workflows/build.yml/badge.svg)</a>
-<a href="https://godbolt.org/z/rzx11xfvz">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/1aG4a968G">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -94,24 +94,24 @@ std::print("{}", *primes[1007959]); // prints 6
 ```cpp
 int main(int argc, const char** argv) {
   auto symbols = mph::map<
-    {"AAPL    ", 1},
-    {"AMZN    ", 2},
-    {"GOOGL   ", 3},
-    {"MSFT    ", 4},
-    {"NVDA    ", 5}
+    {"AAPL    ", 0},
+    {"AMZN    ", 1},
+    {"GOOGL   ", 2},
+    {"MSFT    ", 3},
+    {"NVDA    ", 4}
   >;
 
-  static_assert(1 == *symbols["AAPL    "]);
-  static_assert(2 == *symbols["AMZN    "]);
-  static_assert(3 == *symbols["GOOGL   "]);
-  static_assert(4 == *symbols["MSFT    "]);
-  static_assert(5 == *symbols["NVDA    "]);
+  static_assert(0 == *symbols["AAPL    "]);
+  static_assert(1 == *symbols["AMZN    "]);
+  static_assert(2 == *symbols["GOOGL   "]);
+  static_assert(3 == *symbols["MSFT    "]);
+  static_assert(4 == *symbols["NVDA    "]);
 
   return *symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/T66j8zYbM)
+> x86-64 assembly (https://godbolt.org/z/o1WGdWj9x)
 
 ```
 main:
@@ -147,18 +147,18 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 ```cpp
 int main(int argc, const char** argv) {
   auto symbols = mph::map<
-    {"AAPL    ", 1},
-    {"AMZN    ", 2},
-    {"GOOGL   ", 3},
-    {"MSFT    ", 4},
-    {"NVDA    ", 5}
+    {"AAPL    ", 0},
+    {"AMZN    ", 1},
+    {"GOOGL   ", 2},
+    {"MSFT    ", 3},
+    {"NVDA    ", 4}
   >;
 
-  static_assert(1 == *symbols["AAPL    "]);
-  static_assert(2 == *symbols["AMZN    "]);
-  static_assert(3 == *symbols["GOOGL   "]);
-  static_assert(4 == *symbols["MSFT    "]);
-  static_assert(5 == *symbols["NVDA    "]);
+  static_assert(0 == *symbols["AAPL    "]);
+  static_assert(1 == *symbols["AMZN    "]);
+  static_assert(2 == *symbols["GOOGL   "]);
+  static_assert(3 == *symbols["MSFT    "]);
+  static_assert(4 == *symbols["NVDA    "]);
 
   constexpr auto policies = []<cost auto... ts>(auto&&.. args) {
     return mph::pext<7u, mph::direct>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
@@ -169,7 +169,7 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/9TvoEr7jP)
+> x86-64 assembly (https://godbolt.org/z/6fzoEqGdc)
 
 ```
 main:
@@ -177,17 +177,17 @@ main:
   movl $436207616, %edx
   movq (%rax), %rax
   pext %rdx, %rax, %rax
-  movl mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 6>{6}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 4}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 5}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index(,%rax,4), %eax
+  movzbl mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index(%rax), %eax
   ret
-mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 6>{6}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 4}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 5}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index:
-  .byte 5
-  .byte 3
-  .byte 1
-  .byte 2
+mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::detail::pair<char const*, int>, 5ul>{mph::v_1_0_1::detail::pair<char const*, int> [5]{mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::detail::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index:
   .byte 4
-  .byte 6
-  .byte 6
-  .byte 6
+  .byte 2
+  .byte 0
+  .byte 1
+  .byte 3
+  .byte 5
+  .byte 5
+  .byte 5
 ```
 
 ---
