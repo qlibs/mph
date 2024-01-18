@@ -107,12 +107,7 @@ int main(int argc, const char** argv) {
   static_assert(4 == *symbols["MSFT    "]);
   static_assert(5 == *symbols["NVDA    "]);
 
-  constexpr auto default_value = 0;
-  constexpr auto size = 8u;
-
-  return symbols.hash<default_value, mph::policies>(
-    std::span<const char, size>(argv[1], argv[1] + size)
-  );
+  return *symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
 }
 ```
 
@@ -148,7 +143,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ---
 
-### Benchmarks ([v1.0.1](https://github.com/boost-ext/mph/tree/v1.0.1))
+### Benchmarks
 
 > `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
 
@@ -240,9 +235,6 @@ inline constexpr auto map = detail::map<std::array{values...}>{};
  */
 template<const auto unknown, const auto keys>
 struct map final {
-  static constexpr auto keys = keys;
-  static constexpr auto unknown = unknown;
-
   /**
    * Eaxmple: map["foo"]
    * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
@@ -270,7 +262,7 @@ struct map final {
  * @return result of executing policies
  */
 template<const auto unknown, const auto keys, const auto policies = mph::policies>
-  requires (std::size(keys()) > 0u) and std::same_as<decltype(utility::value(keys()[0])), decltype(unknown)>
+  requires (std::size(keys) > 1u)
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 ```
 
