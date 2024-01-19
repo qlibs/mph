@@ -435,7 +435,7 @@ class pext_split {
 > Configuration
 
 ```cpp
-#define MPH 1'0'2 // Current library version (SemVer)
+#define MPH 1'0'3 // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys

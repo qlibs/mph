@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.21...3.25)
 project(
   mph
-  VERSION 1.0.2
+  VERSION 1.0.3
   LANGUAGES CXX
 )
 
