@@ -303,7 +303,7 @@ inline constexpr auto map = detail::map<std::array{values...}>{};
 /**
  * Map utility to easily create array of keys
  */
-template<const auto unknown, const auto keys>
+template<const auto keys>
 struct map final {
   /**
    * Example: map["foo"]
@@ -324,14 +324,13 @@ struct map final {
 /**
  * Minimal perfect hashing function
  *
- * @tparam unknown returned if there is no match
  * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
  * @tparam policies invocable which returns the hash
  * @param data continuous input data such as std::string_view, std::span, std::array or intergral value
  * @param args... optional args propagated to policies
  * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
  */
-template<const auto unknown, const auto keys, const auto policies = mph::policies>
+template<const auto keys, const auto policies = mph::policies>
   requires (std::size(keys) > 1u)
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 ```
