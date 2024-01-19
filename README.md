@@ -63,7 +63,7 @@ std::print("{}", *colors["green"]); // prints 1
 ```
 
 > mph::map is std::array of std::pairs and might be rewritten as such.
-> Note: The array has to use mph::fixed_string and be marked constexpr.
+> Note: The array has to be marked `constexpr`. Additionally, for strings, `mph::fixed_string` has to be used.
 
 ```cpp
 enum class color { red, green, blue };
