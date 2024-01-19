@@ -27,9 +27,9 @@ int main() {
     };
 
     constexpr auto colors = std::array{
-        std::pair{mph::fixed_string{"red"}, color::red},
-        std::pair{mph::fixed_string{"green"}, color::green},
-        std::pair{mph::fixed_string{"blue"}, color::blue},
+        mph::pair{"red", color::red},
+        mph::pair{"green", color::green},
+        mph::pair{"blue", color::blue},
     };
 
     constexpr auto hash = mph::hash<colors>;

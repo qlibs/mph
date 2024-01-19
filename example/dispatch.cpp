@@ -11,9 +11,9 @@
 
 class dispatch {
   static constexpr std::array keys{
-      std::pair{mph::fixed_string{"APPL    "}, 0},
-      std::pair{mph::fixed_string{"GOOGL   "}, 1},
-      std::pair{mph::fixed_string{"MSFT    "}, 2},
+      mph::pair{"APPL    ", 0},
+      mph::pair{"GOOGL   ", 1},
+      mph::pair{"MSFT    ", 2},
   };
 
  public:

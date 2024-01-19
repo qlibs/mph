@@ -805,7 +805,6 @@ constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &
   }
 };
 
-namespace detail {
 template <class T1, class T2>
 struct pair {
   constexpr explicit(false) pair(const T1 t1, const T2 t2) : first{t1}, second{t2} {}
@@ -843,6 +842,7 @@ static_assert(1 == get<0>(pair{1, 2}));
 static_assert(2 == get<1>(pair{1, 2}));
 // clang-format on
 
+namespace detail {
 template<const auto keys>
 struct map final {
   [[nodiscard]] constexpr auto operator[](auto&&... args) const {
@@ -856,15 +856,15 @@ struct map final {
 };
 } // namespace detail
 
-template <const detail::pair... values>
+template <const pair... values>
 inline constexpr auto map = detail::map<std::array{values...}>{};
 
 // clang-format off
-static_assert(not map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["baz"]);
-static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
-static_assert(map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
-static_assert(1 == *map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["foo"]);
-static_assert(2 == *map<detail::pair{"foo", 1}, detail::pair{"bar", 2}>["bar"]);
+static_assert(not map<pair{"foo", 1}, pair{"bar", 2}>["baz"]);
+static_assert(map<pair{"foo", 1}, pair{"bar", 2}>["foo"]);
+static_assert(map<pair{"foo", 1}, pair{"bar", 2}>["bar"]);
+static_assert(1 == *map<pair{"foo", 1}, pair{"bar", 2}>["foo"]);
+static_assert(2 == *map<pair{"foo", 1}, pair{"bar", 2}>["bar"]);
 // clang-format on
 
 }  // namespace mph::inline v_1_0_2
