@@ -39,6 +39,11 @@ int main() {
       mph::pair{"blue", color::blue},
   };
 
+  static_assert(color::green == *mph::hash<colors>("green"));
+  static_assert(color::red == *mph::hash<colors>("red"));
+  static_assert(color::blue == *mph::hash<colors>("blue"));
+
+  assert(mph::hash<colors>("green"));
   std::cout << int(*mph::hash<colors>("green"));  // prints 1
 }
 #endif
