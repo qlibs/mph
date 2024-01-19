@@ -250,9 +250,7 @@ template <class T>
       mask.set(i, 1);
     }
   }
-  if (not is_unique(mask)) {
-    throw;  // not a constant
-  }
+  assert(is_unique(mask));
   return mask.template to<T>();
 }
 
