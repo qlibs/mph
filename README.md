@@ -49,9 +49,9 @@ cmake --build build
 enum class color { red, green, blue };
 
 auto colors = mph::map<
-  {"red",   color::red},
+  {"red", color::red},
   {"green", color::green},
-  {"blue",  color::blue}
+  {"blue", color::blue}
 >;
 
 static_assert(color::green == *colors["green"]);
@@ -60,6 +60,25 @@ static_assert(color::blue  == *colors["blue"]);
 
 assert(colors["green"]);
 std::print("{}", *colors["green"]); // prints 1
+```
+
+> mph::map is std::array of std::pairs and might be rewritten as such.
+
+```cpp
+enum class color { red, green, blue };
+
+constexpr auto colors = std::array{
+  std::pair{mph::fixed_string{"red"}, color::red},
+  std::pair{mph::fixed_string{"green"}, color::green},
+  std::pair{mph::fixed_string{"blue"}, color::blue},
+};
+
+static_assert(color::green == *mph::hash<colors>("green"));
+static_assert(color::red   == *mph::hash<colors>("red"));
+static_assert(color::blue  == *mph::hash<colors>("blue"));
+
+assert(mph::hash<colors>["green"]);
+std::print("{}", *mph::hash<colors>("green")); // prints 1
 ```
 
 ---

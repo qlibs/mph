@@ -680,6 +680,27 @@ static_assert(42 == *optional<int>{42});
 static_assert(0u == *optional<int, 0u>{});
 // clang-format on
 
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) {
+  if constexpr (requires { std::string_view{lhs}; std::string_view{rhs.data(), rhs.size()}; }) {
+    return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
+  } else if constexpr (requires { std::string_view{lhs}; std::string_view{rhs}; }) {
+    return std::string_view{lhs} == std::string_view{rhs};
+  } else if constexpr (requires { lhs == rhs; }) {
+    return lhs == rhs;
+  } else {
+    return false;
+  }
+}
+
+// clang-format off
+static_assert(cmp(42, 42));
+static_assert(not cmp(4, 2));
+static_assert(cmp(mph::fixed_string{"foo"}, "foo"));
+static_assert(not cmp(mph::fixed_string{"foo"}, "bar"));
+static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
+static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
+// clang-format on
+
 /**
  * Default policies
  *
@@ -729,55 +750,61 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
  * @param args... args propagated to policies
  * @return result of executing policies
  */
-template<const auto keys, const auto policies = mph::policies>
-    requires (std::size(keys) > 1u)
-constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, auto &&... args) noexcept(true) { // attributes on lambdas is C++23
-  constexpr auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{};
-
-  return utility::overload{
-    [&]<class T> requires std::integral<T> and std::same_as<T, std::remove_cvref_t<decltype(get<0>(keys[0]))>> (const T value) {
-      return policies.template operator()<unknown, keys>(value, std::forward<decltype(args)>(args)...);
-    },
-    [&]<class T, const std::size_t Size> (const T (&v)[Size]) {
-      if (constexpr auto min_max = utility::min_max_length<keys>; Size-1 < min_max.first or Size-1 > min_max.second) {
-        return unknown;
+template<const auto keys, const auto policies = mph::policies> requires (std::size(keys) > 1u)
+constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &&... args) noexcept(true) { // attributes on lambdas is C++23
+  if (constexpr auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}; std::is_constant_evaluated()) { // if consteval is C++23
+    for (const auto& key : keys) {
+      if (cmp(key.first, std::forward<decltype(data)>(data))) {
+        return decltype(unknown){key.second};
       }
-      assert(Size-1 > 0u);
-      return policies.template operator()<unknown, keys>(std::span<const T, Size-1>{v, v + Size-1}, std::forward<decltype(args)>(args)...);
-    },
-    [&]<class T, const std::size_t MaxSize> (const basic_fixed_string<T, MaxSize> fs) {
-      if (constexpr auto min_max = utility::min_max_length<keys>; std::size(fs) < min_max.first or std::size(fs) > min_max.second) {
-        return unknown;
-      }
-      assert(std::size(fs) > 0u);
-      return policies.template operator()<unknown, keys>(fs, std::forward<decltype(args)>(args)...);
-    },
-    [&]<class T, class... Ts> (const std::basic_string_view<T, Ts...> sv) {
-      if (constexpr auto min_max = utility::min_max_length<keys>; std::size(sv) < min_max.first or std::size(sv) > min_max.second) {
-        return unknown;
-      }
-      assert(std::size(sv) > 0u);
-      return policies.template operator()<unknown, keys>(sv, std::forward<decltype(args)>(args)...);
-    },
-    [&]<class T, const std::size_t Size> (const std::span<T, Size> span) {
-      if constexpr (constexpr auto min_max = utility::min_max_length<keys>; Size != std::dynamic_extent and (Size < min_max.first or Size > min_max.second)) {
-        return unknown;
-      } else {
-        if (const auto size = std::size(span); size < min_max.first or size > min_max.second) {
+    }
+    return unknown;
+  } else {
+    return utility::overload{
+      [&]<class T> requires std::integral<T> and std::same_as<T, std::remove_cvref_t<decltype(get<0>(keys[0]))>> (const T value) {
+        return policies.template operator()<unknown, keys>(value, std::forward<decltype(args)>(args)...);
+      },
+      [&]<class T, const std::size_t Size> (const T (&v)[Size]) {
+        if (constexpr auto min_max = utility::min_max_length<keys>; Size-1 < min_max.first or Size-1 > min_max.second) {
           return unknown;
         }
-        assert(std::size(span) > 0u);
-        return policies.template operator()<unknown, keys>(span, std::forward<decltype(args)>(args)...);
-      }
-    },
-    [&]<class T, const std::size_t Size> (const std::array<T, Size>& array) {
-      if constexpr (constexpr auto min_max = utility::min_max_length<keys>; Size < min_max.first or Size > min_max.second) {
-        return unknown;
-      } else {
-        return policies.template operator()<unknown, keys>(array, std::forward<decltype(args)>(args)...);
-      }
-    },
-  }(std::forward<decltype(data)>(data));
+        assert(Size-1 > 0u);
+        return policies.template operator()<unknown, keys>(std::span<const T, Size-1>{v, v + Size-1}, std::forward<decltype(args)>(args)...);
+      },
+      [&]<class T, const std::size_t MaxSize> (const basic_fixed_string<T, MaxSize> fs) {
+        if (constexpr auto min_max = utility::min_max_length<keys>; std::size(fs) < min_max.first or std::size(fs) > min_max.second) {
+          return unknown;
+        }
+        assert(std::size(fs) > 0u);
+        return policies.template operator()<unknown, keys>(fs, std::forward<decltype(args)>(args)...);
+      },
+      [&]<class T, class... Ts> (const std::basic_string_view<T, Ts...> sv) {
+        if (constexpr auto min_max = utility::min_max_length<keys>; std::size(sv) < min_max.first or std::size(sv) > min_max.second) {
+          return unknown;
+        }
+        assert(std::size(sv) > 0u);
+        return policies.template operator()<unknown, keys>(sv, std::forward<decltype(args)>(args)...);
+      },
+      [&]<class T, const std::size_t Size> (const std::span<T, Size> span) {
+        if constexpr (constexpr auto min_max = utility::min_max_length<keys>; Size != std::dynamic_extent and (Size < min_max.first or Size > min_max.second)) {
+          return unknown;
+        } else {
+          if (const auto size = std::size(span); size < min_max.first or size > min_max.second) {
+            return unknown;
+          }
+          assert(std::size(span) > 0u);
+          return policies.template operator()<unknown, keys>(span, std::forward<decltype(args)>(args)...);
+        }
+      },
+      [&]<class T, const std::size_t Size> (const std::array<T, Size>& array) {
+        if constexpr (constexpr auto min_max = utility::min_max_length<keys>; Size < min_max.first or Size > min_max.second) {
+          return unknown;
+        } else {
+          return policies.template operator()<unknown, keys>(array, std::forward<decltype(args)>(args)...);
+        }
+      },
+    }(std::forward<decltype(data)>(data));
+  }
 };
 
 namespace detail {
@@ -818,40 +845,10 @@ static_assert(1 == get<0>(pair{1, 2}));
 static_assert(2 == get<1>(pair{1, 2}));
 // clang-format on
 
-[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) {
-  return lhs == rhs;
-}
-[[nodiscard]] constexpr auto cmp(const fixed_string lhs, const auto& rhs) {
-  if constexpr (requires { rhs.data(); rhs.size(); }) {
-    return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
-  } else {
-    return std::string_view{lhs} == rhs;
-  }
-}
-
-// clang-format off
-static_assert(cmp(42, 42));
-static_assert(not cmp(4, 2));
-static_assert(cmp(mph::fixed_string{"foo"}, "foo"));
-static_assert(not cmp(mph::fixed_string{"foo"}, "bar"));
-static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
-static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
-// clang-format on
-
 template<const auto keys>
 struct map final {
-  [[nodiscard]] constexpr auto operator[](auto&& data) const {
-    using optional_t = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>;
-    if (std::is_constant_evaluated()) { // if consteval is C++23
-      for (const auto& key : keys) {
-        if (cmp(key.first, std::forward<decltype(data)>(data))) {
-          return optional_t{key.second};
-        }
-      }
-      return optional_t{};
-    } else {
-      return at(std::forward<decltype(data)>(data));
-    }
+  [[nodiscard]] constexpr auto operator[](auto&&... args) const {
+    return at(std::forward<decltype(args)>(args)...);
   }
 
   template<const auto policies = mph::policies>

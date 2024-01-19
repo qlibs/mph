@@ -14,8 +14,8 @@ int main() {
   using std::literals::operator""sv;
 
   constexpr auto verify = [](const auto &keys, const auto &hash) {
-    for (auto expected = 1; const auto &[symbol, _] : keys) {
-      expect(hash(symbol) and _i(expected++) == *hash(symbol));
+    for (const auto &[key, value] : keys) {
+      expect(hash(key) and _i(value) == *hash(key));
     }
   };
 
@@ -33,6 +33,11 @@ int main() {
     };
 
     constexpr auto hash = mph::hash<colors>;
+
+    static_assert(color::red == *hash("red"));
+    static_assert(color::green == *hash("green"));
+    static_assert(color::blue == *hash("blue"));
+    static_assert(color{3} == *hash("foobar"));
 
     expect(color::red == *hash("red"));
     expect(color::green == *hash("green"));
@@ -52,6 +57,11 @@ int main() {
     };
 
     constexpr auto hash = mph::hash<keys>;
+
+    static_assert(1 == *mph::hash<keys>(23423ul));
+    static_assert(2 == *mph::hash<keys>(432432ul));
+    static_assert(3 == *mph::hash<keys>(31232ul));
+    static_assert(4 == *mph::hash<keys>(0ul));
 
     verify(keys, hash);
 
@@ -177,6 +187,11 @@ int main() {
           std::forward<decltype(args)>(args)...);
     }
     > ;
+
+    static_assert(1 == *mph::hash<keys>("A"));
+    static_assert(2 == *mph::hash<keys>("B"));
+    static_assert(3 == *mph::hash<keys>("C"));
+    static_assert(4 == *mph::hash<keys>("D"));
 
     verify(keys, hash);
 
@@ -401,13 +416,18 @@ int main() {
   "[hash] fail case - variable length"_test = [verify] {
     constexpr std::array keys{
         std::pair{mph::fixed_string{" AA "}, 1},
-        std::pair{mph::fixed_string{" AB "}, 2},
-        std::pair{mph::fixed_string{" AC "}, 3},
+        std::pair{mph::fixed_string{" AB "}, 3},
+        std::pair{mph::fixed_string{" AC "}, 5},
     };
 
     auto hash = mph::hash<keys>;
 
     verify(keys, hash);
+
+    static_assert(1 == *mph::hash<keys>(" AA "));
+    static_assert(3 == *mph::hash<keys>(" AB "));
+    static_assert(5 == *mph::hash<keys>(" AC "));
+    static_assert(6 == *mph::hash<keys>(" DD "));
 
     expect(not hash(""sv));
     expect(not hash(" aa "sv));
