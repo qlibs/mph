@@ -297,13 +297,13 @@ mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}
 /**
  * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
  */
-template <const auto... values>
+template <const pair... values> requires (sizeof...(values) > 1u)
 inline constexpr auto map = detail::map<std::array{values...}>{};
 
 /**
  * Map utility to easily create array of keys
  */
-template<const auto keys>
+template<const auto keys> requires (std::size(keys) > 1u)
 struct map final {
   /**
    * Example: map["foo"]

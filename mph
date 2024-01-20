@@ -843,7 +843,7 @@ static_assert(2 == get<1>(pair{1, 2}));
 // clang-format on
 
 namespace detail {
-template<const auto keys>
+template<const auto keys>  requires (std::size(keys) > 1u)
 struct map final {
   [[nodiscard]] constexpr auto operator[](auto&&... args) const {
     return at(std::forward<decltype(args)>(args)...);
@@ -856,7 +856,7 @@ struct map final {
 };
 } // namespace detail
 
-template <const pair... values>
+template <const pair... values> requires (sizeof...(values) > 1u)
 inline constexpr auto map = detail::map<std::array{values...}>{};
 
 // clang-format off
