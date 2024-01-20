@@ -678,27 +678,6 @@ static_assert(42 == *optional<int>{42});
 static_assert(0u == *optional<int, 0u>{});
 // clang-format on
 
-[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) {
-  if constexpr (requires { std::string_view{lhs}; std::string_view{rhs.data(), rhs.size()}; }) {
-    return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
-  } else if constexpr (requires { std::string_view{lhs}; std::string_view{rhs}; }) {
-    return std::string_view{lhs} == std::string_view{rhs};
-  } else if constexpr (requires { lhs == rhs; }) {
-    return lhs == rhs;
-  } else {
-    return false;
-  }
-}
-
-// clang-format off
-static_assert(cmp(42, 42));
-static_assert(not cmp(4, 2));
-static_assert(cmp(mph::fixed_string{"foo"}, "foo"));
-static_assert(not cmp(mph::fixed_string{"foo"}, "bar"));
-static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
-static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
-// clang-format on
-
 /**
  * Default policies
  *
@@ -751,6 +730,27 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 template<const auto keys, const auto policies = mph::policies> requires (std::size(keys) > 1u)
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &&... args) noexcept(true) { // attributes on lambdas is C++23
   if (constexpr auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}; std::is_constant_evaluated()) { // if consteval is C++23
+    constexpr auto cmp = [](const auto& lhs, const auto& rhs) {
+      if constexpr (requires { std::string_view{lhs}; std::string_view{rhs.data(), rhs.size()}; }) {
+        return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
+      } else if constexpr (requires { std::string_view{lhs}; std::string_view{rhs}; }) {
+        return std::string_view{lhs} == std::string_view{rhs};
+      } else if constexpr (requires { lhs == rhs; }) {
+        return lhs == rhs;
+      } else {
+        return false;
+      }
+    };
+
+    // clang-format off
+    static_assert(cmp(42, 42));
+    static_assert(not cmp(4, 2));
+    static_assert(cmp(mph::fixed_string{"foo"}, "foo"));
+    static_assert(not cmp(mph::fixed_string{"foo"}, "bar"));
+    static_assert(cmp(mph::fixed_string{"foo"}, std::array{'f','o','o'}));
+    static_assert(not cmp(mph::fixed_string{"foo"}, std::array{'b','a','r'}));
+    // clang-format on
+
     for (const auto& key : keys) {
       if (cmp(key.first, std::forward<decltype(data)>(data))) {
         return decltype(unknown){key.second};
