@@ -375,6 +375,15 @@ inline constexpr auto conditional = [](const bool cond, const auto lhs, const au
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
 
+template<auto Probablity>
+inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) {
+  if (__builtin_expect_with_probability(cond, 1, Probablity)) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+};
+
 inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return cond * lhs; // generates cmov (x86-64)
 };
