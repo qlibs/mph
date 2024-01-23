@@ -314,9 +314,11 @@ inline constexpr auto map {
   template<const auto policies = mph::policies>
   [[nodiscard]] constexpr auto at(auto&&... args) const;
 };
+```
 
+```cpp
 /**
- * Minimal perfect hashing function
+ * Minimal perfect hash function
  *
  * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
  * @tparam policies invocable which returns the hash
@@ -407,7 +409,7 @@ inline constexpr auto branchless_table = [](const bool cond, const auto lhs, con
 
 ```cpp
 /**
- * Minimal perfect hashing function based on SWAR
+ * Minimal perfect hash function based on SWAR
  *  reads sizeof(T) bytes and switches on that
  */
 template<class T>
@@ -421,7 +423,7 @@ class swar {
 
 ```cpp
 /**
- * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
+ * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const auto result_policy = conditional>
@@ -435,7 +437,7 @@ class pext {
 
 ```cpp
 /**
- * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
+ * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const std::size_t split_index, const auto result_policy = conditional>
