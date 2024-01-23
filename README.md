@@ -374,11 +374,15 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return lhs; // [unsafe] returns unconditionally
 };
+```
 
+```cpp
 inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
+```
 
+```cpp
 template<auto Probablity>
 inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) {
   if (__builtin_expect_with_probability(cond, 1, Probablity)) {
@@ -387,11 +391,15 @@ inline constexpr auto conditional_probability = [](const bool cond, const auto l
     return rhs;
   }
 };
+```
 
+```cpp
 inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return cond * lhs; // generates cmov (x86-64)
 };
+```
 
+```cpp
 inline constexpr auto branchless_table = [](const bool cond, const auto lhs, const auto rhs) {
   return std::array{rhs, lhs}[cond];
 };
@@ -430,7 +438,7 @@ class pext {
  * Minimal perfect hashing function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size, const auto N, const auto result_policy = conditional>
+template <const std::size_t max_bits_size, const std::size_t split_index, const auto result_policy = conditional>
 class pext_split {
  public:
   template <const auto unknown, const auto keys, class T, const auto masks = make_masks<T, keys>()>
