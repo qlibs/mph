@@ -163,7 +163,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
 
 ### Performance [potentially unsafe]
 
-> If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs, then `direct` policy can be used which will avoid additional comparison
+> If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs, then `unconditional` policy can be used which will avoid additional comparison
 
 ```cpp
 int main(int argc, const char** argv) {
@@ -182,7 +182,7 @@ int main(int argc, const char** argv) {
   static_assert(4 == *symbols["NVDA    "]);
 
   constexpr auto policies = []<const auto... ts>(auto&&.. args) {
-    return mph::pext<7u, mph::direct>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+    return mph::pext<7u, mph::unconditional>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   };
 
   // NOTE: requires symbols.contains(input), otherwise it's unsafe
@@ -198,9 +198,9 @@ main:
   movl $436207616, %edx
   movq (%rax), %rax
   pext %rdx, %rax, %rax
-  movzbl mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::pair<char const*, int>, 5ul>{mph::v_1_0_1::pair<char const*, int> [5]{mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index(%rax), %eax
+  movzbl mph::v_1_0_1::pext<7ul, mph::v_1_0_1::unconditional::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::pair<char const*, int>, 5ul>{mph::v_1_0_1::pair<char const*, int> [5]{mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index(%rax), %eax
   ret
-mph::v_1_0_1::pext<7ul, mph::v_1_0_1::direct::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::pair<char const*, int>, 5ul>{mph::v_1_0_1::pair<char const*, int> [5]{mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index:
+mph::v_1_0_1::pext<7ul, mph::v_1_0_1::unconditional::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<mph::v_1_0_1::optional<int, 5u>{(unsigned char)5}, std::array<mph::v_1_0_1::pair<char const*, int>, 5ul>{mph::v_1_0_1::pair<char const*, int> [5]{mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)65, (char)80, (char)76, (char)32, (char)32, (char)32, (char)32}}}}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)65, (char)77, (char)90, (char)78, (char)32, (char)32, (char)32, (char)32}}}, 1}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)71, (char)79, (char)79, (char)71, (char)76, (char)32, (char)32, (char)32}}}, 2}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)77, (char)83, (char)70, (char)84, (char)32, (char)32, (char)32, (char)32}}}, 3}, mph::v_1_0_1::pair<char const*, int>{mph::v_1_0_1::basic_fixed_string<char, 32ul>{8ul, std::array<char, 32ul>{char [32]{(char)78, (char)86, (char)68, (char)65, (char)32, (char)32, (char)32, (char)32}}}, 4}}}, std::span<char const, 8ul> const&, unsigned long, 436207616ul>(std::span<char const, 8ul> const&) const::index:
   .byte 4
   .byte 2
   .byte 0
@@ -371,6 +371,10 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 ```
 
 ```cpp
+inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+  return lhs; // [unsafe] returns unconditionally
+};
+
 inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
@@ -388,8 +392,8 @@ inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_u
   return cond * lhs; // generates cmov (x86-64)
 };
 
-inline constexpr auto direct = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-  return lhs; // [unsafe] return result direclty
+inline constexpr auto branchless_table = [](const bool cond, const auto lhs, const auto rhs) {
+  return std::array{rhs, lhs}[cond];
 };
 ```
 

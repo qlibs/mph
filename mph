@@ -453,6 +453,10 @@ static_assert(all_keys_size_lt<std::array{std::pair{std::array<char, 2>{}, 0}, s
 // clang-format on
 }  // namespace concepts
 
+inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+  return lhs; // [unsafe] returns unconditionally
+};
+
 inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
@@ -470,8 +474,8 @@ inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_u
   return cond * lhs; // generates cmov (x86-64)
 };
 
-inline constexpr auto direct = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-  return lhs; // [unsafe] return result direclty
+inline constexpr auto branchless_table = [](const bool cond, const auto lhs, const auto rhs) {
+  return std::array{rhs, lhs}[cond];
 };
 
 /**
@@ -580,7 +584,7 @@ class pext {
  * Minimal perfect hashing based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size, const auto N,
+template <const std::size_t max_bits_size, const std::size_t split_index,
           const auto result_policy = conditional>
 class pext_split {
   template<class T, const auto keys>
@@ -589,7 +593,7 @@ class pext_split {
 
     std::vector<std::vector<std::tuple<std::remove_cvref_t<decltype(get<0>(keys[0]))>>>> v(size);
     for (const auto &key : keys) {
-      v[std::size_t(get<0>(key)[N])].push_back(get<0>(key));
+      v[std::size_t(get<0>(key)[split_index])].push_back(get<0>(key));
     }
 
     std::array<T, size> masks{}; // only used at compile-time, no alignment required
@@ -606,7 +610,7 @@ class pext_split {
 
     std::array<std::vector<std::remove_cvref_t<decltype(get<0>(keys[0]))>>, split_size> v{};
     for (const auto &key : keys) {
-      v[std::size_t(get<0>(key)[N])].push_back(get<0>(key));
+      v[std::size_t(get<0>(key)[split_index])].push_back(get<0>(key));
     }
 
     alignas(MPH_CACHE_LINE_SIZE) std::array<std::array<T, size>, split_size> lookup{};
@@ -625,7 +629,7 @@ class pext_split {
 
     std::array<std::vector<std::remove_cvref_t<decltype(keys[0])>>, split_size> iv{};
     for (const auto &key : keys) {
-      iv[std::size_t(get<0>(key)[N])].push_back(key);
+      iv[std::size_t(get<0>(key)[split_index])].push_back(key);
     }
 
     using type = std::remove_cvref_t<decltype(unknown)>;
@@ -658,9 +662,9 @@ class pext_split {
     static constexpr auto lookup = make_lookups<T, keys, masks, required_size>();
     static constexpr auto index = make_indexes<T, unknown, keys, masks, required_size>();
 
-    assert(std::size(data) > N);
+    assert(std::size(data) > split_index);
 
-    const auto id = data[N];
+    const auto id = data[split_index];
     const auto lhs = utility::copy_required_bytes<T>(data);
     const auto ext = utility::pext(lhs, masks[id]);
     return result_policy(lookup[id][ext] == lhs, index[id][ext], std::remove_cvref_t<decltype(index[id][ext])>(unknown));
