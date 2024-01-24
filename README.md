@@ -139,11 +139,11 @@ main:
   movl $436207616, %edx
   movq (%rax), %rax
   pext %rdx, %rax, %rdx
-  cmpq %rax, mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::lookup(,%rdx,8)
+  cmpq %rax, mph::v_1_0_0::pext...lookup(,%rdx,8)
   movl $0, %eax
-  cmove mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index(,%rdx,4), %eax
+  cmove mph::v_1_0_0::pext...index(,%rdx,4), %eax
   ret
-mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::index:
+mph::v_1_0_0::pext...index:
   .byte 4
   .byte 2
   .byte 0
@@ -152,7 +152,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .byte 5
   .byte 5
   .byte 5
-mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#1}{}>::operator()<0, main::{lambda()#1}{}, unsigned long, 436207616ul, std::span<char const, 8ul> const&>(std::span<char const, 8ul> const&) const::lookup:
+mph::v_1_0_0::pext...lookup:
   .quad 2314885531374474830
   .quad 2314885720454418247
   .quad 2314885531559805249
