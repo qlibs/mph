@@ -413,8 +413,7 @@ inline constexpr auto branchless_table = [](const bool cond, const auto lhs, con
  *  reads sizeof(T) bytes and switches on that
  */
 template<class T>
-class swar {
- public:
+struct swar {
   template <const auto unknown, const auto keys>
     requires concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
@@ -427,8 +426,7 @@ class swar {
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const auto result_policy = conditional>
-class pext {
- public:
+struct pext {
   template <const auto unknown, const auto keys, class T, const auto mask = utility::find_mask<T>(keys())>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(T&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
@@ -441,8 +439,7 @@ class pext {
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const std::size_t split_index, const auto result_policy = conditional>
-class pext_split {
- public:
+struct pext_split {
   template <const auto unknown, const auto keys, class T, const auto masks = make_masks<T, keys>()>
     requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
   [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(T&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
@@ -526,7 +523,7 @@ class pext_split {
 
 - Similar projects?
 
-    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf), [cmph](https://cmph.sourceforge.net), [perfecthash](https://github.com/tpn/perfecthash)
+    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf), [cmph](https://cmph.sourceforge.net), [perfecthash](https://github.com/tpn/perfecthash), [LeMonHash](https://github.com/ByteHamster/LeMonHash), [PTHash](https://github.com/jermp/pthash), [ShockHash](https://github.com/ByteHamster/ShockHash), [BuRR](https://github.com/lorenzhs/BuRR)
 
 - How can I contribute?
 
