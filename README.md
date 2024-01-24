@@ -161,7 +161,7 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .zero 24
 ```
 
-> `llvm-mca -mcpu=skylake`
+> `llvm-mca -mcpu=skylake` (https://godbolt.org/z/veEWza3Kd)
 
 ```
 Dispatch Width:    6
