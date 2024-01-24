@@ -239,6 +239,7 @@ int main(int argc, [[maybe_unused]] const char**) {
     return mph::pext<7u, mph::unconditional>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   };
 
+  assert(argc >= 0 and argc < std::size(symbols));
   return *mph::hash<symbols, policies>(symbols[argc].first);
 }
 ```
