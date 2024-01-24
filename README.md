@@ -226,7 +226,7 @@ Resource pressure by instruction:
 > If `all` possible inputs are known AND can be found in the keys, then `unconditional` policy can be used which will avoid one comparison
 
 ```cpp
-int main(int argc, [[maybe_unused]] const char**) {
+int main(int argc, [[maybe_unused]] const char** argv) {
   static constexpr auto symbols = std::array{
     std::pair{std::array{'A', 'A', 'P', 'L', ' ', ' ', ' ', ' '}, 0},
     std::pair{std::array{'A', 'M', 'Z', 'N', ' ', ' ', ' ', ' '}, 1},
