@@ -487,7 +487,7 @@ class swar {
  public:
   template <const auto unknown, const auto keys>
     requires concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
+  [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true) -> decltype(unknown) {
     if constexpr (requires { std::size(data); }) {
       return dispatch<unknown, keys>(utility::copy_required_bytes<T>(data), std::make_index_sequence<std::size(keys)>{});
     } else {
@@ -556,7 +556,7 @@ class pext {
  public:
   template <const auto unknown, const auto keys, class TData, class T = decltype(data<std::remove_cvref_t<TData>, keys>()), const auto mask = utility::find_mask<T>(keys)>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) -> decltype(unknown) {
     constexpr auto required_size = [] {
       auto result{1u};
       for (auto i = 0u; i < std::popcount(std::uint64_t(mask)); ++i) {
@@ -647,7 +647,7 @@ class pext_split {
  public:
   template <const auto unknown, const auto keys, class TData, class T = std::conditional_t<(utility::max_length<keys> <= sizeof(std::uint32_t)), std::uint32_t, std::uint64_t>, const auto masks = make_masks<T, keys>()>
     requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) requires requires { std::size(data); } {
+  [[nodiscard]] [[gnu::target("bmi2")]] auto operator()(TData&& data, [[maybe_unused]] auto &&...args) const noexcept(true) -> decltype(unknown) requires requires { std::size(data); } {
     constexpr auto required_size = [] {
       std::vector<std::size_t> sizes{};
       std::transform(std::cbegin(masks), std::cend(masks), std::back_inserter(sizes), [](const auto mask) { return std::popcount(mask); });
