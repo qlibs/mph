@@ -161,6 +161,66 @@ mph::v_1_0_0::pext<7ul, mph::v_1_0_0::branchless::{lambda(bool, auto:1, auto:2)#
   .zero 24
 ```
 
+> `llvm-mca -mcpu=skylake`
+
+```
+Dispatch Width:    6
+uOps Per Cycle:    5.38
+IPC:               4.23
+Block RThroughput: 2.5
+
+Instruction Info:
+[1]: #uOps
+[2]: Latency
+[3]: RThroughput
+[4]: MayLoad
+[5]: MayStore
+[6]: HasSideEffects (U)
+
+[1]    [2]    [3]    [4]    [5]    [6]    Instructions:
+ 1      5     0.50    *                   movq  8(%rsi), %rax
+ 1      1     0.25                        movl  $436207616, %ecx
+ 1      1     0.50                        leaq  _ZZNK3mph7v_1_0_34pext...lookup(%rip), %rdx
+ 1      5     0.50    *                   movq  (%rax), %rax
+ 1      3     1.00                        pextq %rcx, %rax, %rcx
+ 2      6     0.50    *                   cmpq  %rax, (%rdx,%rcx,8)
+ 1      1     0.50                        leaq  _ZZNK3mph7v_1_0_34pext...index(%rip), %rax
+ 1      5     0.50    *                   movzbl        (%rcx,%rax), %ecx
+ 1      1     0.25                        movl  $5, %eax
+ 1      1     0.50                        cmovel        %ecx, %eax
+ 3      7     1.00                  U     retq
+
+Resources:
+[0]   - SKLDivider
+[1]   - SKLFPDivider
+[2]   - SKLPort0
+[3]   - SKLPort1
+[4]   - SKLPort2
+[5]   - SKLPort3
+[6]   - SKLPort4
+[7]   - SKLPort5
+[8]   - SKLPort6
+[9]   - SKLPort7
+
+Resource pressure per iteration:
+[0]    [1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    
+ -      -     2.18   2.32   2.50   2.50    -     2.31   2.19    -     
+
+Resource pressure by instruction:
+[0]    [1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    Instructions:
+ -      -      -      -     0.57   0.43    -      -      -      -     movq      8(%rsi), %rax
+ -      -     0.25   0.18    -      -      -     0.33   0.24    -     movl      $436207616, %ecx
+ -      -      -     0.28    -      -      -     0.72    -      -     leaq      _ZZNK3mph7v_1_0_34pext...lookup(%rip), %rdx
+ -      -      -      -     0.41   0.59    -      -      -      -     movq      (%rax), %rax
+ -      -      -     1.00    -      -      -      -      -      -     pextq     %rcx, %rax, %rcx
+ -      -     0.42   0.33   0.37   0.63    -     0.04   0.21    -     cmpq      %rax, (%rdx,%rcx,8)
+ -      -      -     0.31    -      -      -     0.69    -      -     leaq      _ZZNK3mph7v_1_0_34pext...index(%rip), %rax
+ -      -      -      -     0.63   0.37    -      -      -      -     movzbl    (%rcx,%rax), %ecx
+ -      -     0.38   0.11    -      -      -     0.16   0.36    -     movl      $5, %eax
+ -      -     0.63    -      -      -      -      -     0.37    -     cmovel    %ecx, %eax
+ -      -     0.51   0.11   0.52   0.48    -     0.38   1.00    -     retq
+```
+
 ### Performance [potentially unsafe]
 
 > If `all` possible inputs are known and `map.contains(input)` is satisfied for all possible inputs, then `unconditional` policy can be used which will avoid additional comparison
