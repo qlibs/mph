@@ -62,8 +62,8 @@ assert(colors["green"]);
 std::print("{}", *colors["green"]); // prints 1
 ```
 
-> mph::map is std::array of std::pairs and might be rewritten as such.
-> Note: The array has to be marked `constexpr`. Additionally, for strings, `mph::fixed_string` has to be used.
+> mph::map is array of pairs and might be rewritten as such.
+> Note: The array has to be marked `constexpr` in this case. Additionally, for strings, `mph::fixed_string` has to be used which can be simplified with `mph::pair` which passes `mph::fixed_string` for raw literals.
 
 ```cpp
 enum class color { red, green, blue };
@@ -203,8 +203,8 @@ Resources:
 [9]   - SKLPort7
 
 Resource pressure per iteration:
-[0]    [1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    
- -      -     2.18   2.32   2.50   2.50    -     2.31   2.19    -     
+[0]    [1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]
+ -      -     2.18   2.32   2.50   2.50    -     2.31   2.19    -
 
 Resource pressure by instruction:
 [0]    [1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    Instructions:
