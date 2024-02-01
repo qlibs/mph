@@ -14,7 +14,7 @@ export module mph;
 #endif
 
 #ifndef MPH
-#define MPH 1'0'4 // SemVer - should match mph namespace
+#define MPH 1'0'5 // SemVer - should match mph namespace
 
 #include <algorithm>
 #include <climits>
@@ -63,7 +63,7 @@ export
 /**
  * Minimal perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
  */
-namespace mph::inline v_1_0_4 {
+namespace mph::inline v_1_0_5 {
 template<class T, const std::size_t max_size> struct basic_fixed_string final {
   template<const std::size_t Size>
   constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) requires (Size <= max_size) : size_{Size-1} {
