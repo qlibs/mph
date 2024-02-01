@@ -58,7 +58,7 @@ static_assert(color::green == *mph::hash<colors>("green"));
 static_assert(color::red   == *mph::hash<colors>("red"));
 static_assert(color::blue  == *mph::hash<colors>("blue"));
 
-assert(mph::hash<colors>["green"]);
+assert(mph::hash<colors>("green"));
 std::print("{}", *mph::hash<colors>("green")); // prints 1
 ```
 
