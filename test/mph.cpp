@@ -572,39 +572,4 @@ int main() {
     expect(not hash("    III "sv));
     expect(not hash("     III"sv));
   };
-
-#if (defined(__GNUC__) and not defined(__clang__)) or \
-    (defined(__clang__) and (__clang_major__ >= 18))
-  "map"_test = [verify] {
-    auto keys = mph::map<{"a", 0}, {"b", 1}, {"c", 2}>;
-
-    expect(not keys["foo"]);
-    expect(not keys[""sv]);
-    expect(not keys["bar"sv]);
-    expect(not keys["baz"sv]);
-    expect(not keys["d"sv]);
-
-    expect(keys["a"]);
-    expect(keys["b"]);
-    expect(keys["c"]);
-
-    expect(0_i == *keys["a"sv]);
-    expect(1_i == *keys["b"]);
-    expect(2_i == *keys["c"]);
-
-    expect(not keys.at("foo"));
-    expect(not keys.at(""sv));
-    expect(not keys.at("bar"sv));
-    expect(not keys.at("baz"sv));
-    expect(not keys.at("d"sv));
-
-    expect(keys.at("a"));
-    expect(keys.at("b"));
-    expect(keys.at("c"));
-
-    expect(0_i == *keys.at("a"sv));
-    expect(1_i == *keys.at("b"));
-    expect(2_i == *keys.at("c"));
-  };
-#endif
 }

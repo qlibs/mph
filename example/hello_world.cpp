@@ -9,27 +9,6 @@
 #include <iostream>
 #include <mph>
 
-#if (defined(__GNUC__) and not defined(__clang__)) or \
-    (defined(__clang__) and (__clang_major__ >= 18))
-int main() {
-  enum class color { red, green, blue };
-
-  // clang-format off
-  auto colors = mph::map<
-    {"red",   color::red},
-    {"green", color::green},
-    {"blue",  color::blue}
-  >;
-  // clang-format on
-
-  static_assert(color::green == *colors["green"]);
-  static_assert(color::red == *colors["red"]);
-  static_assert(color::blue == *colors["blue"]);
-
-  assert(colors["green"]);
-  std::cout << int(*colors["green"]);  // prints 1
-}
-#else
 int main() {
   enum class color { red, green, blue };
 
@@ -46,4 +25,3 @@ int main() {
   assert(mph::hash<colors>("green"));
   std::cout << int(*mph::hash<colors>("green"));  // prints 1
 }
-#endif

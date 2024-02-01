@@ -854,32 +854,6 @@ template<const std::size_t N, class T1, class T2>
 static_assert(1 == get<0>(pair{1, 2}));
 static_assert(2 == get<1>(pair{1, 2}));
 // clang-format on
-
-namespace detail {
-template<const auto keys>  requires (std::size(keys) > 1u)
-struct map final {
-  [[nodiscard]] constexpr auto operator[](auto&&... args) const {
-    return at(std::forward<decltype(args)>(args)...);
-  }
-
-  template<const auto policies = mph::policies>
-  [[nodiscard]] constexpr auto at(auto&&... args) const {
-    return mph::hash<keys, policies>(std::forward<decltype(args)>(args)...);
-  }
-};
-} // namespace detail
-
-template <const pair... values> requires (sizeof...(values) > 1u)
-inline constexpr auto map = detail::map<std::array{values...}>{};
-
-// clang-format off
-static_assert(not map<pair{"foo", 1}, pair{"bar", 2}>["baz"]);
-static_assert(map<pair{"foo", 1}, pair{"bar", 2}>["foo"]);
-static_assert(map<pair{"foo", 1}, pair{"bar", 2}>["bar"]);
-static_assert(1 == *map<pair{"foo", 1}, pair{"bar", 2}>["foo"]);
-static_assert(2 == *map<pair{"foo", 1}, pair{"bar", 2}>["bar"]);
-// clang-format on
-
 }  // namespace mph::inline v_1_0_2
 #endif  // MPH
 #endif  //  __cplusplus

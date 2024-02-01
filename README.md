@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://github.com/boost-ext/mph/actions/workflows/build.yml" target="_blank">![build](https://github.com/boost-ext/mph/actions/workflows/build.yml/badge.svg)</a>
-<a href="https://godbolt.org/z/1aG4a968G">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/a6czaG8f7">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -43,27 +43,7 @@ cmake --build build
 
 ### Hello world
 
-> Strings (https://godbolt.org/z/5hac3cjj1)
-
-```cpp
-enum class color { red, green, blue };
-
-auto colors = mph::map<
-  {"red", color::red},
-  {"green", color::green},
-  {"blue", color::blue}
->;
-
-static_assert(color::green == *colors["green"]);
-static_assert(color::red   == *colors["red"]);
-static_assert(color::blue  == *colors["blue"]);
-
-assert(colors["green"]);
-std::print("{}", *colors["green"]); // prints 1
-```
-
-> mph::map is array of pairs and might be rewritten as such.
-> Note: The array has to be marked `constexpr` in this case. Additionally, for strings, `mph::fixed_string` has to be used which can be simplified with `mph::pair` which passes `mph::fixed_string` for raw literals.
+> Strings (https://godbolt.org/z/fWY8YYeEE)
 
 ```cpp
 enum class color { red, green, blue };
@@ -84,27 +64,35 @@ std::print("{}", *mph::hash<colors>("green")); // prints 1
 
 ---
 
-> Numbers (https://godbolt.org/z/366xYvYhP)
+> Numbers (https://godbolt.org/z/TT683zxfs)
 
 ```cpp
-auto primes = mph::map<
-  {1007887, 0}, {1007891, 1}, {1007921, 2}, {1007933, 3}, {1007939, 4},
-  {1007957, 5}, {1007959, 6}, {1007971, 7}, {1007977, 8}, {1008001, 9}
->;
+constexpr auto primes = std::array{
+  std::pair{1007887, 0},
+  std::pair{1007891, 1},
+  std::pair{1007921, 2},
+  std::pair{1007933, 3},
+  std::pair{1007939, 4},
+  std::pair{1007957, 5},
+  std::pair{1007959, 6},
+  std::pair{1007971, 7},
+  std::pair{1007977, 8},
+  std::pair{1008001, 9},
+};
 
-static_assert(*primes[1007887] == 0);
-static_assert(*primes[1007891] == 1);
-static_assert(*primes[1007921] == 2);
-static_assert(*primes[1007933] == 3);
-static_assert(*primes[1007939] == 4);
-static_assert(*primes[1007957] == 5);
-static_assert(*primes[1007959] == 6);
-static_assert(*primes[1007971] == 7);
-static_assert(*primes[1007977] == 8);
-static_assert(*primes[1008001] == 9);
+static_assert(*mph::hash<primes>(1007887) == 0);
+static_assert(*mph::hash<primes>(1007891) == 1);
+static_assert(*mph::hash<primes>(1007921) == 2);
+static_assert(*mph::hash<primes>(1007933) == 3);
+static_assert(*mph::hash<primes>(1007939) == 4);
+static_assert(*mph::hash<primes>(1007957) == 5);
+static_assert(*mph::hash<primes>(1007959) == 6);
+static_assert(*mph::hash<primes>(1007971) == 7);
+static_assert(*mph::hash<primes>(1007977) == 8);
+static_assert(*mph::hash<primes>(1008001) == 9);
 
-assert(primes[1007959]);
-std::print("{}", *primes[1007959]); // prints 6
+assert(mph::hash<primes>(1007959));
+std::print("{}", *mph::hash<primes>(1007959)); // prints 6
 ```
 
 ---
@@ -113,25 +101,25 @@ std::print("{}", *primes[1007959]); // prints 6
 
 ```cpp
 int main(int argc, const char** argv) {
-  auto symbols = mph::map<
-    {"AAPL    ", 0},
-    {"AMZN    ", 1},
-    {"GOOGL   ", 2},
-    {"MSFT    ", 3},
-    {"NVDA    ", 4}
-  >;
+ constexpr auto symbols = std::array{
+   mph::pair{"AAPL    ", 0},
+   mph::pair{"AMZN    ", 1},
+   mph::pair{"GOOGL   ", 2},
+   mph::pair{"MSFT    ", 3},
+   mph::pair{"NVDA    ", 4}
+ };
 
-  static_assert(0 == *symbols["AAPL    "]);
-  static_assert(1 == *symbols["AMZN    "]);
-  static_assert(2 == *symbols["GOOGL   "]);
-  static_assert(3 == *symbols["MSFT    "]);
-  static_assert(4 == *symbols["NVDA    "]);
+  static_assert(0 == *mph::hash<symbols>("AAPL    "));
+  static_assert(1 == *mph::hash<symbols>("AMZN    "));
+  static_assert(2 == *mph::hash<symbols>("GOOGL   "));
+  static_assert(3 == *mph::hash<symbols>("MSFT    "));
+  static_assert(4 == *mph::hash<symbols>("NVDA    "));
 
-  return *symbols[std::span<const char, 8u>(argv[1], argv[1] + 8u)];
+  return *mph::hash<symbols>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/5r7fvKo3d)
+> x86-64 assembly (https://godbolt.org/z/vnb7Pxb6a)
 
 ```
 main:
@@ -161,7 +149,7 @@ mph::v_1_0_0::pext...lookup:
   .zero 24
 ```
 
-> `llvm-mca -mcpu=skylake` (https://godbolt.org/z/veEWza3Kd)
+> `llvm-mca -mcpu=skylake` (https://godbolt.org/z/EM1rrxhvW)
 
 ```
 Dispatch Width:    6
@@ -244,7 +232,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/q5bcTaKnc)
+> x86-64 assembly (https://godbolt.org/z/sn6W1Pcjz)
 
 ```
 main:
@@ -350,29 +338,6 @@ mph::v_1_0_3::pext...index:
 
 ```cpp
 /**
- * @tparam values constexpr pair of id values such as {"FOO", 1}, {"BAR", 2}
- */
-template <const pair... values> requires (sizeof...(values) > 1u)
-inline constexpr auto map {
-  /**
-   * Example: map["foo"]
-   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
-   */
-  [[nodiscard]] constexpr auto operator[](auto&&... args) const;
-
-  /**
-   * Example: map.at<policies>("foo")
-   * @param args... continuous input data such as std::string_view, std::span, std::array or intergral value
-   * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
-   */
-  template<const auto policies = mph::policies>
-  [[nodiscard]] constexpr auto at(auto&&... args) const;
-};
-```
-
-```cpp
-/**
  * Minimal perfect hash function
  *
  * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
@@ -381,8 +346,7 @@ inline constexpr auto map {
  * @param args... optional args propagated to policies
  * @return optional result of executing policies (*result = { mapped key: found, max_value<keys>+1u : not found })
  */
-template<const auto keys, const auto policies = mph::policies>
-  requires (std::size(keys) > 1u)
+template<const auto keys, const auto policies = mph::policies> requires (std::size(keys) > 1u)
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 ```
 
