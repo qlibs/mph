@@ -49,7 +49,7 @@ cmake --build build
 enum class color { red, green, blue };
 
 constexpr auto colors = std::array{
-  mph::pair{"red", color::red},
+  mph::pair{"red", color::red}, // same as std::pair{mph::fixed_string{"red", color::red}}
   mph::pair{"green", color::green},
   mph::pair{"blue", color::blue},
 };
