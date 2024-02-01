@@ -80,19 +80,21 @@ constexpr auto primes = std::array{
   std::pair{1008001, 9},
 };
 
-static_assert(*mph::hash<primes>(1007887) == 0);
-static_assert(*mph::hash<primes>(1007891) == 1);
-static_assert(*mph::hash<primes>(1007921) == 2);
-static_assert(*mph::hash<primes>(1007933) == 3);
-static_assert(*mph::hash<primes>(1007939) == 4);
-static_assert(*mph::hash<primes>(1007957) == 5);
-static_assert(*mph::hash<primes>(1007959) == 6);
-static_assert(*mph::hash<primes>(1007971) == 7);
-static_assert(*mph::hash<primes>(1007977) == 8);
-static_assert(*mph::hash<primes>(1008001) == 9);
+constexpr auto hash = mph::hash<primes>;
 
-assert(mph::hash<primes>(1007959));
-std::print("{}", *mph::hash<primes>(1007959)); // prints 6
+static_assert(*hash(1007887) == 0);
+static_assert(*hash(1007891) == 1);
+static_assert(*hash(1007921) == 2);
+static_assert(*hash(1007933) == 3);
+static_assert(*hash(1007939) == 4);
+static_assert(*hash(1007957) == 5);
+static_assert(*hash(1007959) == 6);
+static_assert(*hash(1007971) == 7);
+static_assert(*hash(1007977) == 8);
+static_assert(*hash(1008001) == 9);
+
+assert(hash(1007959));
+std::print("{}", *hash(1007959)); // prints 6
 ```
 
 ---
