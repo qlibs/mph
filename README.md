@@ -64,37 +64,47 @@ std::print("{}", *mph::hash<colors>("green")); // prints 1
 
 ---
 
-> Numbers (https://godbolt.org/z/TT683zxfs)
+> Numbers (https://godbolt.org/z/bGE6qfYqj)
 
 ```cpp
 constexpr auto primes = std::array{
-  std::pair{1007887, 0},
-  std::pair{1007891, 1},
-  std::pair{1007921, 2},
-  std::pair{1007933, 3},
-  std::pair{1007939, 4},
-  std::pair{1007957, 5},
-  std::pair{1007959, 6},
-  std::pair{1007971, 7},
-  std::pair{1007977, 8},
-  std::pair{1008001, 9},
+  std::pair{2, 0},
+  std::pair{3, 1},
+  std::pair{5, 2},
+  std::pair{7, 3},
+  std::pair{11, 4},
+  std::pair{13, 5},
+  std::pair{17, 6},
+  std::pair{19, 7},
+  std::pair{23, 8},
+  std::pair{29, 9},
+  std::pair{31, 10},
+  std::pair{37, 11},
+  std::pair{41, 12},
+  std::pair{43, 13},
+  std::pair{47, 14},
 };
 
 constexpr auto hash = mph::hash<primes>;
 
-static_assert(*hash(1007887) == 0);
-static_assert(*hash(1007891) == 1);
-static_assert(*hash(1007921) == 2);
-static_assert(*hash(1007933) == 3);
-static_assert(*hash(1007939) == 4);
-static_assert(*hash(1007957) == 5);
-static_assert(*hash(1007959) == 6);
-static_assert(*hash(1007971) == 7);
-static_assert(*hash(1007977) == 8);
-static_assert(*hash(1008001) == 9);
+static_assert(*hash(2) == 0);
+static_assert(*hash(3) == 1);
+static_assert(*hash(5) == 2);
+static_assert(*hash(7) == 3);
+static_assert(*hash(11) == 4);
+static_assert(*hash(13) == 5);
+static_assert(*hash(17) == 6);
+static_assert(*hash(19) == 7);
+static_assert(*hash(23) == 8);
+static_assert(*hash(29) == 9);
+static_assert(*hash(31) == 10);
+static_assert(*hash(37) == 11);
+static_assert(*hash(41) == 12);
+static_assert(*hash(43) == 13);
+static_assert(*hash(47) == 14);
 
-assert(hash(1007959));
-std::print("{}", *hash(1007959)); // prints 6
+assert(hash(41));
+std::print("{}", *hash(41)); // prints 12
 ```
 
 ---
