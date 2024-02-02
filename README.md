@@ -376,24 +376,24 @@ constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(tr
  */
 constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, auto&&... args) {
   if constexpr (requires { std::size(data); }) {
-    if constexpr (constexpr auto min_max = utility::min_max_length<keys>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(keys()) < 4u) {
-      return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(data, args...);
+    if constexpr (auto min_max = utility::min_max_length<keys>; min_max.first == min_max.second and min_max.first == sizeof(std::uint32_t) and std::size(keys()) < 4u) {
+      return mph::swar<std::uint32_t>{}<unknown, keys>(data, args...);
     } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys()) < 4u) {
-      return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(data, args...);
-    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys>(data, args...); }) {
-      return pext.template operator()<unknown, keys>(data, args...);
-    } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<keys>>{}; requires { pext_split.template operator()<unknown, keys>(data, args...); }) {
-      return pext_split.template operator()<unknown, keys>(data, args...);
+      return mph::swar<std::uint64_t>{}<unknown, keys>(data, args...);
+    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext<unknown, keys>(data, args...); }) {
+      return pext<unknown, keys>(data, args...);
+    } else if constexpr (constexpr auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<keys>>{}; requires { pext_split<unknown, keys>(data, args...); }) {
+      return pext_split<unknown, keys>(data, args...);
     } else {
       static_assert(false, "string hash can't be created with given policies!");
     }
   } else if constexpr (using T = std::remove_cvref_t<decltype(data)>; std::integral<T>) {
     if constexpr (sizeof(T) <= sizeof(std::uint32_t) and std::size(keys()) < 4u) {
-      return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(data, args...);
+      return mph::swar<std::uint32_t>{}<unknown, keys>(data, args...);
     } else if constexpr (sizeof(T) <= sizeof(std::uint64_t) and std::size(keys()) < 4u) {
-      return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(data, args...);
-    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<unknown, keys, T>(data, args...); }) {
-      return pext.template operator()<unknown, keys, T>(data, args...);
+      return mph::swar<std::uint64_t>{}<unknown, keys>(data, args...);
+    } else if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext<unknown, keys, T>(data, args...); }) {
+      return pext<unknown, keys, T>(data, args...);
     } else {
       static_assert(false, "integral hash can't be created with given policies!");
     }
