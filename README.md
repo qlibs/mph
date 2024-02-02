@@ -491,25 +491,11 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 
 ### FAQ
 
-- Why not `std::unordered_map`?
-
-    > std::unordered_map is a general purpose hash map. `mph` is neither a hash map nor is general purpose.
-      To use `mph` keys have to be known at compile-time so that this knowledge can be used to generate
-      code with maximized performance - which is the main goal of the library.
-
 - How `mph` works under the hood?
 
     > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
       `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
       `mph`, then, picks the 'best' one and apply input data to it.
-
-- Can I do better than `mph` (performance wise)?
-
-    > Of course! The more knowledge of the input data and the hardware the better potential performance.
-      `mph` is a library with flexibility in mind as there is no silver-bullet to the performance (Always measure!).
-      `mph` allows customization (See [API](#api)) for specific use-cases/platforms/etc.
-      The main idea is to have different, specialized policies which will perform best in specific circumstances and
-      can be chosen at compile-time based on given list of key/value paris.
 
 - Is `mph` working on other platforms than x86-64?
 
@@ -532,6 +518,14 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 - How to get the max performance out of `mph`?
 
     > Always measure! Custom polices might be a good place to start. For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
+
+- Can I do get better performance than `mph`?
+
+    > Of course! The more knowledge of the input data and the hardware the better potential performance.
+      `mph` is a library with flexibility in mind as there is no silver-bullet to the performance (Always measure!).
+      `mph` allows customization (See [API](#api)) for specific use-cases/platforms/etc.
+      The main idea is to have different, specialized policies which will perform best in specific circumstances and
+      can be chosen at compile-time based on given list of key/value paris.
 
 - I'm getting compilation error with longer list (>256) of keys?
 
