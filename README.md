@@ -68,21 +68,11 @@ std::print("{}", *mph::hash<colors>("green")); // prints 1
 
 ```cpp
 constexpr auto primes = std::array{
-  std::pair{2, 0},
-  std::pair{3, 1},
-  std::pair{5, 2},
-  std::pair{7, 3},
-  std::pair{11, 4},
-  std::pair{13, 5},
-  std::pair{17, 6},
-  std::pair{19, 7},
-  std::pair{23, 8},
-  std::pair{29, 9},
-  std::pair{31, 10},
-  std::pair{37, 11},
-  std::pair{41, 12},
-  std::pair{43, 13},
-  std::pair{47, 14},
+  std::pair{2, 0}, std::pair{3, 1}, std::pair{5, 2},
+  std::pair{7, 3}, std::pair{11, 4}, std::pair{13, 5},
+  std::pair{17, 6}, std::pair{19, 7}, std::pair{23, 8},
+  std::pair{29, 9}, std::pair{31, 10}, std::pair{37, 11},
+  std::pair{41, 12}, std::pair{43, 13}, std::pair{47, 14},
 };
 
 constexpr auto hash = mph::hash<primes>;
