@@ -77,21 +77,14 @@ constexpr auto primes = std::array{
 
 constexpr auto hash = mph::hash<primes>;
 
-static_assert(*hash(2) == 0);
-static_assert(*hash(3) == 1);
-static_assert(*hash(5) == 2);
-static_assert(*hash(7) == 3);
-static_assert(*hash(11) == 4);
-static_assert(*hash(13) == 5);
-static_assert(*hash(17) == 6);
-static_assert(*hash(19) == 7);
-static_assert(*hash(23) == 8);
-static_assert(*hash(29) == 9);
-static_assert(*hash(31) == 10);
-static_assert(*hash(37) == 11);
-static_assert(*hash(41) == 12);
-static_assert(*hash(43) == 13);
-static_assert(*hash(47) == 14);
+static_assert(*hash(2) == 0 and *hash(3) == 1 and 
+              *hash(5) == 2 and *hash(7) == 3 and
+              *hash(11) == 4 and *hash(13) == 5 and 
+              *hash(17) == 6 and *hash(19) == 7 and 
+              *hash(23) == 8 and *hash(29) == 9 and
+              *hash(31) == 10 and *hash(37) == 11 and
+              *hash(41) == 12 and *hash(43) == 13 and
+              *hash(47) == 14);
 
 assert(hash(41));
 std::print("{}", *hash(41)); // prints 12
