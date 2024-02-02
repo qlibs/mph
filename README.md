@@ -554,6 +554,10 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 
     > Please follow [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 
+- How to report a bug?
+
+    > Please follow [PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)
+
 - Acknowledgments
 
     > http://0x80.pl, https://lemire.me/blog, https://www.youtube.com/watch?v=DMQ_HcNSOAI&ab_channel=strager, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://cmph.sourceforge.net/papers, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++, https://github.com/rurban/smhasher, http://stevehanov.ca/blog/index.php?id=119, https://nullprogram.com/blog/2018/07/31, https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing
