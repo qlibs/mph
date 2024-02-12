@@ -824,20 +824,11 @@ struct pair {
   T1 first{};
   T2 second{};
 };
+template<class T> pair(const char*, T) -> pair<fixed_string, T>;
 
 // clang-format off
 static_assert(int(4) == pair{int(4), short(2)}.first);
 static_assert(short(2) == pair{int(4), short(2)}.second);
-// clang-format on
-
-template <class T2>
-struct pair<const char*, T2> {
-  constexpr explicit(false) pair(const fixed_string t1, const T2 t2) : first{t1}, second{t2} {}
-  fixed_string first;
-  T2 second;
-};
-
-// clang-format off
 static_assert(std::string_view{"foo"} == std::string_view{pair{"foo", 42}.first});
 // clang-format on
 
