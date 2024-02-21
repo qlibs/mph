@@ -519,7 +519,7 @@ template <const std::size_t max_bits_size, const auto result_policy = conditiona
 class pext {
   template <class T, const auto keys, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_lookup() {
-    alignas(MPH_CACHE_LINE_SIZE) std::array<T, size> lookup{};
+    struct alignas(MPH_CACHE_LINE_SIZE) : std::array<T, size> {} lookup{};
     for (const auto &key : keys) {
       lookup[utility::pext<T>(utility::as<T>(get<0>(key)), mask)] = utility::as<T>(get<0>(key));
     }
@@ -529,7 +529,7 @@ class pext {
   template <class T, const auto unknown, const auto keys, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_index() {
     using type = std::remove_cvref_t<decltype(unknown)>;
-    alignas(MPH_CACHE_LINE_SIZE) std::array<type, size> index{};
+    struct alignas(MPH_CACHE_LINE_SIZE) : std::array<type, size> {} index{};
     std::fill(std::begin(index), std::end(index), unknown);
     for (const auto &key : keys) {
       index[utility::pext<T>(utility::as<T>(get<0>(key)), mask)] = static_cast<type>(get<1>(key));
@@ -566,7 +566,10 @@ class pext {
     }();
 
     static constexpr const auto lookup = make_lookup<T, keys, mask, required_size>();
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(lookup)));
+
     static constexpr const auto index = make_index<T, unknown, keys, mask, required_size>();
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(index)));
 
     T&& lhs = [&] {
       if constexpr (requires { std::size(data); }) {
@@ -613,7 +616,8 @@ class pext_split {
       v[std::size_t(get<0>(key)[split_index])].push_back(get<0>(key));
     }
 
-    alignas(MPH_CACHE_LINE_SIZE) std::array<std::array<T, size>, split_size> lookup{};
+    struct alignas(MPH_CACHE_LINE_SIZE) underlying : std::array<T, size> { };
+    struct alignas(MPH_CACHE_LINE_SIZE) : std::array<underlying, split_size> { } lookup{};
     for (auto i = 0u; i < split_size; ++i) {
       for (auto j = 0u; j < std::size(v[i]); ++j) {
         lookup[i][utility::pext<T>(utility::as<T>(v[i][j]), masks[i])] = utility::as<T>(v[i][j]);
@@ -633,7 +637,8 @@ class pext_split {
     }
 
     using type = std::remove_cvref_t<decltype(unknown)>;
-    alignas(MPH_CACHE_LINE_SIZE) std::array<std::array<type, size>, split_size> index{};
+    struct alignas(MPH_CACHE_LINE_SIZE) underlying : std::array<type, size> { };
+    struct alignas(MPH_CACHE_LINE_SIZE) : std::array<underlying, split_size> { } index{};
     for (auto i = 0u; i < split_size; ++i) {
       std::fill(std::begin(index[i]), std::end(index[i]), unknown);
       for (auto j = 0u; j < std::size(iv[i]); ++j) {
@@ -660,7 +665,12 @@ class pext_split {
     }();
 
     static constexpr auto lookup = make_lookups<T, keys, masks, required_size>();
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(lookup)));
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(lookup[0])) and MPH_CACHE_LINE_SIZE == alignof(decltype(lookup[std::size(lookup)-1])));
+
     static constexpr auto index = make_indexes<T, unknown, keys, masks, required_size>();
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(index)));
+    static_assert(MPH_CACHE_LINE_SIZE == alignof(decltype(lookup[std::size(lookup)-1])) and MPH_CACHE_LINE_SIZE == alignof(decltype(lookup[std::size(lookup)-1])));
 
     assert(std::size(data) > split_index);
 
