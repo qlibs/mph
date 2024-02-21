@@ -4,10 +4,10 @@
 # Distributed under the Boost Software License, Version 1.0.
 # (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
-cmake_minimum_required(VERSION 3.21...3.25)
+cmake_minimum_required(VERSION 3.21)
 project(
   mph
-  VERSION 1.0.5
+  VERSION 1.0.6
   LANGUAGES CXX
 )
 
