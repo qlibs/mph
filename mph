@@ -71,8 +71,8 @@ template<class T, const std::size_t max_size> struct basic_fixed_string final {
     std::copy_n(input, Size-1, std::data(data_)); // no null termination
   }
   template<const std::size_t Size>
-  constexpr explicit(false) basic_fixed_string(const std::array<T, Size>& input) requires (Size <= max_size) : size_{Size-1} {
-    std::copy_n(std::data(input), Size-1, std::data(data_)); // no null termination
+  constexpr explicit(false) basic_fixed_string(const std::span<const T, Size> input) requires (Size < max_size) : size_{Size} {
+    std::copy_n(std::data(input), Size, std::data(data_)); // no null termination
   }
 
   [[nodiscard]] constexpr auto data() const { return std::data(data_); }
@@ -96,7 +96,7 @@ static_assert('a' == fixed_string{"abc"}[0]);
 static_assert('b' == fixed_string{"abc"}[1]);
 static_assert('c' == fixed_string{"abc"}[2]);
 static_assert(fixed_string{"abc"} == fixed_string{"abc"});
-static_assert(fixed_string{"abc"} == fixed_string{std::array<char, 3+1>{"abc"}});
+static_assert(fixed_string{"abc"} == fixed_string{std::span<const char, 3>{"abc", 3}});
 static_assert(fixed_string{"foo"} != fixed_string{"bar"});
 static_assert(std::string_view{"abc"} == static_cast<std::string_view>(fixed_string{"abc"}));
 // clang-format on
