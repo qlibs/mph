@@ -758,9 +758,12 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
  * @param args... args propagated to policies
  * @return result of executing policies
  */
-template<const auto keys, const auto policies = mph::policies> requires (std::size(keys) > 1u)
+template<const auto keys,
+         const auto policies = mph::policies,
+         auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}> 
+  requires (std::size(keys) > 1u)
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &&... args) noexcept(true) { // attributes on lambdas is C++23
-  if (constexpr auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}; std::is_constant_evaluated()) { // if consteval is C++23
+  if (std::is_constant_evaluated()) { // if consteval is C++23
     constexpr auto cmp = [](const auto& lhs, const auto& rhs) {
       if constexpr (requires { std::string_view{lhs}; std::string_view{rhs.data(), rhs.size()}; }) {
         return std::string_view{lhs} == std::string_view{std::data(rhs), std::size(rhs)};
