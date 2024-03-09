@@ -14,7 +14,7 @@ export module mph;
 #endif
 
 #ifndef MPH
-#define MPH 1'0'6 // SemVer - should match mph namespace
+#define MPH 1'0'7 // SemVer - should match mph namespace
 
 #include <algorithm>
 #include <climits>
@@ -63,7 +63,7 @@ export
 /**
  * Minimal perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function)
  */
-namespace mph::inline v_1_0_6 {
+namespace mph::inline v1_0_7 {
 template<class T, const std::size_t max_size> struct basic_fixed_string final {
   constexpr basic_fixed_string() = default;
   template<const std::size_t Size>
@@ -760,7 +760,7 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
  */
 template<const auto keys,
          const auto policies = mph::policies,
-         auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}> 
+         auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys>+1u>{}>
   requires (std::size(keys) > 1u)
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &&... args) noexcept(true) { // attributes on lambdas is C++23
   if (std::is_constant_evaluated()) { // if consteval is C++23
@@ -866,6 +866,6 @@ template<const std::size_t N, class T1, class T2>
 static_assert(1 == get<0>(pair{1, 2}));
 static_assert(2 == get<1>(pair{1, 2}));
 // clang-format on
-}  // namespace mph::inline v_1_0_2
+}  // namespace mph::inline v1_0_7
 #endif  // MPH
 #endif  //  __cplusplus
