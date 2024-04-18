@@ -37,12 +37,12 @@ int main() {
     static_assert(color::red == *hash("red"));
     static_assert(color::green == *hash("green"));
     static_assert(color::blue == *hash("blue"));
-    static_assert(color{3} == *hash("foobar"));
+    static_assert(color{0} == *hash("foobar"));
 
     expect(color::red == *hash("red"));
     expect(color::green == *hash("green"));
     expect(color::blue == *hash("blue"));
-    expect(color{3} == *hash(""));
+    expect(color{0} == *hash(""));
     expect(not hash(""));
     expect(not hash("D"));
     expect(not hash("a"));
@@ -61,7 +61,7 @@ int main() {
     static_assert(1 == *mph::hash<keys>(23423ul));
     static_assert(2 == *mph::hash<keys>(432432ul));
     static_assert(3 == *mph::hash<keys>(31232ul));
-    static_assert(4 == *mph::hash<keys>(0ul));
+    static_assert(0 == *mph::hash<keys>(0ul));
 
     verify(keys, hash);
 
@@ -191,7 +191,7 @@ int main() {
     static_assert(1 == *mph::hash<keys>("A"));
     static_assert(2 == *mph::hash<keys>("B"));
     static_assert(3 == *mph::hash<keys>("C"));
-    static_assert(4 == *mph::hash<keys>("D"));
+    static_assert(0 == *mph::hash<keys>("D"));
 
     verify(keys, hash);
 
@@ -427,7 +427,7 @@ int main() {
     static_assert(1 == *mph::hash<keys>(" AA "));
     static_assert(3 == *mph::hash<keys>(" AB "));
     static_assert(5 == *mph::hash<keys>(" AC "));
-    static_assert(6 == *mph::hash<keys>(" DD "));
+    static_assert(0 == *mph::hash<keys>(" DD "));
 
     expect(not hash(""sv));
     expect(not hash(" aa "sv));

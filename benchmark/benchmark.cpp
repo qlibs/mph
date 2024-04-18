@@ -128,6 +128,14 @@ int main() {
     });
   };
 
+  const auto bench_mph_loop = [](const auto &hash, const auto name, const auto &keys) {
+    auto key = keys[0].first;
+    Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
+      key = *hash(key);
+      doNotOptimizeAway(key);
+    });
+  };
+
   {
     std::random_device rd{};
     std::mt19937 gen(rd());
@@ -649,5 +657,6 @@ int main() {
     bench_mph(mph::hash<data::random_strings_100_len_1_8>,
               "random_strings_100_len_1_8", data::random_strings_100_len_1_8,
               next);
+    bench_mph_loop(mph::hash<data::random_uints_5>, "random_uints_5", data::random_uints_5);
   }
 }

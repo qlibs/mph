@@ -77,10 +77,10 @@ constexpr auto primes = std::array{
 
 constexpr auto hash = mph::hash<primes>;
 
-static_assert(*hash(2) == 0 and *hash(3) == 1 and 
+static_assert(*hash(2) == 0 and *hash(3) == 1 and
               *hash(5) == 2 and *hash(7) == 3 and
-              *hash(11) == 4 and *hash(13) == 5 and 
-              *hash(17) == 6 and *hash(19) == 7 and 
+              *hash(11) == 4 and *hash(13) == 5 and
+              *hash(17) == 6 and *hash(19) == 7 and
               *hash(23) == 8 and *hash(29) == 9 and
               *hash(31) == 10 and *hash(37) == 11 and
               *hash(41) == 12 and *hash(43) == 13 and
@@ -206,7 +206,7 @@ Resource pressure by instruction:
 
 ### Performance [potentially unsafe]
 
-> If `all` possible inputs are known AND can be found in the keys, then `unconditional` policy can be used which will avoid one comparison
+> If `all` possible inputs are known AND can be found in the keys, then `unconditional` policy for the config can be used which will avoid one comparison
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
@@ -219,7 +219,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
   };
 
   constexpr auto policies = []<const auto...ts>(auto&&... args) {
-    return mph::pext<7u, mph::unconditional>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+    return mph::pext<7u, config<mph::unconditional>{}>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   };
 
   assert(argc >= 0 and argc < std::size(symbols));
@@ -345,7 +345,26 @@ template<const auto keys, const auto policies = mph::policies> requires (std::si
 constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(true);
 ```
 
+```cpp
+/**
+ * Minimal perfect hash function based on SWAR
+ *  reads sizeof(T) bytes and switches on that
+ */
+template<class T>
+struct swar {
+  template <const auto unknown, const auto keys>
+    requires concepts::all_keys_size_lt<keys, sizeof(T)>
+  [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
+};
+```
+
 > Policies
+
+```cpp
+inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) { // default
+  return cond ? lhs : rhs; // generates jmp (x86-64)
+};
+```
 
 ```cpp
 inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
@@ -354,8 +373,22 @@ inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const
 ```
 
 ```cpp
-inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
-  return cond ? lhs : rhs; // generates jmp (x86-64)
+inline constexpr auto likely = [](const bool cond, const auto lhs, const auto rhs) {
+  if (cond) [[likely]] {
+    return lhs;
+  } else {
+    return rhs;
+  }
+};
+```
+
+```cpp
+inline constexpr auto unlikely = [](const bool cond, const auto lhs, const auto rhs) {
+  if (cond) [[unlikely]] {
+    return lhs;
+  } else {
+    return rhs;
+  }
 };
 ```
 
@@ -383,15 +416,12 @@ inline constexpr auto branchless_table = [](const bool cond, const auto lhs, con
 ```
 
 ```cpp
-/**
- * Minimal perfect hash function based on SWAR
- *  reads sizeof(T) bytes and switches on that
- */
-template<class T>
-struct swar {
-  template <const auto unknown, const auto keys>
-    requires concepts::all_keys_size_lt<keys, sizeof(T)>
-  [[nodiscard]] constexpr auto operator()(auto&& data, [[maybe_unused]] auto &&...args) const noexcept(true);
+template<const auto Fn = conditional>
+struct config {
+  static constexpr auto apply = Fn; /// result policy (default: conditional)
+  std::size_t alignment{};          /// should align tables (default: 0 - don't align)
+  bool single_table{true};          /// merge index and lookup tables (default: true)
+  bool minimize_storage{false};     /// use minimal available type for storage (default: false)
 };
 ```
 
@@ -400,7 +430,7 @@ struct swar {
  * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size, const auto result_policy = conditional>
+template <const std::size_t max_bits_size, const auto config = config>
 struct pext {
   template <const auto unknown, const auto keys, class T, const auto mask = utility::find_mask<T>(keys())>
     requires concepts::bits_size_le<mask, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
@@ -413,7 +443,7 @@ struct pext {
  * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const std::size_t max_bits_size, const std::size_t split_index, const auto result_policy = conditional>
+template <const std::size_t max_bits_size, const std::size_t split_index, const auto config = config>
 struct pext_split {
   template <const auto unknown, const auto keys, class T, const auto masks = make_masks<T, keys>()>
     requires concepts::keys_bits_size_lt<masks, max_bits_size> and concepts::all_keys_size_lt<keys, sizeof(T)>
@@ -465,7 +495,6 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 ```cpp
 #define MPH 1'0'7 // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
-#define MPH_CACHE_LINE_SIZE ::std::hardware_constructive_interference_size // [default] 64u
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
 ```

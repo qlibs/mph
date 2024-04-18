@@ -243,5 +243,13 @@ inline constexpr std::array random_strings_100_len_1_8{
   std::pair{mph::fixed_string{"keyboard"}, 100},
 };
 
+inline constexpr std::array random_uints_5{
+  std::pair{ 54u,  91u},
+  std::pair{324u,  54u},
+  std::pair{ 64u, 324u},
+  std::pair{234u,  64u},
+  std::pair{ 91u, 234u},
+};
+
 // clang-format on
 }  // namespace data::inline v_1_0_0
