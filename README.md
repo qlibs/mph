@@ -227,7 +227,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/sn6W1Pcjz)
+> x86-64 assembly (https://godbolt.org/z/s4bTrd6G4)
 
 ```
 main:
