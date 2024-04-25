@@ -578,6 +578,7 @@ template<const auto Fn = conditional>
 struct config {
   static constexpr auto apply = Fn;
   std::size_t max_bits_size{};
+  std::size_t split_index{}; // only used by split
   std::size_t alignment{};
   bool single_table{true};
   bool minimize_storage{false};
@@ -587,7 +588,7 @@ struct config {
  * Minimal perfect hash based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const config config = {}>
+template <const config config = config{}>
 class pext {
   template <class T, const auto keys, const auto mask, const std::size_t size>
   [[nodiscard]] static consteval auto make_lookup() {
@@ -670,21 +671,11 @@ class pext {
   }
 };
 
-template<const auto Fn = conditional>
-struct config_split {
-  static constexpr auto apply = Fn;
-  std::size_t max_bits_size{7u};
-  std::size_t split_index{};
-  std::size_t alignment{};
-  bool single_table{true};
-  bool minimize_storage{false};
-};
-
 /**
  * Minimal perfect hash based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
-template <const config_split config = {}>
+template <const config config = config{}>
 class pext_split {
   template<class T, const auto keys>
   [[nodiscard]] static consteval auto make_masks() {
@@ -841,9 +832,9 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
       return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (constexpr auto pext = mph::pext<config{.max_bits_size=7u}>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    } else if constexpr (constexpr auto pext = mph::pext<config<>{.max_bits_size=7u}>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
       return pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (constexpr auto pext_split = mph::pext_split<config_split{.max_bits_size=7u, .split_index=utility::find_unique_char_max_dist<keys>}>{}; requires { pext_split.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    } else if constexpr (constexpr auto pext_split = mph::pext_split<config<>{.max_bits_size=7u, .split_index=utility::find_unique_char_max_dist<keys>}>{}; requires { pext_split.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
       return pext_split.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else {
       static_assert(hash_cant_be_created, "string hash can't be created with given policies!");
@@ -853,7 +844,7 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
       return mph::swar<std::uint32_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else if constexpr (sizeof(type) <= sizeof(std::uint64_t) and std::size(keys) < 4u) {
       return mph::swar<std::uint64_t>{}.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
-    } else if constexpr (constexpr auto pext = mph::pext<config{.max_bits_size=7u}>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
+    } else if constexpr (constexpr auto pext = mph::pext<config<>{.max_bits_size=7u}>{}; requires { pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...); }) {
       return pext.template operator()<unknown, keys>(std::forward<decltype(data)>(data), std::forward<decltype(args)>(args)...);
     } else {
       static_assert(hash_cant_be_created, "integral hash can't be created with given policies!");

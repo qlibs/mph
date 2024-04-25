@@ -96,7 +96,7 @@ int main() {
 
     constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
-      return mph::pext<{.max_bits_size=5}>{}.template operator()<ts...>(
+      return mph::pext<mph::config<>{.max_bits_size=5}>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
@@ -183,7 +183,7 @@ int main() {
 
     constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
-      return mph::pext<{.max_bits_size=5}>{}.template operator()<ts...>(
+      return mph::pext<mph::config<>{.max_bits_size=5}>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
@@ -210,7 +210,7 @@ int main() {
 
     constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
-      return mph::pext_split<{.max_bits_size=5u, .split_index=0u}>{}.template operator()<ts...>(
+      return mph::pext_split<mph::config<>{.max_bits_size=5u, .split_index=0u}>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
@@ -233,7 +233,7 @@ int main() {
 
     constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
-      return mph::pext_split<{.max_bits_size=7u, .split_index=0u}>{}.template operator()<ts...>(
+      return mph::pext_split<mph::config<>{.max_bits_size=7u, .split_index=0u}>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
@@ -252,7 +252,7 @@ int main() {
 
     constexpr auto hash = mph::hash < keys,
                    []<const auto... ts>(auto &&...args) {
-      return mph::pext_split<{.max_bits_size=7, .split_index=7u}>{}.template operator()<ts...>(
+      return mph::pext_split<mph::config<>{.max_bits_size=7, .split_index=7u}>{}.template operator()<ts...>(
           std::forward<decltype(args)>(args)...);
     }
     > ;
