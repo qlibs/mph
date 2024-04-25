@@ -219,7 +219,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
   };
 
   constexpr auto policies = []<const auto...ts>(auto&&... args) {
-    return mph::pext<7u, config<mph::unconditional>{}>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
+    return mph::pext<config<mph::unconditional>{.max_bits_size=7u}>{}>{}.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   };
 
   assert(argc >= 0 and argc < std::size(symbols));
@@ -419,6 +419,7 @@ inline constexpr auto branchless_table = [](const bool cond, const auto lhs, con
 template<const auto Fn = conditional>
 struct config {
   static constexpr auto apply = Fn; /// result policy (default: conditional)
+  std::size_t max_bits_size{7u};    /// max bits size for the mask (default: 7)
   std::size_t alignment{};          /// should align tables (default: 0 - don't align)
   bool single_table{true};          /// merge index and lookup tables (default: true)
   bool minimize_storage{false};     /// use minimal available type for storage (default: false)
@@ -467,9 +468,9 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
       return mph::swar<std::uint32_t>{}<unknown, keys>(data, args...);
     } else if constexpr (min_max.first == min_max.second and min_max.first == sizeof(std::uint64_t) and std::size(keys()) < 4u) {
       return mph::swar<std::uint64_t>{}<unknown, keys>(data, args...);
-    } else if constexpr (auto pext = mph::pext<7u>{}; requires { pext<unknown, keys>(data, args...); }) {
+    } else if constexpr (auto pext = mph::pext<{.max_bits_size=7u}>{}; requires { pext<unknown, keys>(data, args...); }) {
       return pext<unknown, keys>(data, args...);
-    } else if constexpr (auto pext_split = mph::pext_split<7u, utility::find_unique_char_max_dist<keys>>{}; requires { pext_split<unknown, keys>(data, args...); }) {
+    } else if constexpr (auto pext_split = mph::pext_split<{.max_bits_size=7u, .split_index=utility::find_unique_char_max_dist<keys>}>{}; requires { pext_split<unknown, keys>(data, args...); }) {
       return pext_split<unknown, keys>(data, args...);
     } else {
       static_assert(false, "string hash can't be created with given policies!");
@@ -479,7 +480,7 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
       return mph::swar<std::uint32_t>{}<unknown, keys>(data, args...);
     } else if constexpr (sizeof(T) <= sizeof(std::uint64_t) and std::size(keys()) < 4u) {
       return mph::swar<std::uint64_t>{}<unknown, keys>(data, args...);
-    } else if constexpr (auto pext = mph::pext<7u>{}; requires { pext<unknown, keys, T>(data, args...); }) {
+    } else if constexpr (auto pext = mph::pext<{.max_bits_size=7u}>{}; requires { pext<unknown, keys, T>(data, args...); }) {
       return pext<unknown, keys, T>(data, args...);
     } else {
       static_assert(false, "integral hash can't be created with given policies!");

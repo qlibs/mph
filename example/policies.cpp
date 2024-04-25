@@ -11,7 +11,7 @@
 
 // clang-format off
 constexpr auto policies = []<const auto... ts>(auto &&...args) {
-  if constexpr (constexpr auto pext = mph::pext<7u>{}; requires { pext.template operator()<ts...>( std::forward<decltype(args)>(args)...); }) {
+  if constexpr (constexpr auto pext = mph::pext<{.max_bits_size=7u}>{}; requires { pext.template operator()<ts...>( std::forward<decltype(args)>(args)...); }) {
     return pext.template operator()<ts...>(std::forward<decltype(args)>(args)...);
   } else {
     static_assert([](auto &&...) { return false; }(ts...), "hash can't be created with given policies!");
