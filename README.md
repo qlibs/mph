@@ -5,7 +5,7 @@
 
 ---------------------------------------
 
-## Minimal perfect hash function (focused on the run-time performance)
+## [Minimal] perfect hash function (focused on the run-time performance)
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Minimal_perfect_hash_function
 
@@ -333,7 +333,7 @@ mph::v_1_0_3::pext...index:
 
 ```cpp
 /**
- * Minimal perfect hash function
+ * [Minimal] perfect hash function
  *
  * @tparam keys constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
  * @tparam policies invocable which returns the hash
@@ -347,7 +347,7 @@ constexpr auto hash = [] [[nodiscard]] (auto&& data, auto &&...args) noexcept(tr
 
 ```cpp
 /**
- * Minimal perfect hash function based on SWAR
+ * [Minimal] perfect hash function based on SWAR
  *  reads sizeof(T) bytes and switches on that
  */
 template<class T>
@@ -428,7 +428,7 @@ struct config {
 
 ```cpp
 /**
- * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
+ * [Minimal] perfect hash function based on intel's pext with support up to 2^max_bits_size elements and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const auto config = config>
@@ -441,7 +441,7 @@ struct pext {
 
 ```cpp
 /**
- * Minimal perfect hash function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
+ * [Minimal] perfect hash function based on intel's pext with support up to 2^max_bits_size per split on N'th character and with max 8 characters
  *  requires platform with bmi2 support (https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
  */
 template <const std::size_t max_bits_size, const std::size_t split_index, const auto config = config>
