@@ -493,7 +493,7 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
 > Configuration
 
 ```cpp
-#define MPH 1'0'7 // Current library version (SemVer)
+#define MPH 1'0'8 // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 32u // [default]
 #define MPH_ALLOW_UNSAFE_MEMCPY 1 // [enabled by default] Faster but potentially unsafe memcpy, only required for string based keys
 #define MPH_PAGE_SIZE 4096u // Only used if MPH_ALLOW_UNSAFE_MEMCPY is enabled
