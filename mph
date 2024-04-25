@@ -798,16 +798,16 @@ class pext_split {
 template <class T, const auto sentinel = std::numeric_limits<T>::max()>
 struct optional final { // std::optional is not literal type
   using value_type = utility::min_required_t<sentinel>;
-  constexpr optional() : value{sentinel} {}
+  constexpr optional() = default;
   constexpr explicit(false) optional(const auto v) : value(static_cast<value_type>(v)) {}
-  [[nodiscard]] constexpr operator bool() const { return value != sentinel; }
+  [[nodiscard]] constexpr operator bool() const { return value; }
   [[nodiscard]] constexpr auto operator*() const { return static_cast<T>(value); }
   value_type value{};
 };
 
 // clang-format off
 static_assert(not optional<int>{});
-static_assert(std::numeric_limits<int>::max() == *optional<int>{});
+static_assert(0 == *optional<int>{});
 static_assert(optional<int>{42});
 static_assert(42 == *optional<int>{42});
 static_assert(0u == *optional<int, 0u>{});
@@ -864,7 +864,7 @@ constexpr auto policies = []<const auto unknown, const auto keys>(auto&& data, a
  */
 template<const auto keys,
          const auto policies = mph::policies,
-         auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, 0u>{}>
+         auto unknown = optional<std::remove_cvref_t<decltype(get<1>(keys[0]))>, utility::max_value<keys, 1>>{}>
   requires (std::size(keys) > 1u)
 constexpr auto hash = [] /*[[nodiscard]]*/ (auto&& data, [[maybe_unused]] auto &&... args) noexcept(true) { // attributes on lambdas is C++23
   if (std::is_constant_evaluated()) { // if consteval is C++23

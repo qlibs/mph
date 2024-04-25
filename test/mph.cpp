@@ -572,4 +572,24 @@ int main() {
     expect(not hash("    III "sv));
     expect(not hash("     III"sv));
   };
+
+  "[hash] number test"_test = [] {
+    constexpr auto mph_map = mph::hash<
+        std::array{
+            std::pair{ 54u,  91u},
+            std::pair{324u,  54u},
+            std::pair{64u, 324u},
+            std::pair{234u,  64u},
+            std::pair{ 91u, 234u},
+        }
+    >;
+
+    expect(not mph_map(12u));
+    expect(0u == *mph_map(12u));
+    expect(*mph_map(54u) ==  91u);
+    expect(*mph_map(324u) ==  54u);
+    expect(*mph_map(64u) == 324u);
+    expect(*mph_map(234u) ==  64u);
+    expect(*mph_map(91u) == 234u);
+  };
 }
