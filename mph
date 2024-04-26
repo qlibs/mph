@@ -240,7 +240,7 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto p
         if (kv[0].first == key) { return kv[0].second; }
         if (kv[1].first == key) { return kv[1].second; }
         return unknown;
-      } else if constexpr (kv.size() <= 64u) {
+      } else if constexpr (kv.size() <= 128u) {
         using key_type = detail::key_t<typename decltype(kv)::value_type::first_type>;
         using value_type = typename decltype(kv)::value_type::second_type;
         using mask_type = detail::mask_t<key_type>;
