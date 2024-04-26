@@ -23,7 +23,7 @@
 template <>
 struct boost::hash<mph::fixed_string> {
   std::size_t operator()(const mph::fixed_string key) const {
-    return boost::hash<std::string_view>{}(std::string_view{key});
+    return boost::hash<std::string_view>{}(std::string_view{key.data(), key.size()});
   }
 };
 
@@ -121,17 +121,16 @@ int main() {
         });
   };
 
-  const auto bench_mph = [](const auto &hash, const auto name, const auto &keys,
-                            auto fn) {
+  const auto bench_mph = []<auto keys>(const auto& name, auto fn) {
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(*hash(fn(keys)));
+      doNotOptimizeAway(mph::hash<keys, 0>(fn(keys)));
     });
   };
 
-  const auto bench_mph_loop = [](const auto &hash, const auto name, const auto &keys) {
+  const auto bench_mph_loop = []<auto keys>(const auto& name) {
     auto key = keys[0].first;
     Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      key = *hash(key);
+      key = mph::hash<keys, 0>(key);
       doNotOptimizeAway(key);
     });
   };
@@ -203,8 +202,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_5_len_4", data::random_strings_5_len_4, next);
-    bench_mph(mph::hash<data::random_strings_5_len_4>, "random_strings_5_len_4",
-              data::random_strings_5_len_4, next);
+    bench_mph.template operator()<data::random_strings_5_len_4>("random_strings_5_len_4", next);
   }
 
   {
@@ -275,8 +273,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_5_len_8", data::random_strings_5_len_8, next);
-    bench_mph(mph::hash<data::random_strings_5_len_8>, "random_strings_5_len_8",
-              data::random_strings_5_len_8, next);
+    bench_mph.template operator()<data::random_strings_5_len_8>("random_strings_5_len_8", next);
   }
 
   {
@@ -349,8 +346,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
-    bench_mph(mph::hash<data::random_strings_6_len_2_5>,
-              "random_strings_6_len_2_5", data::random_strings_6_len_2_5, next);
+    bench_mph.template operator()<data::random_strings_6_len_2_5>("random_strings_6_len_2_5", next);
   }
 
   {
@@ -508,8 +504,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_100_len_8", data::random_strings_100_len_8, next);
-    bench_mph(mph::hash<data::random_strings_100_len_8>,
-              "random_strings_100_len_8", data::random_strings_100_len_8, next);
+    bench_mph.template operator()<data::random_strings_100_len_8>("random_strings_100_len_8", next);
   }
 
   {
@@ -654,9 +649,7 @@ int main() {
           return decltype(index[0]){};
         },
         "random_strings_100_len_1_8", data::random_strings_100_len_1_8, next);
-    bench_mph(mph::hash<data::random_strings_100_len_1_8>,
-              "random_strings_100_len_1_8", data::random_strings_100_len_1_8,
-              next);
-    bench_mph_loop(mph::hash<data::random_uints_5>, "random_uints_5", data::random_uints_5);
+    bench_mph.template operator()<data::random_strings_100_len_1_8>("random_strings_100_len_1_8", next);
+    bench_mph_loop.template operator()<data::random_uints_5>("random_uints_5");
   }
 }
