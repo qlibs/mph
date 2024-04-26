@@ -27,7 +27,7 @@
 
 ### Hello world
 
-> Strings (https://godbolt.org/z/fWY8YYeEE)
+> Strings (https://godbolt.org/z/nfTWM1544)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -47,7 +47,7 @@ std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 
 ---
 
-> Numbers (https://godbolt.org/z/bGE6qfYqj)
+> Numbers (https://godbolt.org/z/3TW9M9YGq)
 
 ```cpp
 constexpr auto primes = std::array{
@@ -79,7 +79,7 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/vnb7Pxb6a)
+> x86-64 assembly (https://godbolt.org/z/3894jYa5T)
 
 ```
 ```
