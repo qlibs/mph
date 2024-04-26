@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/sdqW48MEv">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/s76cG64rY">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -23,7 +23,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+](), [clang-15+]())
+- C++20 ([gcc-12+](https://godbolt.org/z/sdqW48MEv), [clang-15+](https://godbolt.org/z/sdqW48MEv))
 
 ### Hello world
 

@@ -163,7 +163,6 @@ template<class T, auto MaxSize> struct basic_fixed_string final {
 
 using fixed_string = basic_fixed_string<char, MPH_FIXED_STRING_MAX_SIZE>;
 
-
 inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
   return lhs; // [unsafe] returns unconditionally
 };
@@ -207,7 +206,7 @@ template<class T> using mask_t = std::conditional_t<sizeof(T) <= sizeof(std::uin
 } // namespace detail
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto policy = conditional>
-[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown) {
+[[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown) {
   if (std::is_constant_evaluated()) {
     for (const auto& [k, v] : kv) {
       if constexpr (requires { k.size(); key.size(); k[0]; key[0]; }) {
@@ -249,8 +248,9 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto p
           std::array<std::pair<key_type, value_type>, (mask_type(1u) << std::popcount(mask))> lut{};
           lut.fill(std::pair{key_type{}, unknown});
           for (const auto& [key, value] : kv) {
-            const auto pext = utility::pext<key_type>(utility::as<key_type>(key), mask);
-            lut[pext] = std::pair{utility::as<key_type>(key), value};
+            const auto k = utility::as<key_type>(key);
+            const auto pext = utility::pext<key_type>(k, mask);
+            lut[pext] = std::pair{k, value};
           }
           return lut;
         }();
@@ -325,6 +325,27 @@ static_assert(([] {
     static_assert('c' == mph::fixed_string{"abc"}[2]);
     static_assert(mph::fixed_string{"abc"} == mph::fixed_string{"abc"});
     static_assert(mph::fixed_string{"foo"} != mph::fixed_string{"bar"});
+  }
+
+  // mph::policies
+  {
+    static_assert(1 == mph::unconditional(true, 1, 2));
+    static_assert(1 == mph::unconditional(false, 1, 2));
+
+    static_assert(1 == mph::conditional(true, 1, 2));
+    static_assert(2 == mph::conditional(false, 1, 2));
+
+    static_assert(1 == mph::likely(true, 1, 2));
+    static_assert(2 == mph::likely(false, 1, 2));
+
+    static_assert(1 == mph::unlikely(true, 1, 2));
+    static_assert(2 == mph::unlikely(false, 1, 2));
+
+    static_assert(1 == mph::conditional_probability<1>(true, 1, 2));
+    static_assert(2 == mph::conditional_probability<1>(false, 1, 2));
+
+    static_assert(1 == mph::branchless(true, 1, 2));
+    static_assert(0 == mph::branchless(false, 1, 2));
   }
 
   // mph::hash
