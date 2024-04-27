@@ -38,6 +38,7 @@ struct compressed_pair {
   [[no_unique_address]] T1 first;
   [[no_unique_address]] T2 second;
 };
+template<class T1, class T2> compressed_pair(T1, T2) -> compressed_pair<T1, T2>;
 
 template<class T, size_t Size>
 struct array {
