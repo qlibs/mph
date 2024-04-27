@@ -85,8 +85,7 @@ int main(int argc, const char** argv) {
     std::pair{mph::fixed_string{"MSFT    "}, 4},
     std::pair{mph::fixed_string{"NVDA    "}, 5},
   };
-
-  return mph::hash<symbols, 0>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
+  return mph::hash<symbols>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
 }
 ```
 
