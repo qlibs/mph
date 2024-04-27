@@ -15,11 +15,11 @@
 
 ### Features
 
-- Single header/module (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
-- Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
-- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`]())
-- Flexible (see [#API](#api))
-- Fast (see [#Benchmarks](#benchmarks))
+- Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+    - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
+    - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`]())
+- [#API](#api)
+- [#Benchmarks](#benchmarks)
 
 ### Requirements
 
@@ -114,9 +114,10 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 
 ---
 
+<a name="benchmarks"></a>
 ### Benchmarks (https://github.com/boost-ext/mph/tree/benchmark)
 
-> `clang++-16 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
+> `clang++ -std=c++20 -O3 -DNDEBUG -march=skylake benchmark.cpp`
 
 ```
 | ns/op |           op/s | err% |total | benchmark
@@ -154,7 +155,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 |  1.28 | 778,723,795.75 | 0.1% | 0.02 | `random_uints_5.mph`
 ```
 
-> `g++-12 -std=c++20 -Ofast -DNDEBUG -march=skylake benchmark.cpp`
+> `g++ -std=c++20 -O3 -DNDEBUG -march=skylake benchmark.cpp`
 
 ```cpp
 | ns/op |           op/s | err% |total | benchmark
