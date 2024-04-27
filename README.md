@@ -5,7 +5,7 @@
 
 ---------------------------------------
 
-## Perfect hash function
+## Perfect hash library
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function#Perfect_hash_function
 
@@ -294,7 +294,6 @@ inline constexpr auto branchless =
 
 ```cpp
 #define MPH 2'0'0 // Current library version (SemVer)
-#define MPH_FIXED_STRING_MAX_SIZE sizeof(std::uint64_t) // [default]
 #define MPH_PAGE_SIZE 4096u // Only used for string-like keys
 ```
 
