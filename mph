@@ -38,9 +38,10 @@ template<class T1, class T2> compressed_pair(T1, T2) -> compressed_pair<T1, T2>;
 template<class T, size_t Size>
 struct array {
   using value_type = T;
-  [[nodiscard]] constexpr auto data() const noexcept { return data_; }
+  [[nodiscard]] constexpr const T* data() const noexcept { return data_; }
+  [[nodiscard]] constexpr T* data() noexcept { return data_; }
   [[nodiscard]] constexpr auto size() const noexcept { return Size; }
-  [[nodiscard]] constexpr auto operator[](size_t i) const noexcept { return data_[i]; }
+  [[nodiscard]] constexpr const auto& operator[](size_t i) const noexcept { return data_[i]; }
   [[nodiscard]] constexpr auto& operator[](size_t i) noexcept { return data_[i]; }
   [[nodiscard]] constexpr auto operator==(const array&) const noexcept -> bool = default;
   [[nodiscard]] constexpr auto begin() const noexcept { return &data_[0]; }
