@@ -65,12 +65,12 @@ int main(int argc, char**)
 
 ```cpp
 main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
-  movl    $7, %edx
-  xorl    %eax, %eax
-  pext    %edx, %edi, %edx
-  movl    %edx, %edx
-  cmpl    %edi, lut(,%rdx,8)
-  cmove   lut+4(,%rdx,8), %eax
+  movl $7, %edx
+  xorl %eax, %eax
+  pext %edx, %edi, %edx
+  movl %edx, %edx
+  cmpl %edi, lut(,%rdx,8)
+  cmove lut+4(,%rdx,8), %eax
   ret
 ```
 
