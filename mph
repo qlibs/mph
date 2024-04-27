@@ -9,22 +9,15 @@
 #define MPH 2'0'0 // SemVer - should match mph namespace
 
 #if __has_include(<x86intrin.h>)
-#include <x86intrin.h>
+#include <x86intrin.h> // _pext_u32, _pext_u64
 #endif
-
-#include <bit>
-#include <array>
-#include <type_traits>
-#include <cstdint>
-#include <utility>
-#include <climits>
 
 #if not defined(MPH_PAGE_SIZE)
 #define MPH_PAGE_SIZE 4096u // only used for string-like keys / if set to 0 unsafe memcpy is disabled
 #endif
 
 #if not defined(MPH_FIXED_STRING_MAX_SIZE)
-#define MPH_FIXED_STRING_MAX_SIZE sizeof(std::uint64_t) // only used for string-like keys
+#define MPH_FIXED_STRING_MAX_SIZE sizeof(::mph::utility::uint64_t) // only used for string-like keys
 #endif
 
 /**
@@ -32,6 +25,45 @@
  */
 namespace mph::inline v2_0_0 {
 namespace utility {
+
+using size_t = decltype(sizeof(int));
+using uint32_t = unsigned int;
+using uint64_t = unsigned long int;
+inline constexpr auto char_bit = 8u;
+
+template<class T1, class T2>
+struct compressed_pair {
+  using first_type = T1;
+  using second_type = T2;
+  [[no_unique_address]] T1 first;
+  [[no_unique_address]] T2 second;
+};
+
+template<class T, size_t Size>
+struct array {
+  using value_type = T;
+  [[nodiscard]] constexpr auto begin() const { return &data_[0]; }
+  [[nodiscard]] constexpr auto begin() { return &data_[0]; }
+  [[nodiscard]] constexpr auto end() const { return &data_[0]+Size; }
+  [[nodiscard]] constexpr auto end() { return &data_[0]+Size; }
+  [[nodiscard]] constexpr auto operator[](auto i) const { return data_[i]; }
+  [[nodiscard]] constexpr auto& operator[](auto i) { return data_[i]; }
+  [[nodiscard]] constexpr auto data() const { return data_; }
+  [[nodiscard]] constexpr auto size() const { return Size; }
+  [[nodiscard]] constexpr auto operator==(const array&) const -> bool = default;
+  constexpr void fill(const T& value) { for (auto i = 0u; i < Size; ++i) { data_[i] = value; } }
+  T data_[Size];
+};
+template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
+
+namespace detail {
+template <bool> struct conditional;
+template <> struct conditional<false> { template <class, class T> using fn = T; };
+template <> struct conditional<true> { template <class T, class> using fn = T; };
+}  // namespace detail
+template <bool B, class T, class F>
+using conditional_t = typename detail::conditional<B>::template fn<T, F>;
+
 template<class T, template<class, auto> class R, class _, auto Size>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) -> T {
   if constexpr (not Size) {
@@ -57,7 +89,7 @@ template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) -> T {
   if constexpr (MPH_PAGE_SIZE) {
     // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((std::uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+    if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
       return to<T, class cold>(data);
     }
     T t{};
@@ -66,10 +98,10 @@ template<class T>
     __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
     #pragma GCC diagnostic pop
 
-    if constexpr (sizeof(T) == sizeof(std::uint32_t)) {
-      return T(_bzhi_u32(t, data.size() * CHAR_BIT));
-    } else if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
-      return T(_bzhi_u64(t, data.size() * CHAR_BIT));
+    if constexpr (sizeof(T) == sizeof(uint32_t)) {
+      return T(_bzhi_u32(t, data.size() * char_bit));
+    } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+      return T(_bzhi_u64(t, data.size() * char_bit));
     }
     return t;
   } else {
@@ -84,7 +116,7 @@ template<class T>
   T result{};
   const auto size = value.size();
   for (auto i = 0u; i < size; ++i) {
-    result = (result << CHAR_BIT) | value[size-i-1];
+    result = (result << char_bit) | value[size-i-1];
   }
   return result;
 }
@@ -98,7 +130,7 @@ template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-gui
 [[nodiscard]] constexpr auto pext(const T a, T mask) {
   T result{};
   auto k = 0u;
-  constexpr auto size = sizeof(T) * CHAR_BIT;
+  constexpr auto size = sizeof(T) * char_bit;
   for (auto i = T(); i < T(size); ++i) {
     if (mask & 1) result |= ((a >> i) & 1) << k++;
     mask >>= 1;
@@ -106,16 +138,16 @@ template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-gui
   return result;
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const std::uint32_t a, const std::uint32_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint32_t a, const uint32_t mask) {
   return _pext_u32(a, mask);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const std::uint64_t a, const std::uint64_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint64_t a, const uint64_t mask) {
   return _pext_u64(a, mask);
 }
 
-template<class T, auto Size>
-[[nodiscard]] constexpr auto unique(const std::array<T, Size>& v) -> bool {
+template<template<class, auto> class C, class T, auto Size>
+[[nodiscard]] constexpr auto unique(const C<T, Size>& v) -> bool {
   for (auto i = 0u; i < Size; ++i) {
     for (auto j = i+1; j < Size; ++j) {
       if (v[i] == v[j]) {
@@ -126,16 +158,16 @@ template<class T, auto Size>
   return true;
 }
 
-template<class T, class TPair, auto Size>
-[[nodiscard]] constexpr auto pext_mask(const std::array<TPair, Size>& kv) -> T {
-  std::array<T, Size> masked;
+template<class T, template<class, auto> class C, class _, auto Size>
+[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) -> T {
+  array<T, Size> masked;
   T mask{~T{}};
-  constexpr auto size = sizeof(T) * CHAR_BIT;
+  constexpr auto size = sizeof(T) * char_bit;
   for (int n = size-1; n >= 0; --n) {
     mask &= ~(T(1) << n);
 
     for (auto i = 0u; i < Size; ++i) {
-      masked[i] = pext<T>(as<T>(kv[i].first), mask);
+      masked[i] = pext<T>(as<T>(v[i].first), mask);
     }
 
     if (not unique(masked)) {
@@ -146,7 +178,7 @@ template<class T, class TPair, auto Size>
 }
 }  // namespace utility
 
-template<class T, auto MaxSize> struct basic_fixed_string final {
+template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
   constexpr basic_fixed_string() = default;
   template<auto Size>
   constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) requires (Size-1 <= MaxSize) : size_{Size-1} {
@@ -154,11 +186,11 @@ template<class T, auto MaxSize> struct basic_fixed_string final {
   }
   [[nodiscard]] constexpr auto data() const { return data_.data(); }
   [[nodiscard]] constexpr auto size() const { return size_; }
-  [[nodiscard]] constexpr auto operator[](const auto i) const { return data_[i]; }
-  [[nodiscard]] constexpr auto operator<=>(const basic_fixed_string&) const = default;
+  [[nodiscard]] constexpr auto operator[](const auto i) const -> T { return data_[i]; }
+  [[nodiscard]] constexpr auto operator==(const basic_fixed_string&) const -> bool = default;
 
   decltype(MaxSize) size_{};
-  std::array<T, MaxSize> data_{};
+  utility::array<T, MaxSize> data_{};
 };
 
 using fixed_string = basic_fixed_string<char, MPH_FIXED_STRING_MAX_SIZE>;
@@ -201,8 +233,8 @@ inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_u
 };
 
 namespace detail {
-template<class T> using key_t = std::conditional_t<std::is_integral_v<T>, T, std::uint64_t>;
-template<class T> using mask_t = std::conditional_t<sizeof(T) <= sizeof(std::uint32_t), std::uint32_t, std::uint64_t>;
+template<class T> using key_t = utility::conditional_t<requires(T t) { t.size(); }, utility::uint64_t, T>;
+template<class T> using mask_t = utility::conditional_t<sizeof(T) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
 } // namespace detail
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional>
@@ -243,12 +275,12 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
         using mask_type = detail::mask_t<key_type>;
         static constexpr mask_type mask = utility::pext_mask<key_type>(kv);
         static constexpr const auto lut = [] {
-          std::array<std::pair<key_type, value_type>, (mask_type(1u) << std::popcount(mask))> lut{};
-          lut.fill(std::pair{key_type{}, unknown});
+          utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
+          lut.fill(utility::compressed_pair{key_type{}, unknown});
           for (const auto& [key, value] : kv) {
             const auto k = utility::as<key_type>(key);
             const auto p = utility::pext<key_type>(k, mask);
-            lut[p] = std::pair{k, value};
+            lut[p] = utility::compressed_pair{k, value};
           }
           return lut;
         }();
@@ -256,7 +288,7 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
           if constexpr (requires { key.size(); }) {
             return utility::to<key_type>(key);
           } else {
-            return std::forward<decltype(key)>(key);
+            return static_cast<decltype(key)&&>(key);
           }
         }();
         auto&& [rhs, value] = lut[utility::pext(lhs, mask)];
@@ -273,6 +305,10 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
 static_assert(([] {
+  // compressed_pair
+  // array
+  // conditional_t
+
   // mph::utility::pext
   {
     static_assert(0b00 == mph::utility::pext(0b00, 0b00));
@@ -287,36 +323,42 @@ static_assert(([] {
 
   // mph::utility::pext_mask
   {
-    static_assert(0b10 == mph::utility::pext_mask<std::uint32_t>(std::array{std::pair{0b10, 0}, std::pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<std::uint32_t>(std::array{std::pair{0b00, 0}, std::pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<std::uint32_t>(std::array{std::pair{0b10, 0}, std::pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<std::uint32_t>(std::array{std::pair{0b11, 0}, std::pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<std::uint32_t>(std::array{std::pair{0b00, 0}, std::pair{0b11, 0}}));
+    using mph::utility::uint32_t;
+    using mph::utility::array;
+    using mph::utility::compressed_pair;
+
+    static_assert(0b10 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::utility::unique
   {
-    static_assert(mph::utility::unique(std::array{1}));
-    static_assert(mph::utility::unique(std::array{1, 2}));
-    static_assert(mph::utility::unique(std::array{1, 2, 3}));
-    static_assert(not mph::utility::unique(std::array{1, 1}));
-    static_assert(not mph::utility::unique(std::array{1, 2, 1}));
-    static_assert(not mph::utility::unique(std::array{1, 2, 3, 2}));
+    static_assert(mph::utility::unique(mph::utility::array{1}));
+    static_assert(mph::utility::unique(mph::utility::array{1, 2}));
+    static_assert(mph::utility::unique(mph::utility::array{1, 2, 3}));
+    static_assert(not mph::utility::unique(mph::utility::array{1, 1}));
+    static_assert(not mph::utility::unique(mph::utility::array{1, 2, 1}));
+    static_assert(not mph::utility::unique(mph::utility::array{1, 2, 3, 2}));
   }
 
   // mph::utility::as
   {
-    static_assert(int(0) == mph::utility::as<int>(std::array{0}));
-    static_assert(int(1) == mph::utility::as<int>(std::array{1}));
-    static_assert((int(1) << 0) + (int(2) << CHAR_BIT) == mph::utility::as<int>(std::array{1, 2}));
-    static_assert((int(1) << 0) + (int(2) << CHAR_BIT)  + (int(3) << CHAR_BIT*2) == mph::utility::as<int>(std::array{1, 2, 3}));
+    using mph::utility::char_bit;
+
+    static_assert(int(0) == mph::utility::as<int>(mph::utility::array{0}));
+    static_assert(int(1) == mph::utility::as<int>(mph::utility::array{1}));
+    static_assert((int(1) << 0) + (int(2) << char_bit) == mph::utility::as<int>(mph::utility::array{1, 2}));
+    static_assert((int(1) << 0) + (int(2) << char_bit)  + (int(3) << char_bit*2) == mph::utility::as<int>(mph::utility::array{1, 2, 3}));
   }
 
   // mph::fixed_string
   {
-    static_assert(0u == std::size(mph::fixed_string{}));
-    static_assert(0u == std::size(mph::fixed_string{""}));
-    static_assert(3u == std::size(mph::fixed_string{"abc"}));
+    static_assert(0u == mph::fixed_string{}.size());
+    static_assert(0u == mph::fixed_string{""}.size());
+    static_assert(3u == mph::fixed_string{"abc"}.size());
     static_assert('a' == mph::fixed_string{"abc"}[0]);
     static_assert('a' == mph::fixed_string{"abc"}[0]);
     static_assert('b' == mph::fixed_string{"abc"}[1]);
@@ -348,39 +390,35 @@ static_assert(([] {
 
   // mph::hash
   {
+    using mph::utility::uint32_t;
+    using mph::utility::array;
+    using mph::utility::compressed_pair;
+    using mph::fixed_string;
+
     // integral
     {
       {
-        constexpr std::array<std::pair<int, int>, 0> kv{ };
+        constexpr array kv{
+          compressed_pair{uint32_t(4), uint32_t(2)},
+        };
 
-        static_assert(0 == mph::hash<kv, 0>(0));
-        static_assert(0 == mph::hash<kv, 0>(1));
-        static_assert(0 == mph::hash<kv, 0>(2));
-        static_assert(1 == mph::hash<kv, 1>(0));
+        static_assert(0 == mph::hash<kv, 0>(uint32_t(0)));
+        static_assert(0 == mph::hash<kv, 0>(uint32_t(1)));
+        static_assert(2 == mph::hash<kv, 0>(uint32_t(4)));
       }
 
       {
-        constexpr std::array kv{
-          std::pair{std::uint32_t(4), std::uint32_t(2)},
+        constexpr array kv{
+          compressed_pair{uint32_t(4), uint32_t(2)},
+          compressed_pair{uint32_t(42), uint32_t(87)},
+          compressed_pair{uint32_t(100), uint32_t(100)},
         };
 
-        static_assert(0 == mph::hash<kv, 0>(std::uint32_t(0)));
-        static_assert(0 == mph::hash<kv, 0>(std::uint32_t(1)));
-        static_assert(2 == mph::hash<kv, 0>(std::uint32_t(4)));
-      }
-
-      {
-        constexpr std::array kv{
-          std::pair{std::uint32_t(4), std::uint32_t(2)},
-          std::pair{std::uint32_t(42), std::uint32_t(87)},
-          std::pair{std::uint32_t(100), std::uint32_t(100)},
-        };
-
-        static_assert(0 == mph::hash<kv, 0>(std::uint32_t(0)));
-        static_assert(1 == mph::hash<kv, 1>(std::uint32_t(0)));
-        static_assert(2 == mph::hash<kv, 0>(std::uint32_t(4)));
-        static_assert(87 == mph::hash<kv, 0>(std::uint32_t(42)));
-        static_assert(100 == mph::hash<kv, 0>(std::uint32_t(100)));
+        static_assert(0 == mph::hash<kv, 0>(uint32_t(0)));
+        static_assert(1 == mph::hash<kv, 1>(uint32_t(0)));
+        static_assert(2 == mph::hash<kv, 0>(uint32_t(4)));
+        static_assert(87 == mph::hash<kv, 0>(uint32_t(42)));
+        static_assert(100 == mph::hash<kv, 0>(uint32_t(100)));
       }
     }
 
@@ -389,18 +427,17 @@ static_assert(([] {
       {
         enum class color { red = 1, green = 2, blue = 3 };
 
-        constexpr std::array kv{
-          std::pair{mph::fixed_string{"green"}, color::green},
-          std::pair{mph::fixed_string{"red"}, color::red},
-          std::pair{mph::fixed_string{"blue"}, color::blue},
+        constexpr array kv{
+          compressed_pair{fixed_string{"green"}, color::green},
+          compressed_pair{fixed_string{"red"}, color::red},
+          compressed_pair{fixed_string{"blue"}, color::blue},
         };
 
-        static_assert(color(0) == mph::hash<kv, color(0)>(std::array<char, 0>{}));
-        static_assert(color(-1) == mph::hash<kv, color(-1)>(std::array<char, 4>{'n', 'o', 'n', 'e'}));
-        static_assert(color(0) == mph::hash<kv, color(0)>(std::array<char, 7>{'u', 'n', 'k', 'n', 'o', 'w', 'n'}));
-        static_assert(color::red == mph::hash<kv, color(0)>(std::array<char, 3>{'r', 'e', 'd'}));
-        static_assert(color::green == mph::hash<kv, color(0)>(std::array<char, 5>{'g', 'r', 'e', 'e', 'n'}));
-        static_assert(color::blue == mph::hash<kv, color(0)>(std::array<char, 4>{'b', 'l', 'u', 'e'}));
+        static_assert(color(-1) == mph::hash<kv, color(-1)>(array<char, 4>{'n', 'o', 'n', 'e'}));
+        static_assert(color(0) == mph::hash<kv, color(0)>(array<char, 7>{'u', 'n', 'k', 'n', 'o', 'w', 'n'}));
+        static_assert(color::red == mph::hash<kv, color(0)>(array<char, 3>{'r', 'e', 'd'}));
+        static_assert(color::green == mph::hash<kv, color(0)>(array<char, 5>{'g', 'r', 'e', 'e', 'n'}));
+        static_assert(color::blue == mph::hash<kv, color(0)>(array<char, 4>{'b', 'l', 'u', 'e'}));
       }
     }
   }
