@@ -46,7 +46,7 @@ std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/G6hGE8GWG)
+### Performance (https://godbolt.org/z/n148debY7)
 
 ```cpp
 int main(int argc, char**)
