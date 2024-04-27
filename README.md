@@ -18,8 +18,9 @@
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
     - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
-- [#API](#api)
-- [#Performance](#performance), [#Benchmarks](#benchmarks)
+- [API](#api)
+- [Performance](#performance)
+- [Benchmarks](#benchmarks)
 
 ### Requirements
 
@@ -71,8 +72,6 @@ main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   cmpl    %edi, lut(,%rdx,8)
   cmove   lut+4(,%rdx,8), %eax
   ret
-lut:
-  ...
 ```
 
 ---
@@ -95,19 +94,17 @@ int main(int argc, const char** argv) {
 
 ```
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
-  mov     rax, qword ptr [rsi + 8]
-  mov     rsi, qword ptr [rax]
-  mov     eax, 1029
-  pext    rcx, rsi, rax
-  lea     rdx, [rip + lut]
-  xor     eax, eax
-  cmp     rsi, qword ptr [rcx + rdx]
-  jne     .LBB0_2
-  mov     eax, dword ptr [rcx + rdx + 8]
-.LBB0_2:
-          ret
-lut:
-  ...
+  movq 8(%rsi), %rax
+  xorl %ecx, %ecx
+  movq (%rax), %rdx
+  movl $1029, %eax
+  pext %rax, %rdx, %rax
+  cmpq lut(%rax), %rdx
+  jne .L1
+  movl lut+8(%rax), %ecx
+.L1:
+  movl %ecx, %eax
+  ret
 ```
 
 ### Performance [potentially unsafe] (https://godbolt.org/z/vjrsY35x8)
@@ -136,8 +133,6 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   pext %rdx, %rax, %rax
   movl lut+8(%rax), %eax
   ret
-lut:
-  ...
 ```
 
 ---
@@ -229,9 +224,9 @@ lut:
 /**
  * Perfect hash function
  *
- * @tparam kv constexpr pair of id values such as std::array{{std::pair{"FOO"}, 1}, std::pair{"BAR"}, 2}}
+ * @tparam kv constexpr array of key/value pairs
  * @tparam unknown default value
- * @param key continuous input data such as std::string_view, std::span, std::array or intergral value
+ * @param key input data
  */
 template<
   auto kv,
