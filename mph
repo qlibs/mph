@@ -6,7 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 2'0'0 // SemVer - should match mph namespace
+#define MPH 2'0'0 // SemVer
 
 #if __has_include(<x86intrin.h>)
 #include <x86intrin.h> // _pext_u32, _pext_u64
@@ -21,7 +21,7 @@
 #endif
 
 /**
- * Perfect hash function library (https://en.wikipedia.org/wiki/Perfect_hash_function)
+ * Perfect hash function library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_0_0 {
 namespace utility {
