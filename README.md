@@ -19,8 +19,7 @@
     - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
     - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
 - [API](#api)
-- [Performance](#performance)
-- [Benchmarks](#benchmarks)
+- [Performance](#performance) / [Benchmarks](#benchmarks)
 
 ### Requirements
 
@@ -296,9 +295,9 @@ inline constexpr auto branchless =
 > Configuration
 
 ```cpp
-#define MPH 2'0'0                    // Current library version (SemVer)
-#define MPH_FIXED_STRING_MAX_SIZE 8u // [default]
-#define MPH_PAGE_SIZE 4096u          // Only used for string-like keys
+#define MPH 2'0'0 // Current library version (SemVer)
+#define MPH_FIXED_STRING_MAX_SIZE sizeof(std::uint64_t) // [default]
+#define MPH_PAGE_SIZE 4096u // Only used for string-like keys
 ```
 
 ---

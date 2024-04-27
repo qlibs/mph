@@ -24,7 +24,7 @@
 #endif
 
 #if not defined(MPH_FIXED_STRING_MAX_SIZE)
-#define MPH_FIXED_STRING_MAX_SIZE 8u // only used for string-like keys
+#define MPH_FIXED_STRING_MAX_SIZE sizeof(std::uint64_t) // only used for string-like keys
 #endif
 
 /**
@@ -207,7 +207,7 @@ template<class T> using mask_t = std::conditional_t<sizeof(T) <= sizeof(std::uin
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional>
 [[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown) {
-  if (std::is_constant_evaluated()) {
+  if (__builtin_is_constant_evaluated()) {
     for (const auto& [k, v] : kv) {
       if constexpr (requires { k.size(); key.size(); k[0]; key[0]; }) {
         if (k.size() == key.size()) {
@@ -222,10 +222,8 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
             return v;
           }
         }
-      } else {
-        if (k == key) {
-          return v;
-        }
+      } else if (k == key) {
+        return v;
       }
     }
   } else {
