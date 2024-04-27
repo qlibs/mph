@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://godbolt.org/z/sdqW48MEv">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/s76cG64rY">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/4qsGj7741">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -25,7 +25,7 @@
 
 - C++20 ([gcc-12+](https://godbolt.org/z/sdqW48MEv), [clang-15+](https://godbolt.org/z/sdqW48MEv))
 
-### Hello world (https://godbolt.org/z/nfTWM1544)
+### Hello world (https://godbolt.org/z/4qsGj7741)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -44,7 +44,6 @@ std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 ```
 
 ---
-
 
 <a name="performance"></a>
 ### Performance (https://godbolt.org/z/G6hGE8GWG)

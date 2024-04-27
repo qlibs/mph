@@ -305,9 +305,59 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
 static_assert(([] {
-  // compressed_pair
-  // array
-  // conditional_t
+  constexpr auto expect = [](bool cond) { if (!cond) { void failed(); failed(); } };
+
+  // mph::utility::compressed_pair
+  {
+    static_assert(1 == mph::utility::compressed_pair{1, 2}.first);
+    static_assert(2 == mph::utility::compressed_pair{1, 2}.second);
+    static_assert(sizeof(int) + sizeof(int) == sizeof(mph::utility::compressed_pair{int{}, int{}}));
+    struct empty { };
+    static_assert(sizeof(int) == sizeof(mph::utility::compressed_pair{empty{}, 42}));
+    static_assert(sizeof(int) == sizeof(mph::utility::compressed_pair{42, empty{}}));
+    static_assert(sizeof(empty) + sizeof(empty) == sizeof(mph::utility::compressed_pair{empty{}, empty{}}));
+  }
+  // mph::utility::array
+  {
+    {
+      mph::utility::array<mph::utility::size_t, 1> a{};
+      expect(1 == a.size());
+    }
+
+    {
+      mph::utility::array a{1, 2};
+      expect(2u == a.size());
+      expect(1 == a[0]);
+      expect(2 == a[1]);
+    }
+
+    {
+      expect(mph::utility::array{1, 2} == mph::utility::array{1, 2});
+      expect(mph::utility::array{1, 2} != mph::utility::array{1, 3});
+    }
+
+    {
+      mph::utility::array a{1};
+      a[0] = 2;
+      expect(2 == a[0]);
+    }
+
+    {
+      mph::utility::array a{1, 2, 3};
+      expect(3u == a.size());
+      expect(a.begin() != a.end());
+      expect(a.size() == mph::utility::size_t(a.end() - a.begin()));
+      expect(a.end() == a.begin() + a.size());
+    }
+  }
+
+  // mph::utility::conditional_t
+  {
+    struct lhs { bool value{true}; };
+    struct rhs { };
+    static_assert([](auto t) { return requires { t.value; }; }(mph::utility::conditional_t<true, lhs, rhs>{}));
+    static_assert(not [](auto t) { return requires { t.value; }; }(mph::utility::conditional_t<false, lhs, rhs>{}));
+  }
 
   // mph::utility::pext
   {
