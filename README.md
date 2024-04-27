@@ -311,27 +311,9 @@ inline constexpr auto branchless =
       `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
       `mph`, then, picks the 'best' one and apply input data to it.
 
-- Is `mph` working on other platforms than x86-64?
-
-    > In priniple the design is not platform specific and it depends on available policies.
-      Some policies are platform specific such as `pext` as it requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support.
-
-- How long it the compilation takes with `mph`?
-
-    > Depending on the number of keys and chosen policies the compilation times may vary. Most of the use cases should compile in miliesconds/seconds on both gcc/clang.
-
-- Is C++20 required to use `mph`?
-
-    > Yes, C++20 support of concepts, constexpr std::vector, NTTP and other compile-time features made the implementatin of the library possible.
-      However, it's doable to implement `mph` with standard below C++20, although it would require more effort.
-
 - How to get the max performance out of `mph`?
 
     > Always measure! Custom polices might be a good place to start. For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
-
-- Ideas for policies?
-
-    > [radix-tree](https://en.wikipedia.org/wiki/Radix_tree), [finite-state-machine](https://en.wikipedia.org/wiki/Finite-state_machine), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [mph](http://stevehanov.ca/blog/index.php?id=119), [hash](https://en.wikipedia.org/wiki/Hash_function), [simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data), [cmph](https://cmph.sourceforge.net/papers)
 
 - Similar projects?
 
