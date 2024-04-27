@@ -1,3 +1,4 @@
+#include <array>
 //
 // Copyright (c) 2024 Kris Jusiak (kris at jusiak dot net)
 //
@@ -276,7 +277,7 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
         using mask_type = detail::mask_t<key_type>;
         static constexpr mask_type mask = utility::pext_mask<key_type>(kv);
         static constexpr const auto lut = [] {
-          utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
+          std::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
           lut.fill(utility::compressed_pair{key_type{}, unknown});
           for (const auto& [key, value] : kv) {
             const auto k = utility::as<key_type>(key);
