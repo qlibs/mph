@@ -249,8 +249,8 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
           lut.fill(std::pair{key_type{}, unknown});
           for (const auto& [key, value] : kv) {
             const auto k = utility::as<key_type>(key);
-            const auto pext = utility::pext<key_type>(k, mask);
-            lut[pext] = std::pair{k, value};
+            const auto p = utility::pext<key_type>(k, mask);
+            lut[p] = std::pair{k, value};
           }
           return lut;
         }();
