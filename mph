@@ -1,4 +1,3 @@
-#include <array>
 //
 // Copyright (c) 2024 Kris Jusiak (kris at jusiak dot net)
 //
@@ -26,7 +25,6 @@
  */
 namespace mph::inline v2_0_0 {
 namespace utility {
-
 using size_t = decltype(sizeof(int));
 using uint32_t = unsigned int;
 using uint64_t = unsigned long int;
@@ -44,16 +42,16 @@ template<class T1, class T2> compressed_pair(T1, T2) -> compressed_pair<T1, T2>;
 template<class T, size_t Size>
 struct array {
   using value_type = T;
-  [[nodiscard]] constexpr auto begin() const { return &data_[0]; }
-  [[nodiscard]] constexpr auto begin() { return &data_[0]; }
-  [[nodiscard]] constexpr auto end() const { return &data_[0]+Size; }
-  [[nodiscard]] constexpr auto end() { return &data_[0]+Size; }
-  [[nodiscard]] constexpr auto operator[](auto i) const { return data_[i]; }
-  [[nodiscard]] constexpr auto& operator[](auto i) { return data_[i]; }
-  [[nodiscard]] constexpr auto data() const { return data_; }
-  [[nodiscard]] constexpr auto size() const { return Size; }
-  [[nodiscard]] constexpr auto operator==(const array&) const -> bool = default;
-  constexpr void fill(const T& value) { for (auto i = 0u; i < Size; ++i) { data_[i] = value; } }
+  [[nodiscard]] constexpr auto begin() const noexcept { return &data_[0]; }
+  [[nodiscard]] constexpr auto begin() noexcept { return &data_[0]; }
+  [[nodiscard]] constexpr auto end() const noexcept { return &data_[0]+Size; }
+  [[nodiscard]] constexpr auto end() noexcept { return &data_[0]+Size; }
+  [[nodiscard]] constexpr auto operator[](size_t i) const noexcept { return data_[i]; }
+  [[nodiscard]] constexpr auto& operator[](size_t i) noexcept { return data_[i]; }
+  [[nodiscard]] constexpr auto data() const noexcept { return data_; }
+  [[nodiscard]] constexpr auto size() const noexcept { return Size; }
+  [[nodiscard]] constexpr auto operator==(const array&) const noexcept -> bool = default;
+  constexpr void fill(const T& value) noexcept { for (auto i = 0u; i < Size; ++i) { data_[i] = value; } }
   T data_[Size];
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
@@ -67,7 +65,7 @@ template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
 template<class T, template<class, auto> class R, class _, auto Size>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) -> T {
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T {
   if constexpr (not Size) {
     return T{};
   } else if constexpr (Size == sizeof(T)) {
@@ -81,14 +79,14 @@ template<class T, template<class, auto> class R, class _, auto Size>
 }
 
 template<class T, class cold>
-[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) -> T {
+[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T {
   T t{};
   __builtin_memcpy(&t, data.data(), data.size());
   return t;
 }
 
 template<class T>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) -> T {
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if constexpr (MPH_PAGE_SIZE) {
     // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
     if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
@@ -114,7 +112,7 @@ template<class T>
 }
 
 template<class T>
-[[nodiscard]] constexpr auto as(auto&& value) -> T requires requires { value.size(); } {
+[[nodiscard]] constexpr auto as(auto&& value) noexcept -> T requires requires { value.size(); } {
   T result{};
   const auto size = value.size();
   for (auto i = 0u; i < size; ++i) {
@@ -124,12 +122,12 @@ template<class T>
 }
 
 template<class T>
-[[nodiscard]] constexpr auto as(const T value) -> T {
+[[nodiscard]] constexpr auto as(const T value) noexcept -> T {
   return value;
 }
 
 template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-[[nodiscard]] constexpr auto pext(const T a, T mask) {
+[[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
   T result{};
   auto k = 0u;
   constexpr auto size = sizeof(T) * char_bit;
@@ -140,16 +138,16 @@ template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-gui
   return result;
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint32_t a, const uint32_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint32_t a, const uint32_t mask) noexcept {
   return _pext_u32(a, mask);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint64_t a, const uint64_t mask) {
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint64_t a, const uint64_t mask) noexcept {
   return _pext_u64(a, mask);
 }
 
 template<template<class, auto> class C, class T, auto Size>
-[[nodiscard]] constexpr auto unique(const C<T, Size>& v) -> bool {
+[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
   for (auto i = 0u; i < Size; ++i) {
     for (auto j = i+1; j < Size; ++j) {
       if (v[i] == v[j]) {
@@ -161,7 +159,7 @@ template<template<class, auto> class C, class T, auto Size>
 }
 
 template<class T, template<class, auto> class C, class _, auto Size>
-[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) -> T {
+[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
   array<T, Size> masked;
   T mask{~T{}};
   constexpr auto size = sizeof(T) * char_bit;
@@ -181,15 +179,15 @@ template<class T, template<class, auto> class C, class _, auto Size>
 }  // namespace utility
 
 template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
-  constexpr basic_fixed_string() = default;
+  constexpr basic_fixed_string() noexcept = default;
   template<auto Size>
-  constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) requires (Size-1 <= MaxSize) : size_{Size-1} {
+  constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
     for (auto i = 0u; i < Size-1; ++i) { data_[i] = input[i]; } // no null terminated
   }
-  [[nodiscard]] constexpr auto data() const { return data_.data(); }
-  [[nodiscard]] constexpr auto size() const { return size_; }
-  [[nodiscard]] constexpr auto operator[](const auto i) const -> T { return data_[i]; }
-  [[nodiscard]] constexpr auto operator==(const basic_fixed_string&) const -> bool = default;
+  [[nodiscard]] constexpr auto data() const noexcept { return data_.data(); }
+  [[nodiscard]] constexpr auto size() const noexcept { return size_; }
+  [[nodiscard]] constexpr auto operator[](const utility::size_t i) const noexcept -> T { return data_[i]; }
+  [[nodiscard]] constexpr auto operator==(const basic_fixed_string&) const noexcept -> bool = default;
 
   decltype(MaxSize) size_{};
   utility::array<T, MaxSize> data_{};
@@ -197,15 +195,15 @@ template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
 
 using fixed_string = basic_fixed_string<char, MPH_FIXED_STRING_MAX_SIZE>;
 
-inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
   return lhs; // [unsafe] returns unconditionally
 };
 
-inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) {
+inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) noexcept {
   return cond ? lhs : rhs; // generates jmp (x86-64)
 };
 
-inline constexpr auto likely = [](const bool cond, const auto lhs, const auto rhs) {
+inline constexpr auto likely = [](const bool cond, const auto lhs, const auto rhs) noexcept {
   if (cond) [[likely]] {
     return lhs;
   } else {
@@ -222,7 +220,7 @@ inline constexpr auto unlikely = [](const bool cond, const auto lhs, const auto 
 };
 
 template<auto Probablity>
-inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) {
+inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) noexcept{
   if (__builtin_expect_with_probability(cond, 1, Probablity)) {
     return lhs;
   } else {
@@ -230,79 +228,84 @@ inline constexpr auto conditional_probability = [](const bool cond, const auto l
   }
 };
 
-inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
   return cond * lhs; // generates cmov (x86-64)
 };
 
 namespace detail {
-template<class T> using key_t = utility::conditional_t<requires(T t) { t.size(); }, utility::uint64_t, T>;
-template<class T> using mask_t = utility::conditional_t<sizeof(T) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
+template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto policy>
+struct hash {
+  template<class T> using key_t = utility::conditional_t<requires(T t) { t.size(); }, utility::uint64_t, T>;
+  template<class T> using mask_t = utility::conditional_t<sizeof(T) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
+
+  [[nodiscard]] constexpr auto operator()(auto&& key) const noexcept -> decltype(unknown) {
+    if (__builtin_is_constant_evaluated()) {
+      for (const auto& [k, v] : kv) {
+        if constexpr (requires { k.size(); key.size(); k[0]; key[0]; }) {
+          if (k.size() == key.size()) {
+            auto matched = true;
+            for (auto i = 0u; i < key.size(); ++i) {
+              if (k[i] != key[i]) {
+                matched = false;
+                break;
+              }
+            }
+            if (matched) {
+              return v;
+            }
+          }
+        } else if (k == key) {
+          return v;
+        }
+      }
+    } else {
+      return [&] {
+        if constexpr (kv.size() == 0u) {
+          return unknown;
+        } else if constexpr (kv.size() == 1u) {
+          if (kv[0].first == key) { return kv[0].second; }
+          return unknown;
+        } else if constexpr (kv.size() == 2u) {
+          if (kv[0].first == key) { return kv[0].second; }
+          if (kv[1].first == key) { return kv[1].second; }
+          return unknown;
+        } else if constexpr (kv.size() <= 128u) {
+          using key_type = key_t<typename decltype(kv)::value_type::first_type>;
+          using value_type = typename decltype(kv)::value_type::second_type;
+          using mask_type = mask_t<key_type>;
+          static constexpr mask_type mask = utility::pext_mask<key_type>(kv);
+          static constexpr const auto lut = [] {
+            utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
+            lut.fill(utility::compressed_pair{key_type{}, unknown});
+            for (const auto& [key, value] : kv) {
+              const auto k = utility::as<key_type>(key);
+              const auto p = utility::pext<key_type>(k, mask);
+              lut[p] = utility::compressed_pair{k, value};
+            }
+            return lut;
+          }();
+          auto&& lhs = [&] {
+            if constexpr (requires { key.size(); }) {
+              return utility::to<key_type>(key);
+            } else {
+              return static_cast<decltype(key)&&>(key);
+            }
+          }();
+          auto&& [rhs, value] = lut[utility::pext(lhs, mask)];
+          return policy(lhs == rhs, value, unknown);
+        } else {
+          constexpr auto not_supported = not sizeof(key);
+          static_assert(not_supported, "[ERROR] hash is not supported!");
+        }
+      }();
+    }
+    return unknown;
+  }
+};
 } // namespace detail
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional>
-[[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown) {
-  if (__builtin_is_constant_evaluated()) {
-    for (const auto& [k, v] : kv) {
-      if constexpr (requires { k.size(); key.size(); k[0]; key[0]; }) {
-        if (k.size() == key.size()) {
-          auto matched = true;
-          for (auto i = 0u; i < key.size(); ++i) {
-            if (k[i] != key[i]) {
-              matched = false;
-              break;
-            }
-          }
-          if (matched) {
-            return v;
-          }
-        }
-      } else if (k == key) {
-        return v;
-      }
-    }
-  } else {
-    return [&] {
-      if constexpr (kv.size() == 0u) {
-        return unknown;
-      } else if constexpr (kv.size() == 1u) {
-        if (kv[0].first == key) { return kv[0].second; }
-        return unknown;
-      } else if constexpr (kv.size() == 2u) {
-        if (kv[0].first == key) { return kv[0].second; }
-        if (kv[1].first == key) { return kv[1].second; }
-        return unknown;
-      } else if constexpr (kv.size() <= 128u) {
-        using key_type = detail::key_t<typename decltype(kv)::value_type::first_type>;
-        using value_type = typename decltype(kv)::value_type::second_type;
-        using mask_type = detail::mask_t<key_type>;
-        static constexpr mask_type mask = utility::pext_mask<key_type>(kv);
-        static constexpr const auto lut = [] {
-          std::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
-          lut.fill(utility::compressed_pair{key_type{}, unknown});
-          for (const auto& [key, value] : kv) {
-            const auto k = utility::as<key_type>(key);
-            const auto p = utility::pext<key_type>(k, mask);
-            lut[p] = utility::compressed_pair{k, value};
-          }
-          return lut;
-        }();
-        auto&& lhs = [&] {
-          if constexpr (requires { key.size(); }) {
-            return utility::to<key_type>(key);
-          } else {
-            return static_cast<decltype(key)&&>(key);
-          }
-        }();
-        auto&& [rhs, value] = lut[utility::pext(lhs, mask)];
-        return policy(lhs == rhs, value, unknown);
-      } else {
-        constexpr auto not_supported = not sizeof(key);
-        static_assert(not_supported, "[ERROR] hash is not supported!");
-      }
-    }();
-  }
-  return unknown;
-}
+inline constexpr detail::hash<kv, unknown, policy> hash{};
 }  // namespace mph::inline v2_0_0
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
@@ -319,6 +322,7 @@ static_assert(([] {
     static_assert(sizeof(int) == sizeof(mph::utility::compressed_pair{42, empty{}}));
     static_assert(sizeof(empty) + sizeof(empty) == sizeof(mph::utility::compressed_pair{empty{}, empty{}}));
   }
+
   // mph::utility::array
   {
     {
