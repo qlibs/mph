@@ -205,7 +205,7 @@ template<class T> using key_t = std::conditional_t<std::is_integral_v<T>, T, std
 template<class T> using mask_t = std::conditional_t<sizeof(T) <= sizeof(std::uint32_t), std::uint32_t, std::uint64_t>;
 } // namespace detail
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto policy = conditional>
+template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional>
 [[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown) {
   if (std::is_constant_evaluated()) {
     for (const auto& [k, v] : kv) {

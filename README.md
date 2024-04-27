@@ -17,17 +17,15 @@
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
-    - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`]())
+    - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
 - [#API](#api)
-- [#Benchmarks](#benchmarks)
+- [#Performance](#performance), [#Benchmarks](#benchmarks)
 
 ### Requirements
 
 - C++20 ([gcc-12+](https://godbolt.org/z/sdqW48MEv), [clang-15+](https://godbolt.org/z/sdqW48MEv))
 
-### Hello world
-
-> Strings (https://godbolt.org/z/nfTWM1544)
+### Hello world (https://godbolt.org/z/nfTWM1544)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -47,23 +45,39 @@ std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 
 ---
 
-> Numbers (https://godbolt.org/z/3TW9M9YGq)
+
+<a name="performance"></a>
+### Performance (https://godbolt.org/z/G6hGE8GWG)
 
 ```cpp
-constexpr auto primes = std::array{
-  std::pair{2, 0}, std::pair{3, 1}, std::pair{5, 2},
-  std::pair{7, 3}, std::pair{11, 4}, std::pair{13, 5},
-  std::pair{17, 6}, std::pair{19, 7}, std::pair{23, 8},
-  std::pair{29, 9}, std::pair{31, 10}, std::pair{37, 11},
-  std::pair{41, 12}, std::pair{43, 13}, std::pair{47, 14},
-};
+int main(int argc, char**)
+  constexpr std::array ids{
+    std::pair{ 54u,  91u},
+    std::pair{324u,  54u},
+    std::pair{ 64u, 324u},
+    std::pair{234u,  64u},
+    std::pair{ 91u, 234u},
+  };
+  return mph::hash<ids>(argc);
+}
+```
 
-std::print("{}", hash<primes, 0>(41)); // prints 12
+```cpp
+main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+  movl    $7, %edx
+  xorl    %eax, %eax
+  pext    %edx, %edi, %edx
+  movl    %edx, %edx
+  cmpl    %edi, lut(,%rdx,8)
+  cmove   lut+4(,%rdx,8), %eax
+  ret
+lut:
+  ...
 ```
 
 ---
 
-### Performance
+### Performance (https://godbolt.org/z/x677cYzrf)
 
 ```cpp
 int main(int argc, const char** argv) {
@@ -79,17 +93,24 @@ int main(int argc, const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/En1TvvjcY)
-
 ```
+main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+  mov     rax, qword ptr [rsi + 8]
+  mov     rsi, qword ptr [rax]
+  mov     eax, 1029
+  pext    rcx, rsi, rax
+  lea     rdx, [rip + lut]
+  xor     eax, eax
+  cmp     rsi, qword ptr [rcx + rdx]
+  jne     .LBB0_2
+  mov     eax, dword ptr [rcx + rdx + 8]
+.LBB0_2:
+          ret
+lut:
+  ...
 ```
 
-> `llvm-mca` () | `uiCA` ([https://uica.uops.info]())
-
-```
-```
-
-### Performance [potentially unsafe]
+### Performance [potentially unsafe] (https://godbolt.org/z/vjrsY35x8)
 
 > If `all` possible inputs are known AND can be found in the keys, then `unconditional` policy for the config can be used which will avoid one comparison
 
@@ -107,9 +128,16 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 }
 ```
 
-> x86-64 assembly (https://godbolt.org/z/s4bTrd6G4)
-
 ```
+main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+  movq 8(%rsi), %rax
+  movl $1029, %edx
+  movq (%rax), %rax
+  pext %rdx, %rax, %rax
+  movl lut+8(%rax), %eax
+  ret
+lut:
+  ...
 ```
 
 ---
@@ -205,67 +233,77 @@ int main(int argc, [[maybe_unused]] const char** argv) {
  * @tparam unknown default value
  * @param key continuous input data such as std::string_view, std::span, std::array or intergral value
  */
-template<auto kv, typename decltype(kv)::value_type::second_type unknown, auto policy = conditional>
-[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
+template<
+  auto kv,
+  typename decltype(kv)::value_type::second_type unknown = {},
+  auto policy = conditional
+>
+[[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
 ```
 
 > Policies
 
 ```cpp
-inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) { // default
-  return cond ? lhs : rhs; // generates jmp (x86-64)
-};
+inline constexpr auto conditional =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    return cond ? lhs : rhs; // generates jmp (x86-64)
+  };
 ```
 
 ```cpp
-inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-  return lhs; // [unsafe] returns unconditionally
-};
+inline constexpr auto unconditional =
+  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+    return lhs; // [unsafe] returns unconditionally
+  };
 ```
 
 ```cpp
-inline constexpr auto likely = [](const bool cond, const auto lhs, const auto rhs) {
-  if (cond) [[likely]] {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto likely =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    if (cond) [[likely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 ```
 
 ```cpp
-inline constexpr auto unlikely = [](const bool cond, const auto lhs, const auto rhs) {
-  if (cond) [[unlikely]] {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto unlikely =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    if (cond) [[unlikely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 ```
 
 ```cpp
 template<auto Probablity>
-inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) {
-  if (__builtin_expect_with_probability(cond, 1, Probablity)) {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto conditional_probability =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 ```
 
 ```cpp
-inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-  return cond * lhs; // generates cmov (x86-64)
-};
+inline constexpr auto branchless =
+  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
+    return cond * lhs; // generates cmov (x86-64)
+  };
 ```
 
 > Configuration
 
 ```cpp
-#define MPH 2'0'0 // Current library version (SemVer)
+#define MPH 2'0'0                    // Current library version (SemVer)
 #define MPH_FIXED_STRING_MAX_SIZE 8u // [default]
-#define MPH_PAGE_SIZE 4096u // only used for string-like keys
+#define MPH_PAGE_SIZE 4096u          // Only used for string-like keys
 ```
 
 ---
