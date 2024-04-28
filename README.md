@@ -43,7 +43,7 @@ static_assert(color::green == mph::hash<colors>("green"));
 static_assert(color::red   == mph::hash<colors>("red"));
 static_assert(color::blue  == mph::hash<colors>("blue"));
 
-std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
+std::print("{}", mph::hash<colors>("green")); // prints 2
 ```
 
 ---
@@ -123,7 +123,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
     std::pair{std::array{'N', 'V', 'D', 'A', ' ', ' ', ' ', ' '}, 5},
   };
 
-  return mph::hash<symbols, 0, mph::unconditionl>(symbols[argc].first);
+  return mph::hash<symbols, 0/*unknown*/, mph::unconditionl>(symbols[argc].first);
 }
 ```
 
