@@ -135,7 +135,7 @@ lut:
   ...
 ```
 
-### Performance (https://godbolt.org/z/xdTd6YnPG)
+### Performance (https://godbolt.org/z/P6TWM4P7c)
 
 ```cpp
 int main(int, const char** argv) {
@@ -179,7 +179,7 @@ lut:
   ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/6n8GoGEz7)
+### Performance [potentially unsafe] (https://godbolt.org/z/sj4cTnqz9)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
 
