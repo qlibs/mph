@@ -158,7 +158,7 @@ template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if constexpr (MPH_PAGE_SIZE) {
     // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+    if ((utility::uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
       return to<T, class cold>(data);
     }
     T t{};
