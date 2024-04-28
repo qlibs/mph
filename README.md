@@ -229,7 +229,7 @@ time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.147s
 time $CXX -x c++ -std=c++20 mph -c                                 # 0.184s
 ```
 
-> [64 key/value pairs] (https://godbolt.org/z/eba1KKz3r)
+> [64 key/value pairs] (https://godbolt.org/z/WEvoz4zaE)
 
 ```cpp
 time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.569s

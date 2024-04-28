@@ -85,7 +85,9 @@ using aligned_t = typename aligned<T, alignment>::type;
 template<class T, utility::size_t MaxSize>
 struct basic_fixed_string final {
   constexpr basic_fixed_string() noexcept = default;
-  template<utility::size_t Size> constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
+  template<utility::size_t Size>
+  constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept
+    requires (Size-1 <= MaxSize) : size_{Size-1} {
     for (auto i = 0u; i < size_; ++i) { data_[i] = input[i]; } // no null terminated
   }
   [[nodiscard]] constexpr auto data() const noexcept { return data_.data(); }
