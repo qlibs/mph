@@ -450,7 +450,7 @@ inline constexpr auto unpredictable =
     }
     ```
 
-- How `mph` works under the hood?
+- How `mph` is working under the hood?
 
     > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
       `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
