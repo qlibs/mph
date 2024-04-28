@@ -381,7 +381,7 @@ template<
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
 static_assert(([] {
-  constexpr auto expect = [](bool cond) { if (!cond) { void failed(); failed(); } };
+  constexpr auto expect = [](bool cond) { if (not cond) { void failed(); failed(); } };
 
   // mph::utility::compressed_pair
   {
