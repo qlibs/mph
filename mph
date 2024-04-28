@@ -235,20 +235,19 @@ inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_u
 };
 
 namespace detail {
-[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept {
-  if constexpr (requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; }) {
-    if (lhs.size() != rhs.size()) {
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept requires requires { lhs == rhs; } {
+  return lhs == rhs;
+}
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept requires requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; } {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (auto i = 0u; i < lhs.size(); ++i) {
+    if (lhs[i] != rhs[i]) {
       return false;
     }
-    for (auto i = 0u; i < lhs.size(); ++i) {
-      if (lhs[i] != rhs[i]) {
-        return false;
-      }
-    }
-    return true;
-  } else {
-    return lhs == rhs;
   }
+  return true;
 }
 } // namespace detail
 
@@ -271,22 +270,14 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional, auto Size> requires (kv.size() > 2u)
 [[nodiscard]] constexpr auto hash(const decltype(kv[0].first[0]) (&key)[Size]) noexcept -> decltype(unknown) {
-  for (const auto& [k, v] : kv) {
-    if (detail::cmp(k, key)) {
-      return v;
-    }
-  }
+  for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
   return unknown;
 }
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional> requires (kv.size() > 2u and kv.size() < 128u)
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
   if (__builtin_is_constant_evaluated()) {
-    for (const auto& [k, v] : kv) {
-      if (detail::cmp(k, key)) {
-        return v;
-      }
-    }
+    for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
     return unknown;
   }
 
