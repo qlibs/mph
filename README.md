@@ -167,16 +167,18 @@ lut:
   ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/95T7146ce)
+### Performance [potentially unsafe] (https://godbolt.org/z/6n8GoGEz7)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
-  constexpr auto symbols = std::array{ ... };
+  constexpr auto symbols = std::array{
+    // key/value pairs from https://godbolt.org/z/xdTd6YnPG
+  };
 
   return mph::hash<symbols, 0/*unknown*/, mph::unconditional>(
-    std::span<const char, 8>(argv[1], argv[1]+8)
+    std::span<const char, 4>(argv[1], argv[1]+4)
   );
 ```
 
