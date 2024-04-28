@@ -429,15 +429,16 @@ inline constexpr auto branchless =
 
 - How to get the max performance out of `mph`?
 
-    > Always measure! For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
-      Passing `string_view` will be slower but remember to set `MPH_PAGE_SIZE` properly when passing dynamically sized input.
-      That's required as, by default, `mph` will try to optimize memcpy of required input bytes.
+    > Always measure! For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
+      Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to 4096u.
+      That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
       If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
       That will make the lookup table smaller and it will avoid `shl` for getting the value.
-      Consider using minimial required size for values. That will make the lookup table smaller but ensure it actually is improving the performance.
+      Consider using minimial required size for values. That will make the lookup table smaller.
       Experiment with different policies for the comparison based on the expert knowladge of future input data (`conditional, likey, unlikely, conditional_probability, branchless`).
-      If input values are always valid (one of the predefined keys) consider using `unconditional` policy (unsafe if the input key won't match one of predefined keys). That will make the lookup table smaller and will avoid `cmp` and `jmp`.
+      If input values are always valid (values from predefined keys) consider using `unconditional` policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
+      Always measure any changes in production like environment!
 
 - Can I disable running tests at compile-time for faster compilation times?
 
