@@ -60,6 +60,7 @@ int main(int argc, char**)
     std::pair{234u,  64u},
     std::pair{ 91u, 234u},
   };
+
   return mph::hash<ids>(argc);
 }
 ```
@@ -88,6 +89,7 @@ int main(int argc, const char** argv) {
     std::pair{mph::fixed_string{"MSFT    "}, 4},
     std::pair{mph::fixed_string{"NVDA    "}, 5},
   };
+
   return mph::hash<symbols>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
 }
 ```
@@ -109,7 +111,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 
 ### Performance [potentially unsafe] (https://godbolt.org/z/vjrsY35x8)
 
-> If `all` possible inputs are known AND can be found in the keys, then `unconditional` policy for the config can be used which will avoid one comparison
+> If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
