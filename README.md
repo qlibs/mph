@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://godbolt.org/z/3zh43YTMd">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/feea6z5zv">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/1W3oqnP6G">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -30,7 +30,7 @@
     - No STL headers required
     - [[x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) / [x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
-### Hello world (https://godbolt.org/z/feea6z5zv)
+### Hello world (https://godbolt.org/z/1W3oqnP6G)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
