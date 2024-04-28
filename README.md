@@ -183,12 +183,11 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 ```cpp
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movq    8(%rsi), %rax
-  movl    $1031, %ecx
-  movq    (%rax), %rax
-  pextq   %rcx, %rax, %rax
+  movl    $789, %ecx
+  movl    (%rax), %eax
+  pextl   %ecx, %eax, %eax
   leaq    lut(%rip), %rcx
-  shll    $4, %eax
-  movzbl  8(%rax,%rcx), %eax
+  movzbl  4(%rcx,%rax,8), %eax
   retq
 
 lut:
