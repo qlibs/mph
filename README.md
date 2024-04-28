@@ -388,6 +388,19 @@ inline constexpr auto branchless =
   };
 ```
 
+```cpp
+#if defined(__clang__)
+inline constexpr auto unpredictable =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (__builtin_unpredictable(cond)) {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
+#endif
+```
+
 > Configuration
 
 ```cpp
@@ -435,7 +448,7 @@ inline constexpr auto branchless =
       If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
       That will make the lookup table smaller and it will avoid `shl` for getting the value.
       Consider using minimial required size for values. That will make the lookup table smaller.
-      Experiment with different policies for the comparison based on the expert knowledge of future input data (`conditional, likey, unlikely, conditional_probability, branchless`).
+      Experiment with different policies for the comparison based on the expert knowledge of future input data (`conditional, likey, unlikely, conditional_probability, branchless, unpredictable`).
       If input values are always valid (values from predefined keys) consider using `unconditional` policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!

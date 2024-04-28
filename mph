@@ -132,8 +132,18 @@ inline constexpr auto conditional_probability = [](const bool cond, const auto l
 };
 
 inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-  return cond * lhs; // generates cmov (x86-64)
+  return cond * lhs; // more likely to generate cmov (x86-64)
 };
+
+#if defined(__clang__)
+inline constexpr auto unpredictable = [](const bool cond, const auto lhs, const auto rhs) noexcept {
+  if (__builtin_unpredictable(cond)) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+};
+#endif
 
 namespace detail {
 template<class T, template<class, auto> class R, class _, auto Size>
