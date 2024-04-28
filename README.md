@@ -395,7 +395,7 @@ inline constexpr auto branchless =
 #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
                             // the input string size is not
                             // known at compile-time
-                            // if set to 0u std::memcpy is used instead
+                            // If set to 0u std::memcpy is used instead
 ```
 
 ---
