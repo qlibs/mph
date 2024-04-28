@@ -152,8 +152,7 @@ template<class T, template<class, auto> class R, class _, auto Size>
     return T{};
   } else if constexpr (Size == sizeof(T)) {
     return *__builtin_bit_cast(const T*, data.data());
-  } else {
-    static_assert(Size <= sizeof(T));
+  } else if constexpr (Size <= sizeof(T)) {
     T t{};
     __builtin_memcpy(&t, data.data(), Size);
     return t;

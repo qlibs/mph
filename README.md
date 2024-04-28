@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/3zh43YTMd">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/1W3oqnP6G">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/ovfcfnq4E">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/Ga85v3fqf">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -30,7 +30,7 @@
     - No STL headers required
     - [[x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) / [x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
-### Hello world (https://godbolt.org/z/1W3oqnP6G)
+### Hello world (https://godbolt.org/z/Ga85v3fqf)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -323,17 +323,24 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
 /**
  * Perfect hash function
  *
- * @tparam kv constexpr array of key/value pairs (for string-like mph::fixed_string is required)
+ * @tparam kv constexpr array of key/value pairs
+           (for string-like mph::fixed_string is required)
  * @tparam unknown returned value when key is not found (default: 0)
  * @tparam alignment of the lookup table (default: 0 / no alignment)
  * @param key input data (should match kv keys type)
  */
 template<
   auto kv,
-  typename decltype(kv)::value_type::second_type unknown = {},
+  detail::value_type<kv> unknown = detail::value_type<kv>{},
   auto policy = conditional,
-  size_t alignment = 0u
-> requires (kv.size() >= 0 and kv.size() < (1<<8))
+  size_t alignment = 0u, // no alignment
+  auto max_key_len = detail::max_key_len(kv)
+> requires
+    requires { kv.size(); } and (
+      kv.size() >= 0u and
+      max_key_len <= sizeof(uint64_t) and
+      size(kv[0].first) <= sizeof(uint64_t)
+    )
 [[nodiscard]] [[gnu::target("bmi2")]]
 constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
 ```
