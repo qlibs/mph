@@ -16,14 +16,17 @@
 ### Features
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
-    - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
-    - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
-- [API](#api)
-- [Performance](#performance) / [Benchmarks](#benchmarks)
+    - Easy integration (see [FAQ](#faq))
+- Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
+- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
+- Minimal [API](#api)
+- Optimized run-time execution (see [performance](#perf) / [benchmarks](#benchmarks))
 
 ### Requirements
 
 - C++20 ([gcc-12+](https://godbolt.org/z/sdqW48MEv), [clang-15+](https://godbolt.org/z/sdqW48MEv))
+
+    - No STL headers required
 
 ### Hello world (https://godbolt.org/z/4qsGj7741)
 
@@ -316,13 +319,30 @@ inline constexpr auto branchless =
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
     Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
+- How to integrate with CMake/CPM?
+
+    ```
+    CPMAddPackage(
+      Name mph
+      GITHUB_REPOSITORY boost-ext/mph
+      GIT_TAG v2.0.0
+    )
+    add_library(mph INTERFACE)
+    target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
+    add_library(mph::mph ALIAS mph)
+    ```
+
+    ```
+    target_link_libraries(${PROJECT_NAME} mph::mph);
+    ```
+
 - Similar projects?
 
     > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf), [cmph](https://cmph.sourceforge.net), [perfecthash](https://github.com/tpn/perfecthash), [LeMonHash](https://github.com/ByteHamster/LeMonHash), [PTHash](https://github.com/jermp/pthash), [ShockHash](https://github.com/ByteHamster/ShockHash), [BuRR](https://github.com/lorenzhs/BuRR), [hash-prospector](https://github.com/skeeto/hash-prospector)
 
 - Acknowledgments
 
-    > http://0x80.pl, https://lemire.me/blog, https://www.youtube.com/watch?v=DMQ_HcNSOAI&ab_channel=strager, https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf, https://cmph.sourceforge.net/papers, https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html, https://gcc.gnu.org/onlinedocs/libstdc++, https://github.com/rurban/smhasher, http://stevehanov.ca/blog/index.php?id=119, https://nullprogram.com/blog/2018/07/31, https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing
+    > http://0x80.pl, https://lemire.me/blog, [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [cmph](https://cmph.sourceforge.net/papers), [smasher](https://github.com/rurban/smhasher), [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119), [prospecting for hash functions](https://nullprogram.com/blog/2018/07/31)
 
 ---
 
