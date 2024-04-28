@@ -209,6 +209,18 @@ template<class T>
   return value;
 }
 
+template<template<class, auto> class C, class T, auto Size>
+[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
+  for (auto i = 0u; i < Size; ++i) {
+    for (auto j = i + 1u; j < Size; ++j) {
+      if (v[i] == v[j]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
 [[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
   T result{};
@@ -230,18 +242,6 @@ template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-gui
   return _pext_u64(a, mask);
 }
 #endif
-
-template<template<class, auto> class C, class T, auto Size>
-[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
-  for (auto i = 0u; i < Size; ++i) {
-    for (auto j = i + 1u; j < Size; ++j) {
-      if (v[i] == v[j]) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
 
 template<class T, template<class, auto> class C, class _, auto Size>
 [[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
@@ -301,13 +301,11 @@ template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key) {
     return sizeof(TKey);
   }
 }
-
-template<auto kv> using value_type = typename decltype(kv)::value_type::second_type;
 } // namespace detail
 
 template<
   auto kv,
-  detail::value_type<kv> unknown = detail::value_type<kv>{},
+  typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{},
   auto policy = conditional,
   utility::size_t alignment = 0u, // no alignment
   auto max_key_len = detail::max_key_len(kv)
