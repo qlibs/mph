@@ -39,9 +39,9 @@ constexpr auto colors = std::array{
   std::pair{mph::fixed_string{"blue"}, color::blue},
 };
 
-static_assert(color::green == mph::hash<colors, color(0)>("green"));
-static_assert(color::red   == mph::hash<colors, color(0)>("red"));
-static_assert(color::blue  == mph::hash<colors, color(0)>("blue"));
+static_assert(color::green == mph::hash<colors>("green"));
+static_assert(color::red   == mph::hash<colors>("red"));
+static_assert(color::blue  == mph::hash<colors>("blue"));
 
 std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 ```
