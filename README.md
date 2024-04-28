@@ -304,16 +304,17 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
  *
  * @tparam kv constexpr array of key/value pairs
  * @tparam unknown default value
+ * @tparam alignment alignment of the lookup table (default: no alignment)
  * @param key input data
  */
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
   auto policy = conditional,
-  size_t alignment = 0u // alignment of lookup table
+  size_t alignment = 0u
 > requires (kv.size() >= 0 and kv.size() < (1<<8))
 [[nodiscard]] [[gnu::target("bmi2")]]
-constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
+constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
 ```
 
 > Policies
