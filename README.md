@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/ovfcfnq4E">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/Ga85v3fqf">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/hsjzo4x8v">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/GxaWGKc18">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -30,7 +30,7 @@
     - No STL headers required
     - [[x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) / [x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
-### Hello world (https://godbolt.org/z/Ga85v3fqf)
+### Hello world (https://godbolt.org/z/GxaWGKc18)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -41,11 +41,11 @@ constexpr auto colors = std::array{
   std::pair{mph::fixed_string{"blue"}, color::blue},
 };
 
-static_assert(color::green == mph::hash<colors>(mph::fixed_string{"green"}));
-static_assert(color::red   == mph::hash<colors>(mph::fixed_string{"red"}));
-static_assert(color::blue  == mph::hash<colors>(mph::fixed_string{"blue"}));
+static_assert(color::green == mph::hash<colors>("green"sv));
+static_assert(color::red   == mph::hash<colors>("red"sv));
+static_assert(color::blue  == mph::hash<colors>("blue"sv));
 
-std::print("{}", mph::hash<colors>("green")); // prints 2
+std::print("{}", mph::hash<colors>("green"sv)); // prints 2
 ```
 
 ---
