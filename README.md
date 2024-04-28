@@ -74,67 +74,125 @@ main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   cmpl %edi, lut(,%rdx,8)
   cmove lut+4(,%rdx,8), %eax
   ret
+
+lut:
+  ...
 ```
 
 ---
 
-### Performance (https://godbolt.org/z/o5M316c7d)
+### Performance (https://godbolt.org/z/TW8q1b571)
 
 ```cpp
-int main(int argc, const char** argv) {
-  constexpr auto symbols = std::array{
-    std::pair{mph::fixed_string{"AAPL    "}, 1},
-    std::pair{mph::fixed_string{"AMZN    "}, 2},
-    std::pair{mph::fixed_string{"GOOGL   "}, 3},
-    std::pair{mph::fixed_string{"MSFT    "}, 4},
-    std::pair{mph::fixed_string{"NVDA    "}, 5},
+int main(int, const char** argv) {
+  constexpr auto pair = [](mph::fixed_string key, std::uint8_t value) {
+    return std::pair{key, value};
   };
 
-  return mph::hash<symbols>(std::span<const char, 8u>(argv[1], argv[1] + 8u));
+  constexpr auto symbols = std::array{
+    pair("AMZN",  1),
+    pair("AAPL",  2),
+    pair("GOOGL", 3),
+    pair("META",  4),
+    pair("MSFT",  5),
+    pair("NVDA",  6),
+    pair("TESLA", 7),
+  };
+
+  return mph::hash<symbols>(
+    std::span<const char, 8>(argv[1], argv[1]+8)
+  );
 }
 ```
 
-```
+```cpp
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
-  movq 8(%rsi), %rax
-  xorl %ecx, %ecx
-  movq (%rax), %rdx
-  movl $1029, %eax
-  pext %rax, %rdx, %rax
-  cmpq lut(%rax), %rdx
-  jne .L1
-  movl lut+8(%rax), %ecx
-.L1:
-  movl %ecx, %eax
-  ret
+  movq    8(%rsi), %rax
+  movl    $1031, %ecx
+  leaq    3lut(%rip), %rdx
+  xorl    %esi, %esi
+  movq    (%rax), %rax
+  pextq   %rcx, %rax, %rcx
+  shll    $4, %ecx
+  cmpq    (%rcx,%rdx), %rax
+  movzbl  8(%rcx,%rdx), %eax
+  cmovnel %esi, %eax
+  retq
+
+lut:
+  ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/ncEr9rqzK)
+### Performance (https://godbolt.org/z/xdTd6YnPG)
+
+```cpp
+int main(int, const char** argv) {
+  constexpr auto pair = [](mph::fixed_string key, std::uint8_t value) {
+    return std::pair{key, value};
+  };
+
+  constexpr std::array symbols{
+    pair("BTC",  1),
+    pair("ETH",  2),
+    pair("BNB",  3),
+    pair("SOL",  4),
+    pair("XRP",  5),
+    pair("DOGE", 6),
+    pair("TON",  7),
+    pair("ADA",  8),
+    pair("SHIB", 9),
+    pair("AVAX", 10),
+    pair("LINK", 11),
+    pair("BCH",  12),
+  };
+
+  return mph::hash<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
+}
+```
+
+```cpp
+main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+  movq    8(%rsi), %rax
+  movl    $789, %ecx
+  leaq    lut(%rip), %rdx
+  xorl    %esi, %esi
+  movl    (%rax), %eax
+  pextl   %ecx, %eax, %ecx
+  cmpl    (%rdx,%rcx,8), %eax
+  movzbl  4(%rdx,%rcx,8), %eax
+  cmovnel %esi, %eax
+  retq
+
+lut:
+  ...
+```
+
+### Performance [potentially unsafe] (https://godbolt.org/z/95T7146ce)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
-  static constexpr auto symbols = std::array{
-    std::pair{std::array{'A', 'A', 'P', 'L', ' ', ' ', ' ', ' '}, 1},
-    std::pair{std::array{'A', 'M', 'Z', 'N', ' ', ' ', ' ', ' '}, 2},
-    std::pair{std::array{'G', 'O', 'O', 'G', 'L', ' ', ' ', ' '}, 3},
-    std::pair{std::array{'M', 'S', 'F', 'T', ' ', ' ', ' ', ' '}, 4},
-    std::pair{std::array{'N', 'V', 'D', 'A', ' ', ' ', ' ', ' '}, 5},
-  };
+  constexpr auto symbols = std::array{ ... };
 
-  return mph::hash<symbols, 0/*unknown*/, mph::unconditionl>(symbols[argc].first);
-}
+  return mph::hash<symbols, 0/*unknown*/, mph::unconditional>(
+    std::span<const char, 8>(argv[1], argv[1]+8)
+  );
 ```
 
-```
+```cpp
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
-  movq 8(%rsi), %rax
-  movl $1029, %edx
-  movq (%rax), %rax
-  pext %rdx, %rax, %rax
-  movl lut+8(%rax), %eax
-  ret
+  movq    8(%rsi), %rax
+  movl    $1031, %ecx
+  movq    (%rax), %rax
+  pextq   %rcx, %rax, %rax
+  leaq    lut(%rip), %rcx
+  shll    $4, %eax
+  movzbl  8(%rax,%rcx), %eax
+  retq
+
+lut:
+  ...
 ```
 
 ---
@@ -251,7 +309,7 @@ template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
   auto policy = conditional
->
+> requires (kv.size() >=0 and kv.size() < (1<<8))
 [[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
 ```
 
@@ -326,7 +384,7 @@ inline constexpr auto branchless =
 - Limitations?
 
     > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
-      `mph` hash supports up to 128 keys and it will SFINAE away otherwise. In such case different policy backup should be used on top.
+      `mph` hash supports <0, (1<<8)) keys and it will SFINAE away otherwise. In such case different policy backup should be used on top.
       For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
 

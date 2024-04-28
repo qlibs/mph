@@ -57,6 +57,9 @@ struct array {
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
 
+template<class...> inline constexpr auto is_same_v = false;
+template<class T> inline constexpr auto is_same_v<T, T> = true;
+
 namespace detail {
 template <bool> struct conditional;
 template <> struct conditional<false> { template <class, class T> using fn = T; };
@@ -183,7 +186,7 @@ template<class T, template<class, auto> class C, class _, auto Size>
 
 template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
   constexpr basic_fixed_string() noexcept = default;
-  template<auto Size> constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
+  template<utility::size_t Size> constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
     for (auto i = 0u; i < Size-1; ++i) { data_[i] = input[i]; } // no null terminated
   }
   [[nodiscard]] constexpr auto data() const noexcept { return data_.data(); }
@@ -249,41 +252,58 @@ namespace detail {
   }
   return true;
 }
+
+[[nodiscard]] constexpr auto max_key_len(const auto& kv) -> utility::size_t requires requires { kv[0].first.size(); } {
+  auto size = 0u;
+  for (const auto& [k, _] : kv) {
+    if (k.size() > size) {
+      size = k.size();
+    }
+  }
+  return size;
+}
+[[nodiscard]] constexpr auto max_key_len([[maybe_unused]] const auto& kv) -> utility::size_t { return {}; }
+
+template<auto kv> using value_type = typename decltype(kv)::value_type::second_type;
 } // namespace detail
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto...> requires (kv.size() == 0u)
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
+  requires requires { kv.size(); } and (kv.size() == 0u)
 [[nodiscard]] constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> decltype(unknown) {
   return unknown;
 }
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto...> requires (kv.size() == 1u)
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
+  requires requires { kv.size(); } and (kv.size() == 1u)
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
   return detail::cmp(kv[0].first, key) ? kv[0].second : unknown;
 }
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto...> requires (kv.size() == 2u)
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
+  requires requires { kv.size(); } and (kv.size() == 2u)
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
   if (detail::cmp(kv[0].first, key)) { return kv[0].second; }
   if (detail::cmp(kv[1].first, key)) { return kv[1].second; }
   return unknown;
 }
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional, auto Size> requires (kv.size() > 2u)
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, auto Size>
+  requires requires { kv.size(); } and (kv.size() > 2u)
 [[nodiscard]] constexpr auto hash(const decltype(kv[0].first[0]) (&key)[Size]) noexcept -> decltype(unknown) {
   for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
   return unknown;
 }
 
-template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional> requires (kv.size() > 2u and kv.size() < 128u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, class TKey, auto max_key_len = detail::max_key_len(kv)>
+  requires requires { kv.size(); } and (kv.size() > 2u and kv.size() < (1u<<8u) and max_key_len <= sizeof(utility::uint64_t) and sizeof(TKey) <= sizeof(utility::uint64_t))
+[[nodiscard]] constexpr auto hash(const TKey& key) noexcept -> decltype(unknown) {
   if (__builtin_is_constant_evaluated()) {
     for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
     return unknown;
   }
-
   return [&] {
     using type = typename decltype(kv)::value_type::first_type;
-    using key_type = utility::conditional_t<requires(type t) { t.size(); }, utility::uint64_t, type>;
+    using key_type = utility::conditional_t<requires(type t) { t.size(); }, utility::conditional_t<max_key_len <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>, type>;
     using value_type = typename decltype(kv)::value_type::second_type;
     using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
     static constexpr const mask_type mask = utility::pext_mask<key_type>(kv);
@@ -359,12 +379,20 @@ static_assert(([] {
     }
   }
 
+  // mp::utility::is_same_v
+  {
+    static_assert(mph::utility::is_same_v<void, void>);
+    static_assert(mph::utility::is_same_v<int, int>);
+    static_assert(not mph::utility::is_same_v<int, void>);
+    static_assert(not mph::utility::is_same_v<void, int>);
+    static_assert(not mph::utility::is_same_v<void*, int>);
+    static_assert(not mph::utility::is_same_v<int, const int>);
+  }
+
   // mph::utility::conditional_t
   {
-    struct lhs { bool value{true}; };
-    struct rhs { };
-    static_assert([](auto t) { return requires { t.value; }; }(mph::utility::conditional_t<true, lhs, rhs>{}));
-    static_assert(not [](auto t) { return requires { t.value; }; }(mph::utility::conditional_t<false, lhs, rhs>{}));
+    static_assert(mph::utility::is_same_v<void, mph::utility::conditional_t<true, void, int>>);
+    static_assert(mph::utility::is_same_v<int, mph::utility::conditional_t<false, void, int>>);
   }
 
   // mph::utility::pext
@@ -458,6 +486,17 @@ static_assert(([] {
     static_assert(not mph::detail::cmp(array{1}, array{1, 2}));
     static_assert(not mph::detail::cmp(array{1, 2}, array{2}));
     static_assert(not mph::detail::cmp(array{1, 2}, array{2, 1}));
+  }
+
+  // mph::detail::max_key_len
+  {
+    using mph::utility::array;
+    using mph::utility::compressed_pair;
+    using mph::fixed_string;
+
+    static_assert(1u == mph::detail::max_key_len(array{compressed_pair{fixed_string{"a"}, 0}}));
+    static_assert(2u == mph::detail::max_key_len(array{compressed_pair{fixed_string{"a"}, 0}, compressed_pair{fixed_string{"ab"}, 0}}));
+    static_assert(3u == mph::detail::max_key_len(array{compressed_pair{fixed_string{"abc"}, 0}, compressed_pair{fixed_string{"ab"}, 0}}));
   }
 
   // mph::hash
