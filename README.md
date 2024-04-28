@@ -11,16 +11,18 @@
 
 ### Use case
 
-> Given a list of N keys (known at compile-time) find a perfect hash function (maps keys into range from 0 to N-1) with the fastest run-time execution.
+> Given a list of N keys (known at compile-time) find a perfect hash (maps keys to given values).
 
 ### Features
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
-- Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
+- Self verification upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
+  - Lookup table size = `2^popcount(mask which uniquely identifies all keys)`
+- Limitations - see [FAQ](#faq)
 
 ### Requirements
 
@@ -382,15 +384,18 @@ inline constexpr auto conditional_probability =
 ```cpp
 inline constexpr auto branchless =
   [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-    return cond * lhs; // generates cmov (x86-64)
+    return cond * lhs; // more likely to generate cmov (x86-64)
   };
 ```
 
 > Configuration
 
 ```cpp
-#define MPH 2'0'1 // Current library version (SemVer)
-#define MPH_PAGE_SIZE 4096u // Only used for string-like keys
+#define MPH 2'0'1           // Current library version (SemVer)
+#define MPH_PAGE_SIZE 4096u // Used for string-like keys if
+                            // the input string size is not
+                            // known at compile-time
+                            // if set to 0u std::memcpy is used instead
 ```
 
 ---
@@ -406,7 +411,7 @@ inline constexpr auto branchless =
 
     ```cpp
     template<auto... ts>
-    constexpr auto my_hash(const auto& key) noexcept {
+    [[nodiscard]] constexpr auto hash(const auto& key) noexcept {
       if constexpr (requires { mph::hash<ts...>(key); }) {
         return mph::hash<ts...>(key);
       } else {
@@ -462,7 +467,7 @@ inline constexpr auto branchless =
 
 - Acknowledgments
 
-    > http://0x80.pl, https://lemire.me/blog, [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [cmph](https://cmph.sourceforge.net/papers), [smasher](https://github.com/rurban/smhasher), [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119), [prospecting for hash functions](https://nullprogram.com/blog/2018/07/31)
+    > https://lemire.me/blog, http://0x80.pl, https://easyperf.net/notes, https://johnnysswlab.com, [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [cmph](https://cmph.sourceforge.net/papers), [smasher](https://github.com/rurban/smhasher), [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119), [hash functions](https://nullprogram.com/blog/2018/07/31)
 
 ---
 

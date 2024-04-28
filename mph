@@ -13,7 +13,10 @@
 #endif
 
 #if not defined(MPH_PAGE_SIZE)
-#define MPH_PAGE_SIZE 4096u // only used for string-like keys / if set to 0 unsafe memcpy is disabled
+#define MPH_PAGE_SIZE 4096u // Used for string-like keys if
+                            // the input string size is not
+                            // known at compile-time
+                            // if set to 0u std::memcpy is used instead
 #endif
 
 /**
