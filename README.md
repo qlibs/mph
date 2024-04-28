@@ -429,7 +429,15 @@ inline constexpr auto branchless =
 
 - How to get the max performance out of `mph`?
 
-    > Always measure! Custom polices might be a good place to start. For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
+    > Always measure! For strings, consider aligning the input data and passing it with compile-time size via std::span, std::array.
+      Passing `string_view` will be slower but remember to set `MPH_PAGE_SIZE` properly when passing dynamically sized input.
+      That's required as, by default, `mph` will try to optimize memcpy of required input bytes.
+      If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
+      That will make the lookup table smaller and it will avoid `shl` for getting the value.
+      Consider using minimial required size for values. That will make the lookup table smaller but ensure it actually is improving the performance.
+      Experiment with different policies for the comparison based on the expert knowladge of future input data (`conditional, likey, unlikely, conditional_probability, branchless`).
+      If input values are always valid (one of the predefined keys) consider using `unconditional` policy (unsafe if the input key won't match one of predefined keys). That will make the lookup table smaller and will avoid `cmp` and `jmp`.
+      Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
 
 - Can I disable running tests at compile-time for faster compilation times?
 
