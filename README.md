@@ -389,7 +389,7 @@ inline constexpr auto branchless =
 > Configuration
 
 ```cpp
-#define MPH 2'0'0 // Current library version (SemVer)
+#define MPH 2'0'1 // Current library version (SemVer)
 #define MPH_PAGE_SIZE 4096u // Only used for string-like keys
 ```
 
@@ -445,7 +445,7 @@ inline constexpr auto branchless =
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v2.0.0
+      GIT_TAG v2.0.1
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
