@@ -78,7 +78,7 @@ main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 
 ---
 
-### Performance (https://godbolt.org/z/x677cYzrf)
+### Performance (https://godbolt.org/z/o5M316c7d)
 
 ```cpp
 int main(int argc, const char** argv) {
@@ -109,7 +109,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   ret
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/vjrsY35x8)
+### Performance [potentially unsafe] (https://godbolt.org/z/ncEr9rqzK)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
 
