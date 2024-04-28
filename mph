@@ -24,8 +24,12 @@ namespace utility {
 using size_t = decltype(sizeof(int));
 using uint32_t = unsigned int;
 using uint64_t = unsigned long int;
-inline constexpr auto char_bit = 8u;
-
+inline constexpr auto char_bit = [] {
+    char bit{1};
+    int n{};
+    while (bit) { bit <<= 1; ++n; }
+    return n;
+}();
 template<class T1, class T2>
 struct compressed_pair {
   using first_type = T1;
@@ -254,19 +258,19 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
 }
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto...> requires (kv.size() == 1u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
   return detail::cmp(kv[0].first, key) ? kv[0].second : unknown;
 }
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto...> requires (kv.size() == 2u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
   if (detail::cmp(kv[0].first, key)) { return kv[0].second; }
   if (detail::cmp(kv[1].first, key)) { return kv[1].second; }
   return unknown;
 }
 
 template<auto kv, typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{}, auto policy = conditional, auto Size> requires (kv.size() > 2u)
-[[nodiscard]] constexpr auto hash(const char (&key)[Size]) noexcept -> decltype(unknown) {
+[[nodiscard]] constexpr auto hash(const decltype(kv[0].first[0]) (&key)[Size]) noexcept -> decltype(unknown) {
   for (const auto& [k, v] : kv) {
     if (detail::cmp(k, key)) {
       return v;
@@ -449,6 +453,20 @@ static_assert(([] {
 
     static_assert(1 == mph::branchless(true, 1, 2));
     static_assert(0 == mph::branchless(false, 1, 2));
+  }
+
+  // mph::detail::cmp
+  {
+    using mph::utility::array;
+
+    static_assert(mph::detail::cmp(0, 0));
+    static_assert(mph::detail::cmp(42u, 42u));
+    static_assert(mph::detail::cmp(array{1, 2}, array{1, 2}));
+    static_assert(not mph::detail::cmp(2, 1));
+    static_assert(not mph::detail::cmp(42, 10));
+    static_assert(not mph::detail::cmp(array{1}, array{1, 2}));
+    static_assert(not mph::detail::cmp(array{1, 2}, array{2}));
+    static_assert(not mph::detail::cmp(array{1, 2}, array{2, 1}));
   }
 
   // mph::hash

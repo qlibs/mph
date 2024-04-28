@@ -139,6 +139,23 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 
 ---
 
+<a name="compilation"></a>
+### Compilation-times
+
+> [include](https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+
+```cpp
+time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.147s
+time $CXX -x c++ -std=c++20 mph -c                                 # 0.184s
+```
+
+> [64 key/value pairs] (https://godbolt.org/z/eba1KKz3r)
+
+```cpp
+time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.569s
+time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
+```
+
 <a name="benchmarks"></a>
 ### Benchmarks (https://github.com/boost-ext/mph/tree/benchmark)
 
@@ -306,6 +323,24 @@ inline constexpr auto branchless =
 
 ### FAQ
 
+- Limitations?
+
+    > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
+      `mph` hash supports up to 128 keys and it will SFINAE away otherwise. In such case different policy backup should be used on top.
+      For string-like lookups, all keys length have to be less-equal 8 characters.
+      For integer lookups, all keys have to fit into `std::uint64_t`.
+
+      ```cpp
+      template<auto... ts>
+      constexpr auto my_hash(const auto& key) noexcept {
+          if constexpr (requires { mph::hash<ts...>(key); }) {
+              return mph::hash<ts...>(key);
+          } else {
+              // ... - other policy
+          }
+      }
+      ```
+
 - How `mph` works under the hood?
 
     > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
@@ -320,6 +355,15 @@ inline constexpr auto branchless =
 
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
     Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
+
+- I'm getting a compilation error `constexpr evaluation hit maximum step limit`?
+
+    > The following options can be used to increase the limits.
+
+    ```
+    gcc:   -fconstexpr-ops-limit=N
+    clang: -fconstexpr-steps=N
+    ```
 
 - How to integrate with CMake/CPM?
 
