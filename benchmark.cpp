@@ -6,19 +6,31 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #define ANKERL_NANOBENCH_IMPLEMENT
+
+#include <mph>
+#include <string_view>
 #include <algorithm>
 #include <array>
 #include <boost/container/flat_map.hpp>
 #include <boost/container_hash/hash.hpp>
 #include <boost/unordered_map.hpp>
 #include <map>
-#include <mph>
 #include <random>
 #include <string_view>
 #include <unordered_map>
 
 #include "data.hpp"
 #include "nanobench.h"
+
+namespace mph {
+[[nodiscard]] constexpr auto operator<(const fixed_string& lhs, const std::string_view& rhs) -> bool {
+  return std::string_view{lhs.data(), lhs.size()} < rhs;
+}
+
+[[nodiscard]] constexpr auto operator<(const fixed_string& lhs, const fixed_string& rhs) -> bool {
+  return std::string_view{lhs.data(), lhs.size()} < std::string_view{rhs.data(), rhs.size()};
+}
+} // namespace mph
 
 template <>
 struct boost::hash<mph::fixed_string> {
