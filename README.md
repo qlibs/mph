@@ -17,7 +17,7 @@
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
-- Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
+- Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/Kq73oToja))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
@@ -49,7 +49,7 @@ std::print("{}", mph::hash<colors, color(0)>("green")); // prints 1
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/n148debY7)
+### Performance (https://godbolt.org/z/nvf4xbMea)
 
 ```cpp
 int main(int argc, char**)

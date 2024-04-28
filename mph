@@ -166,7 +166,7 @@ template<class T, template<class, auto> class C, class _, auto Size>
   array<T, Size> masked;
   T mask{~T{}};
   constexpr auto size = sizeof(T) * char_bit;
-  for (int n = size-1; n >= 0; --n) {
+  for (int n = size - 1; n >= 0; --n) {
     mask &= ~(T(1) << n);
 
     for (auto i = 0u; i < Size; ++i) {
