@@ -58,6 +58,7 @@ int main() {
       return typename decltype(map)::value_type::second_type{};
     };
     Bench()
+        .performanceCounters(true)
         .minEpochIterations(iterations)
         .run(std::string(name) + ".std.map",
              [&] { doNotOptimizeAway(hash(fn(keys))); });
@@ -78,6 +79,7 @@ int main() {
       return typename decltype(hash_map)::value_type::second_type{};
     };
     Bench()
+        .performanceCounters(true)
         .minEpochIterations(iterations)
         .run(std::string(name) + ".std.unordered_map",
              [&] { doNotOptimizeAway(hash(fn(keys))); });
@@ -98,6 +100,7 @@ int main() {
       return typename decltype(hash_map)::value_type::second_type{};
     };
     Bench()
+        .performanceCounters(true)
         .minEpochIterations(iterations)
         .run(std::string(name) + ".boost.unordered_map",
              [&] { doNotOptimizeAway(hash(fn(keys))); });
@@ -118,6 +121,7 @@ int main() {
       return typename decltype(hash_map)::value_type::second_type{};
     };
     Bench()
+        .performanceCounters(true)
         .minEpochIterations(iterations)
         .run(std::string(name) + ".boost.flat_map",
              [&] { doNotOptimizeAway(hash(fn(keys))); });
@@ -126,6 +130,7 @@ int main() {
   const auto bench_gperf = [](const auto &hash, const auto name,
                               const auto &keys, auto fn) {
     Bench()
+        .performanceCounters(true)
         .minEpochIterations(iterations)
         .run(std::string(name) + ".gperf", [&] {
           const auto key = fn(keys);
@@ -134,16 +139,20 @@ int main() {
   };
 
   const auto bench_mph = []<auto keys>(const auto& name, auto fn) {
-    Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      doNotOptimizeAway(mph::hash<keys, 0>(fn(keys)));
+    Bench()
+      .performanceCounters(true)
+      .minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
+        doNotOptimizeAway(mph::hash<keys>(fn(keys)));
     });
   };
 
   const auto bench_mph_loop = []<auto keys>(const auto& name) {
     auto key = keys[0].first;
-    Bench().minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
-      key = mph::hash<keys, 0>(key);
-      doNotOptimizeAway(key);
+    Bench()
+      .performanceCounters(true)
+      .minEpochIterations(iterations).run(std::string(name) + ".mph", [&] {
+        key = mph::hash<keys>(key);
+        doNotOptimizeAway(key);
     });
   };
 
