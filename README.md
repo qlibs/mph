@@ -430,7 +430,7 @@ inline constexpr auto branchless =
 - How to get the max performance out of `mph`?
 
     > Always measure! For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
-      Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to 4096u.
+      Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
       That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
       If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
       That will make the lookup table smaller and it will avoid `shl` for getting the value.
