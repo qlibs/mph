@@ -28,8 +28,7 @@
 
     - No STL headers required
 
-    - [x86-64/bmi2.pext] - https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set
-        - [x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
+    - [x86-64/bmi2.pext] - https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set / [[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
 ### Hello world (https://godbolt.org/z/4qsGj7741)
 
