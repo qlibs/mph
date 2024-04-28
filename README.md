@@ -392,7 +392,7 @@ inline constexpr auto branchless =
 #if defined(__clang__)
 inline constexpr auto unpredictable =
   [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (__builtin_unpredictable(cond)) {
+    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
       return lhs;
     } else {
       return rhs;
