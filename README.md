@@ -309,8 +309,9 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
-  auto policy = conditional
-> requires (kv.size() >=0 and kv.size() < (1<<8))
+  auto policy = conditional,
+  size_t alignment = 0u // alignment of lookup table
+> requires (kv.size() >= 0 and kv.size() < (1<<8))
 [[nodiscard]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
 ```
 

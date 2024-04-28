@@ -25,11 +25,12 @@ using size_t = decltype(sizeof(int));
 using uint32_t = unsigned int;
 using uint64_t = unsigned long int;
 inline constexpr auto char_bit = [] {
-    char bit{1};
-    int n{};
-    while (bit) { bit <<= 1; ++n; }
-    return n;
+  char bit{1};
+  size_t n{};
+  while (bit) { bit <<= 1; ++n; }
+  return n;
 }();
+
 template<class T1, class T2>
 struct compressed_pair {
   using first_type = T1;
@@ -68,120 +69,14 @@ template <> struct conditional<true>  { template <class T, class> using fn = T; 
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
-template<class T, template<class, auto> class R, class _, auto Size>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T {
-  if constexpr (not Size) {
-    return T{};
-  } else if constexpr (Size == sizeof(T)) {
-    return *__builtin_bit_cast(const T*, data.data());
-  } else {
-    static_assert(Size <= sizeof(T));
-    T t{};
-    __builtin_memcpy(&t, data.data(), Size);
-    return t;
-  }
-}
-
-template<class T, class cold>
-[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T {
-  T t{};
-  __builtin_memcpy(&t, data.data(), data.size());
-  return t;
-}
-
-template<class T>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
-  if constexpr (MPH_PAGE_SIZE) {
-    // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-      return to<T, class cold>(data);
-    }
-    T t{};
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Warray-bounds"
-    __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
-    #pragma GCC diagnostic pop
-
-    if constexpr (sizeof(T) == sizeof(uint32_t)) {
-      return T(_bzhi_u32(t, data.size() * char_bit));
-    } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-      return T(_bzhi_u64(t, data.size() * char_bit));
-    }
-    return t;
-  } else {
-    T t{};
-    __builtin_memcpy(&t, data.data(), data.size());
-    return t;
-  }
-}
-
-template<class T>
-[[nodiscard]] constexpr auto as(const auto& value) noexcept -> T requires requires { value.size(); } {
-  T result{};
-  const auto size = value.size();
-  for (auto i = 0u; i < size; ++i) {
-    result = (result << char_bit) | value[size-i-1];
-  }
-  return result;
-}
-
-template<class T>
-[[nodiscard]] constexpr auto as(const T& value) noexcept -> const T& {
-  return value;
-}
-
-template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-[[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
-  T result{};
-  auto k = 0u;
-  constexpr auto size = sizeof(T) * char_bit;
-  for (auto i = T(); i < T(size); ++i) {
-    if (mask & 1) result |= ((a >> i) & 1) << k++;
-    mask >>= 1;
-  }
-  return result;
-}
-
-#if __has_include(<x86intrin.h>)
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint32_t a, const uint32_t mask) noexcept {
-  return _pext_u32(a, mask);
-}
-
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const uint64_t a, const uint64_t mask) noexcept {
-  return _pext_u64(a, mask);
-}
-#endif
-
-template<template<class, auto> class C, class T, auto Size>
-[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
-  for (auto i = 0u; i < Size; ++i) {
-    for (auto j = i + 1u; j < Size; ++j) {
-      if (v[i] == v[j]) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-template<class T, template<class, auto> class C, class _, auto Size>
-[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
-  array<T, Size> masked;
-  T mask{~T{}};
-  constexpr auto size = sizeof(T) * char_bit;
-  for (int n = size - 1; n >= 0; --n) {
-    mask &= ~(T(1) << n);
-
-    for (auto i = 0u; i < Size; ++i) {
-      masked[i] = pext<T>(as<T>(v[i].first), mask);
-    }
-
-    if (not unique(masked)) {
-      mask |= (T(1) << n);
-    }
-  }
-  return mask;
-}
+template<class T, size_t alignment>
+struct aligned {
+  using type = struct alignas(alignment) a  : T { };
+  static_assert(alignment == alignof(type));
+};
+template<class T> struct aligned<T, 0u> { using type = T; };
+template<class T, size_t alignment>
+using aligned_t = typename aligned<T, alignment>::type;
 }  // namespace utility
 
 template<class T, utility::size_t MaxSize>
@@ -238,10 +133,127 @@ inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_u
 };
 
 namespace detail {
-[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept requires requires { lhs == rhs; } {
+template<class T, template<class, auto> class R, class _, auto Size>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T {
+  if constexpr (not Size) {
+    return T{};
+  } else if constexpr (Size == sizeof(T)) {
+    return *__builtin_bit_cast(const T*, data.data());
+  } else {
+    static_assert(Size <= sizeof(T));
+    T t{};
+    __builtin_memcpy(&t, data.data(), Size);
+    return t;
+  }
+}
+
+template<class T, class cold>
+[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T {
+  T t{};
+  __builtin_memcpy(&t, data.data(), data.size());
+  return t;
+}
+
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
+  if constexpr (MPH_PAGE_SIZE) {
+    // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+    if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+      return to<T, class cold>(data);
+    }
+    T t{};
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Warray-bounds"
+    __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
+    #pragma GCC diagnostic pop
+
+    if constexpr (sizeof(T) == sizeof(utility::uint32_t)) {
+      return T(_bzhi_u32(t, data.size() * utility::char_bit));
+    } else if constexpr (sizeof(T) == sizeof(utility::uint64_t)) {
+      return T(_bzhi_u64(t, data.size() * utility::char_bit));
+    }
+    return t;
+  } else {
+    T t{};
+    __builtin_memcpy(&t, data.data(), data.size());
+    return t;
+  }
+}
+
+template<class T>
+[[nodiscard]] constexpr auto as(const auto& value) noexcept -> T requires requires { value.size(); } {
+  T result{};
+  const auto size = value.size();
+  for (auto i = 0u; i < size; ++i) {
+    result = (result << utility::char_bit) | value[size - i - 1];
+  }
+  return result;
+}
+
+template<class T>
+[[nodiscard]] constexpr auto as(const T& value) noexcept -> const T& {
+  return value;
+}
+
+template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+[[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
+  T result{};
+  auto k = 0u;
+  constexpr auto size = sizeof(T) * utility::char_bit;
+  for (auto i = T(); i < T(size); ++i) {
+    if (mask & 1) result |= ((a >> i) & 1) << k++;
+    mask >>= 1;
+  }
+  return result;
+}
+
+#if __has_include(<x86intrin.h>)
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const utility::uint32_t a, const utility::uint32_t mask) noexcept {
+  return _pext_u32(a, mask);
+}
+
+[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const utility::uint64_t a, const utility::uint64_t mask) noexcept {
+  return _pext_u64(a, mask);
+}
+#endif
+
+template<template<class, auto> class C, class T, auto Size>
+[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
+  for (auto i = 0u; i < Size; ++i) {
+    for (auto j = i + 1u; j < Size; ++j) {
+      if (v[i] == v[j]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+template<class T, template<class, auto> class C, class _, auto Size>
+[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
+  utility::array<T, Size> masked;
+  T mask{~T{}};
+  constexpr auto size = sizeof(T) * utility::char_bit;
+  for (int n = size - 1; n >= 0; --n) {
+    mask &= ~(T(1) << n);
+
+    for (auto i = 0u; i < Size; ++i) {
+      masked[i] = pext<T>(as<T>(v[i].first), mask);
+    }
+
+    if (not unique(masked)) {
+      mask |= (T(1) << n);
+    }
+  }
+  return mask;
+}
+
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept
+  requires requires { lhs == rhs; } {
   return lhs == rhs;
 }
-[[nodiscard]] constexpr auto cmp(auto&& lhs, auto&& rhs) noexcept requires requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; } {
+[[nodiscard]] constexpr auto cmp(auto&& lhs, auto&& rhs) noexcept
+  requires requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; } {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -253,7 +265,8 @@ namespace detail {
   return true;
 }
 
-[[nodiscard]] constexpr auto max_key_len(const auto& kv) -> utility::size_t requires requires { kv[0].first.size(); } {
+[[nodiscard]] constexpr auto max_key_len(const auto& kv) -> utility::size_t
+  requires requires { kv[0].first.size(); } {
   auto size = 0u;
   for (const auto& [k, _] : kv) {
     if (k.size() > size) {
@@ -264,8 +277,13 @@ namespace detail {
 }
 [[nodiscard]] constexpr auto max_key_len([[maybe_unused]] const auto& kv) -> utility::size_t { return {}; }
 
-template<class TKey> [[nodiscard]] constexpr auto size(const TKey&) { return sizeof(TKey); }
-template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key) requires requires { key.size(); } { return key.size(); }
+template<class TKey> [[nodiscard]] constexpr auto size(const TKey&) {
+  return sizeof(TKey);
+}
+template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key)
+  requires requires { key.size(); } {
+  return key.size();
+}
 
 template<auto kv> using value_type = typename decltype(kv)::value_type::second_type;
 } // namespace detail
@@ -278,13 +296,15 @@ template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, aut
 
 template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
   requires requires { kv.size(); } and (kv.size() == 1u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown)
+  requires (not requires { key.size(); }) {
   return detail::cmp(kv[0].first, key) ? kv[0].second : unknown;
 }
 
 template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
   requires requires { kv.size(); } and (kv.size() == 2u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) requires (not requires { key.size(); }) {
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown)
+  requires (not requires { key.size(); }) {
   if (detail::cmp(kv[0].first, key)) { return kv[0].second; }
   if (detail::cmp(kv[1].first, key)) { return kv[1].second; }
   return unknown;
@@ -297,7 +317,7 @@ template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, aut
   return unknown;
 }
 
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, class TKey, auto max_key_len = detail::max_key_len(kv)>
+template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, utility::size_t alignment = 0u, class TKey, auto max_key_len = detail::max_key_len(kv)>
   requires requires { kv.size(); } and (kv.size() > 2u and kv.size() < (1u<<8u) and max_key_len <= sizeof(utility::uint64_t) and detail::size(kv[0].first) <= sizeof(utility::uint64_t))
 [[nodiscard]] constexpr auto hash(const TKey& key) noexcept -> decltype(unknown) {
   if (__builtin_is_constant_evaluated()) {
@@ -309,25 +329,25 @@ template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, aut
     using key_type = utility::conditional_t<requires(type t) { t.size(); }, utility::conditional_t<max_key_len <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>, type>;
     using value_type = typename decltype(kv)::value_type::second_type;
     using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
-    static constexpr const mask_type mask = utility::pext_mask<key_type>(kv);
+    static constexpr const mask_type mask = detail::pext_mask<key_type>(kv);
     static constexpr const auto lut = [] {
-      utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
+      utility::aligned_t<utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))>, alignment> lut;
       lut.fill(utility::compressed_pair{key_type{}, unknown});
       for (const auto& [key, value] : kv) {
-        const auto k = utility::as<key_type>(key);
-        const auto p = utility::pext<key_type>(k, mask);
+        const auto k = detail::as<key_type>(key);
+        const auto p = detail::pext<key_type>(k, mask);
         lut[p] = utility::compressed_pair{k, value};
       }
       return lut;
     }();
     auto&& lhs = [&]() -> decltype(auto) {
       if constexpr (requires { key.size(); }) {
-        return utility::to<key_type>(key);
+        return detail::to<key_type>(key);
       } else {
         return key;
       }
     }();
-    auto&& [rhs, value] = lut[utility::pext(lhs, mask)];
+    auto&& [rhs, value] = lut[detail::pext(lhs, mask)];
     return policy(lhs == rhs, value, unknown);
   }();
 }
@@ -398,49 +418,14 @@ static_assert(([] {
     static_assert(mph::utility::is_same_v<int, mph::utility::conditional_t<false, void, int>>);
   }
 
-  // mph::utility::pext
+  // mph::utility::aligned_t
   {
-    static_assert(0b00 == mph::utility::pext(0b00, 0b00));
-    static_assert(0b00 == mph::utility::pext(0b01, 0b00));
-    static_assert(0b01 == mph::utility::pext(0b01, 0b01));
-    static_assert(0b01 == mph::utility::pext(0b01, 0b11));
-    static_assert(0b00 == mph::utility::pext(0b01, 0b10));
-    static_assert(0b01 == mph::utility::pext(0b11, 0b10));
-    static_assert(0b01 == mph::utility::pext(0b11, 0b01));
-    static_assert(0b11 == mph::utility::pext(0b11, 0b11));
-  }
-
-  // mph::utility::pext_mask
-  {
-    using mph::utility::uint32_t;
     using mph::utility::array;
-    using mph::utility::compressed_pair;
 
-    static_assert(0b10 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
-  }
-
-  // mph::utility::unique
-  {
-    static_assert(mph::utility::unique(mph::utility::array{1}));
-    static_assert(mph::utility::unique(mph::utility::array{1, 2}));
-    static_assert(mph::utility::unique(mph::utility::array{1, 2, 3}));
-    static_assert(not mph::utility::unique(mph::utility::array{1, 1}));
-    static_assert(not mph::utility::unique(mph::utility::array{1, 2, 1}));
-    static_assert(not mph::utility::unique(mph::utility::array{1, 2, 3, 2}));
-  }
-
-  // mph::utility::as
-  {
-    using mph::utility::char_bit;
-
-    static_assert(int(0) == mph::utility::as<int>(mph::utility::array{0}));
-    static_assert(int(1) == mph::utility::as<int>(mph::utility::array{1}));
-    static_assert((int(1) << 0) + (int(2) << char_bit) == mph::utility::as<int>(mph::utility::array{1, 2}));
-    static_assert((int(1) << 0) + (int(2) << char_bit)  + (int(3) << char_bit*2) == mph::utility::as<int>(mph::utility::array{1, 2, 3}));
+    static_assert(16u == alignof(mph::utility::aligned_t<array<int, 42>, 16u>));
+    static_assert(32u == alignof(mph::utility::aligned_t<array<int, 42>, 32u>));
+    static_assert(64u == alignof(mph::utility::aligned_t<array<int, 42>, 64u>));
+    static_assert(alignof(int) == alignof(mph::utility::aligned_t<array<int, 42>, 0u>));
   }
 
   // mph::fixed_string
@@ -475,6 +460,54 @@ static_assert(([] {
 
     static_assert(1 == mph::branchless(true, 1, 2));
     static_assert(0 == mph::branchless(false, 1, 2));
+  }
+
+  // mph::detail::pext
+  {
+    static_assert(0b00 == mph::detail::pext(0b00, 0b00));
+    static_assert(0b00 == mph::detail::pext(0b01, 0b00));
+    static_assert(0b01 == mph::detail::pext(0b01, 0b01));
+    static_assert(0b01 == mph::detail::pext(0b01, 0b11));
+    static_assert(0b00 == mph::detail::pext(0b01, 0b10));
+    static_assert(0b01 == mph::detail::pext(0b11, 0b10));
+    static_assert(0b01 == mph::detail::pext(0b11, 0b01));
+    static_assert(0b11 == mph::detail::pext(0b11, 0b11));
+  }
+
+  // mph::detail::pext_mask
+  {
+    using mph::utility::uint32_t;
+    using mph::utility::array;
+    using mph::utility::compressed_pair;
+
+    static_assert(0b10 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
+  }
+
+  // mph::detail::unique
+  {
+    using mph::utility::array;
+
+    static_assert(mph::detail::unique(array{1}));
+    static_assert(mph::detail::unique(array{1, 2}));
+    static_assert(mph::detail::unique(array{1, 2, 3}));
+    static_assert(not mph::detail::unique(array{1, 1}));
+    static_assert(not mph::detail::unique(array{1, 2, 1}));
+    static_assert(not mph::detail::unique(array{1, 2, 3, 2}));
+  }
+
+  // mph::detail::as
+  {
+    using mph::utility::char_bit;
+    using mph::utility::array;
+
+    static_assert(int(0) == mph::detail::as<int>(array{0}));
+    static_assert(int(1) == mph::detail::as<int>(array{1}));
+    static_assert((int(1) << 0) + (int(2) << char_bit) == mph::detail::as<int>(array{1, 2}));
+    static_assert((int(1) << 0) + (int(2) << char_bit)  + (int(3) << char_bit*2) == mph::detail::as<int>(array{1, 2, 3}));
   }
 
   // mph::detail::cmp
