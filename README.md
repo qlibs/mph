@@ -11,7 +11,7 @@
 
 ### Use case
 
-> Given a list of N keys (known at compile-time) find a perfect hash (map keys to values).
+> Given a list of N keys (known at compile-time) find a perfect hash (map keys to values)
 
 ### Features
 
@@ -21,7 +21,7 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-  - Lookup table size = `2^popcount(mask which uniquely identifies all keys)`
+  - Lookup table size = `2^popcount(mask which uniquely identifies all keys) of pair{key, value}`
 - Limitations - see [FAQ](#faq)
 
 ### Requirements
