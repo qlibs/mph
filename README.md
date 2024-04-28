@@ -333,11 +333,11 @@ inline constexpr auto branchless =
     ```cpp
     template<auto... ts>
     constexpr auto my_hash(const auto& key) noexcept {
-        if constexpr (requires { mph::hash<ts...>(key); }) {
-            return mph::hash<ts...>(key);
-        } else {
-            // ... - other policy
-        }
+      if constexpr (requires { mph::hash<ts...>(key); }) {
+        return mph::hash<ts...>(key);
+      } else {
+        // ... other policy
+      }
     }
     ```
 
