@@ -26,7 +26,7 @@
 
 - C++20 ([gcc-12+](https://godbolt.org/z/Kq73oToja), [clang-15+](https://godbolt.org/z/Kq73oToja))
 
-    - No STL headers required ([x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h))
+    - No STL headers required ([[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)])
 
 ### Hello world (https://godbolt.org/z/4qsGj7741)
 
