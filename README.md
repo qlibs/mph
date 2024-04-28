@@ -318,7 +318,7 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
  *
  * @tparam kv constexpr array of key/value pairs
  * @tparam unknown default value
- * @tparam alignment alignment of the lookup table (default: 0 - no alignment)
+ * @tparam alignment of the lookup table (default: 0 - no alignment)
  * @param key input data
  */
 template<
