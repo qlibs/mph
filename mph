@@ -188,7 +188,7 @@ template<class T, utility::size_t MaxSize>
 struct basic_fixed_string final {
   constexpr basic_fixed_string() noexcept = default;
   template<utility::size_t Size> constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
-    for (auto i = 0u; i < Size-1; ++i) { data_[i] = input[i]; } // no null terminated
+    for (auto i = 0u; i < size_; ++i) { data_[i] = input[i]; } // no null terminated
   }
   [[nodiscard]] constexpr auto data() const noexcept { return data_.data(); }
   [[nodiscard]] constexpr auto size() const noexcept { return size_; }
@@ -265,7 +265,7 @@ namespace detail {
 [[nodiscard]] constexpr auto max_key_len([[maybe_unused]] const auto& kv) -> utility::size_t { return {}; }
 
 template<class TKey> [[nodiscard]] constexpr auto size(const TKey&) { return sizeof(TKey); }
-[[nodiscard]] constexpr auto size(auto&& key) requires requires { key.size(); } { return key.size(); }
+template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key) requires requires { key.size(); } { return key.size(); }
 
 template<auto kv> using value_type = typename decltype(kv)::value_type::second_type;
 } // namespace detail
