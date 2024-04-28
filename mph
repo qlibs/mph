@@ -261,110 +261,124 @@ template<class T, template<class, auto> class C, class _, auto Size>
   return mask;
 }
 
-[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept
-  requires requires { lhs == rhs; } {
-  return lhs == rhs;
-}
-[[nodiscard]] constexpr auto cmp(auto&& lhs, auto&& rhs) noexcept
-  requires requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; } {
-  if (lhs.size() != rhs.size()) {
-    return false;
-  }
-  for (auto i = 0u; i < lhs.size(); ++i) {
-    if (lhs[i] != rhs[i]) {
+[[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept -> bool {
+  if constexpr (requires { lhs.size(); rhs.size(); lhs[0]; rhs[0]; }) {
+    if (lhs.size() != rhs.size()) {
       return false;
     }
-  }
-  return true;
-}
-
-[[nodiscard]] constexpr auto max_key_len(const auto& kv) -> utility::size_t
-  requires requires { kv[0].first.size(); } {
-  auto size = 0u;
-  for (const auto& [k, _] : kv) {
-    if (k.size() > size) {
-      size = k.size();
+    for (auto i = 0u; i < lhs.size(); ++i) {
+      if (lhs[i] != rhs[i]) {
+        return false;
+      }
     }
+    return true;
+  } else if constexpr (requires { lhs == rhs; }) {
+    return lhs == rhs;
+  } else {
+    return {};
   }
-  return size;
 }
-[[nodiscard]] constexpr auto max_key_len([[maybe_unused]] const auto& kv) -> utility::size_t { return {}; }
 
-template<class TKey> [[nodiscard]] constexpr auto size(const TKey&) {
-  return sizeof(TKey);
+[[nodiscard]] constexpr auto max_key_len([[maybe_unused]] const auto& kv) -> utility::size_t {
+  if constexpr (requires { kv[0].first.size(); }) {
+    auto size = 0u;
+    for (const auto& [k, _] : kv) {
+      if (k.size() > size) {
+        size = k.size();
+      }
+    }
+    return size;
+  } else {
+    return {};
+  }
 }
-template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key)
-  requires requires { key.size(); } {
-  return key.size();
+
+template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key) {
+  if constexpr (requires { key.size(); }) {
+    return key.size();
+  } else {
+    return sizeof(TKey);
+  }
 }
 
 template<auto kv> using value_type = typename decltype(kv)::value_type::second_type;
 } // namespace detail
 
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
-  requires requires { kv.size(); } and (kv.size() == 0u)
-[[nodiscard]] constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> decltype(unknown) {
-  return unknown;
-}
-
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
-  requires requires { kv.size(); } and (kv.size() == 1u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown)
-  requires (not requires { key.size(); }) {
-  return detail::cmp(kv[0].first, key) ? kv[0].second : unknown;
-}
-
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto...>
-  requires requires { kv.size(); } and (kv.size() == 2u)
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown)
-  requires (not requires { key.size(); }) {
-  if (detail::cmp(kv[0].first, key)) { return kv[0].second; }
-  if (detail::cmp(kv[1].first, key)) { return kv[1].second; }
-  return unknown;
-}
-
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, auto Size>
-  requires requires { kv.size(); } and (kv.size() > 2u)
-[[nodiscard]] constexpr auto hash(const decltype(kv[0].first[0]) (&key)[Size]) noexcept -> decltype(unknown) {
-  for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
-  return unknown;
-}
-
-template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, utility::size_t alignment = 0u, class TKey, auto max_key_len = detail::max_key_len(kv)>
-  requires requires { kv.size(); } and (kv.size() > 2u and kv.size() < (1u<<8u) and max_key_len <= sizeof(utility::uint64_t) and detail::size(kv[0].first) <= sizeof(utility::uint64_t))
-[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(const TKey& key) noexcept -> decltype(unknown) {
-  if (__builtin_is_constant_evaluated()) {
+template<
+  auto kv,
+  detail::value_type<kv> unknown = detail::value_type<kv>{},
+  auto policy = conditional,
+  utility::size_t alignment = 0u, // no alignment
+  auto max_key_len = detail::max_key_len(kv)
+> requires
+    requires { kv.size(); } and (
+      kv.size() >= 0u and
+      max_key_len <= sizeof(utility::uint64_t) and
+      detail::size(kv[0].first) <= sizeof(utility::uint64_t)
+    )
+[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
+  static_assert([] {
+    for (const auto& [_, v] : kv) { if (detail::cmp(v, unknown)) { return false; } }
+    return true;
+  }(), "[error] `unknown` can be found in the `kv` values!");
+  if constexpr (kv.size() == 0u) {
+    return unknown;
+  } else if constexpr (not requires { key.size(); } and kv.size() == 1u) {
+    return detail::cmp(kv[0].first, key) ? kv[0].second : unknown;
+  } else if constexpr (not requires { key.size(); } and kv.size() == 2u) {
+    if (detail::cmp(kv[0].first, key)) { return kv[0].second; }
+    if (detail::cmp(kv[1].first, key)) { return kv[1].second; }
+  } else if (__builtin_is_constant_evaluated()) {
     for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
     return unknown;
+  } else {
+    return [&] {
+      using type = typename decltype(kv)::value_type::first_type;
+      using key_type = utility::conditional_t<
+        requires(type t) { t.size(); },
+        utility::conditional_t<
+          max_key_len <= sizeof(utility::uint32_t),
+          utility::uint32_t,
+          utility::uint64_t
+        >,
+        type
+      >;
+      using value_type = typename decltype(kv)::value_type::second_type;
+      using mask_type = utility::conditional_t<
+        sizeof(key_type) <= sizeof(utility::uint32_t),
+        utility::uint32_t,
+        utility::uint64_t
+      >;
+      static constexpr const mask_type mask = detail::pext_mask<key_type>(kv);
+      static_assert(mask != ~mask_type{}, "[error] mask can't be found!");
+      static constexpr const auto lut = [] {
+        utility::aligned_t<
+          utility::array<
+            utility::compressed_pair<key_type, value_type>,
+            (mask_type(1u) << __builtin_popcountll(mask))
+          >, alignment
+        > lut;
+        lut.fill(utility::compressed_pair{key_type{}, unknown});
+        for (const auto& [key, value] : kv) {
+          const auto k = detail::as<key_type>(key);
+          const auto p = detail::pext<key_type>(k, mask);
+          lut[p] = utility::compressed_pair{k, value};
+        }
+        return lut;
+      }();
+      auto&& lhs = [&]() -> decltype(auto) {
+        if constexpr (requires { key.size(); }) {
+          return detail::to<key_type>(key);
+        } else {
+          return key;
+        }
+      }();
+      auto&& [rhs, value] = lut[detail::pext(lhs, mask)];
+      return policy(lhs == rhs, value, unknown);
+    }();
   }
-  return [&] {
-    using type = typename decltype(kv)::value_type::first_type;
-    using key_type = utility::conditional_t<requires(type t) { t.size(); }, utility::conditional_t<max_key_len <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>, type>;
-    using value_type = typename decltype(kv)::value_type::second_type;
-    using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
-    static constexpr const mask_type mask = detail::pext_mask<key_type>(kv);
-    static constexpr const auto lut = [] {
-      utility::aligned_t<utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))>, alignment> lut;
-      lut.fill(utility::compressed_pair{key_type{}, unknown});
-      for (const auto& [key, value] : kv) {
-        const auto k = detail::as<key_type>(key);
-        const auto p = detail::pext<key_type>(k, mask);
-        lut[p] = utility::compressed_pair{k, value};
-      }
-      return lut;
-    }();
-    auto&& lhs = [&]() -> decltype(auto) {
-      if constexpr (requires { key.size(); }) {
-        return detail::to<key_type>(key);
-      } else {
-        return key;
-      }
-    }();
-    auto&& [rhs, value] = lut[detail::pext(lhs, mask)];
-    return policy(lhs == rhs, value, unknown);
-  }();
 }
-}  // namespace mph::inline v2_0_1
+} // namespace mph::inline v2_0_1
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
 static_assert(([] {
@@ -604,16 +618,16 @@ static_assert(([] {
         enum class color { red = 1, green = 2, blue = 3 };
 
         constexpr array kv{
-          compressed_pair{fixed_string{"green"}, color::green},
           compressed_pair{fixed_string{"red"}, color::red},
+          compressed_pair{fixed_string{"green"}, color::green},
           compressed_pair{fixed_string{"blue"}, color::blue},
         };
 
-        static_assert(color(-1) == mph::hash<kv, color(-1)>("none"));
-        static_assert(color(0) == mph::hash<kv, color(0)>("unknown"));
-        static_assert(color::red == mph::hash<kv, color(0)>("red"));
-        static_assert(color::green == mph::hash<kv, color(0)>("green"));
-        static_assert(color::blue == mph::hash<kv, color(0)>("blue"));
+        static_assert(color(-1) == mph::hash<kv, color(-1)>(fixed_string{"none"}));
+        static_assert(color(0) == mph::hash<kv, color(0)>(fixed_string{"unknown"}));
+        static_assert(color::red == mph::hash<kv, color(0)>(fixed_string{"red"}));
+        static_assert(color::green == mph::hash<kv, color(0)>(fixed_string{"green"}));
+        static_assert(color::blue == mph::hash<kv, color(0)>(fixed_string{"blue"}));
       }
     }
   }
