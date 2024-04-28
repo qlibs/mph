@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/dM13fss5b">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/3zh43YTMd">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/feea6z5zv">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -18,15 +18,15 @@
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
 - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
-- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/Kq73oToja))
+- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
 
 ### Requirements
 
-- C++20 ([gcc-12+](https://godbolt.org/z/Kq73oToja), [clang-15+](https://godbolt.org/z/Kq73oToja))
+- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd))
     - No STL headers required
-    - [x86-64/bmi2.pext] - https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set / [[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
+    - [[x86-64/bmi2.pext](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)] / [[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
 ### Hello world (https://godbolt.org/z/feea6z5zv)
 
