@@ -312,7 +312,8 @@ template<
   auto policy = conditional,
   size_t alignment = 0u // alignment of lookup table
 > requires (kv.size() >= 0 and kv.size() < (1<<8))
-[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
+[[nodiscard]] [[gnu::target("bmi2")]]
+constexpr auto hash(auto&& key) noexcept -> decltype(unknown);
 ```
 
 > Policies
