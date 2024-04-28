@@ -28,7 +28,7 @@
 
 - C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd))
     - No STL headers required
-    - [[x86-64/bmi2.pext](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext)] / [[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
+    - [[x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext)] / [[x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
 
 ### Hello world (https://godbolt.org/z/feea6z5zv)
 
