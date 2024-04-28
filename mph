@@ -58,7 +58,7 @@ struct array {
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
 
 template<class...> inline constexpr auto is_same_v = false;
-template<class T> inline constexpr auto is_same_v<T, T> = true;
+template<class T>  inline constexpr auto is_same_v<T, T> = true;
 
 namespace detail {
 template <bool> struct conditional;
@@ -184,7 +184,8 @@ template<class T, template<class, auto> class C, class _, auto Size>
 }
 }  // namespace utility
 
-template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
+template<class T, utility::size_t MaxSize>
+struct basic_fixed_string final {
   constexpr basic_fixed_string() noexcept = default;
   template<utility::size_t Size> constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept requires (Size-1 <= MaxSize) : size_{Size-1} {
     for (auto i = 0u; i < Size-1; ++i) { data_[i] = input[i]; } // no null terminated
@@ -194,10 +195,9 @@ template<class T, utility::size_t MaxSize> struct basic_fixed_string final {
   [[nodiscard]] constexpr auto operator[](const utility::size_t i) const noexcept -> T { return data_[i]; }
   [[nodiscard]] constexpr auto operator==(const basic_fixed_string&) const noexcept -> bool = default;
 
-  decltype(MaxSize) size_{};
+  utility::size_t size_{};
   utility::array<T, MaxSize> data_{};
 };
-
 using fixed_string = basic_fixed_string<char, sizeof(utility::uint64_t)>;
 
 inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
