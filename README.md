@@ -20,7 +20,7 @@
 - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
 - Minimal [API](#api)
-- Optimized run-time execution (see [performance](#perf) / [benchmarks](#benchmarks))
+- Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
 
 ### Requirements
 
@@ -338,7 +338,7 @@ inline constexpr auto branchless =
 
 - Similar projects?
 
-    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf), [cmph](https://cmph.sourceforge.net), [perfecthash](https://github.com/tpn/perfecthash), [LeMonHash](https://github.com/ByteHamster/LeMonHash), [PTHash](https://github.com/jermp/pthash), [ShockHash](https://github.com/ByteHamster/ShockHash), [BuRR](https://github.com/lorenzhs/BuRR), [hash-prospector](https://github.com/skeeto/hash-prospector)
+    > [gperf](https://www.gnu.org/software/gperf), [frozen](https://github.com/serge-sans-paille/frozen), [nbperf](https://github.com/rurban/nbperf), [cmph](https://cmph.sourceforge.net), [perfecthash](https://github.com/tpn/perfecthash), [lemonhash](https://github.com/ByteHamster/LeMonHash), [pthash](https://github.com/jermp/pthash), [shockhash](https://github.com/ByteHamster/ShockHash), [BuRR](https://github.com/lorenzhs/BuRR), [hash-prospector](https://github.com/skeeto/hash-prospector)
 
 - Acknowledgments
 
