@@ -11,7 +11,7 @@
 
 ### Use case
 
-> Given a list of N keys (known at compile-time) find a perfect hash (maps keys to given values).
+> Given a list of N keys (known at compile-time) find a perfect hash (map keys to values).
 
 ### Features
 
