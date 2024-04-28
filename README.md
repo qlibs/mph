@@ -142,7 +142,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 <a name="compilation"></a>
 ### Compilation-times
 
-> [include](https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+> [include] (https://godbolt.org/z/zKPP8xPfG)
 
 ```cpp
 time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.147s
@@ -330,16 +330,16 @@ inline constexpr auto branchless =
       For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
 
-      ```cpp
-      template<auto... ts>
-      constexpr auto my_hash(const auto& key) noexcept {
-          if constexpr (requires { mph::hash<ts...>(key); }) {
-              return mph::hash<ts...>(key);
-          } else {
-              // ... - other policy
-          }
-      }
-      ```
+    ```cpp
+    template<auto... ts>
+    constexpr auto my_hash(const auto& key) noexcept {
+        if constexpr (requires { mph::hash<ts...>(key); }) {
+            return mph::hash<ts...>(key);
+        } else {
+            // ... - other policy
+        }
+    }
+    ```
 
 - How `mph` works under the hood?
 
