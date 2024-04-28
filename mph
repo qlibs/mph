@@ -507,6 +507,7 @@ static_assert(([] {
     using mph::utility::uint32_t;
     using mph::utility::uint64_t;
     using mph::utility::array;
+    using mph::fixed_string;
 
     static_assert(sizeof(short) == mph::detail::size(short{}));
     static_assert(sizeof(uint32_t) == mph::detail::size(uint32_t{}));
@@ -514,6 +515,7 @@ static_assert(([] {
     static_assert(1u == mph::detail::size(array{'a'}));
     static_assert(2u == mph::detail::size(array{'a', 'b'}));
     static_assert(3u == mph::detail::size(array{'a', 'b', 'c'}));
+    static_assert(3u == mph::detail::size(fixed_string{"abc"}));
   }
 
   // mph::hash
