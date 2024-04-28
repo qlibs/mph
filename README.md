@@ -316,10 +316,10 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
 /**
  * Perfect hash function
  *
- * @tparam kv constexpr array of key/value pairs
- * @tparam unknown default value
- * @tparam alignment of the lookup table (default: 0 - no alignment)
- * @param key input data
+ * @tparam kv constexpr array of key/value pairs (for string-like mph::fixed_string is required)
+ * @tparam unknown returned value when key is not found (default: 0)
+ * @tparam alignment of the lookup table (default: 0 / no alignment)
+ * @param key input data (should match kv keys type)
  */
 template<
   auto kv,
