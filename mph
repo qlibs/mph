@@ -295,7 +295,7 @@ template<auto kv, typename decltype(kv)::value_type::second_type unknown = typen
     using key_type = utility::conditional_t<requires(type t) { t.size(); }, utility::uint64_t, type>;
     using value_type = typename decltype(kv)::value_type::second_type;
     using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(utility::uint32_t), utility::uint32_t, utility::uint64_t>;
-    static constexpr mask_type mask = utility::pext_mask<key_type>(kv);
+    static constexpr const mask_type mask = utility::pext_mask<key_type>(kv);
     static constexpr const auto lut = [] {
       utility::array<utility::compressed_pair<key_type, value_type>, (mask_type(1u) << __builtin_popcountll(mask))> lut;
       lut.fill(utility::compressed_pair{key_type{}, unknown});
