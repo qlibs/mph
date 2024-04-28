@@ -76,7 +76,19 @@ main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   ret
 
 lut:
-  ...
+  .long   64
+  .long   324
+  .zero   8
+  .long   234
+  .long   64
+  .long   91
+  .long   234
+  .long   324
+  .long   54
+  .zero   8
+  .long   54
+  .long   91
+  .zero   8
 ```
 
 ---
