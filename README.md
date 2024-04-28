@@ -18,13 +18,13 @@
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
 - Self verfication upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS`)
-- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors`](https://godbolt.org/z/sdqW48MEv))
+- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/Kq73oToja))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
 
 ### Requirements
 
-- C++20 ([gcc-12+](https://godbolt.org/z/sdqW48MEv), [clang-15+](https://godbolt.org/z/sdqW48MEv))
+- C++20 ([gcc-12+](https://godbolt.org/z/Kq73oToja), [clang-15+](https://godbolt.org/z/Kq73oToja))
 
     - No STL headers required ([x86intrin.h])
 
