@@ -319,7 +319,7 @@ template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, aut
 
 template<auto kv, detail::value_type<kv> unknown = detail::value_type<kv>{}, auto policy = conditional, utility::size_t alignment = 0u, class TKey, auto max_key_len = detail::max_key_len(kv)>
   requires requires { kv.size(); } and (kv.size() > 2u and kv.size() < (1u<<8u) and max_key_len <= sizeof(utility::uint64_t) and detail::size(kv[0].first) <= sizeof(utility::uint64_t))
-[[nodiscard]] constexpr auto hash(const TKey& key) noexcept -> decltype(unknown) {
+[[nodiscard]] [[gnu::target("bmi2")]] constexpr auto hash(const TKey& key) noexcept -> decltype(unknown) {
   if (__builtin_is_constant_evaluated()) {
     for (const auto& [k, v] : kv) { if (detail::cmp(k, key)) { return v; } }
     return unknown;
