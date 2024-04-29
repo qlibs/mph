@@ -464,7 +464,7 @@ inline constexpr auto unpredictable =
     > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
       The following is a pseudo code of the algorithm.
 
-    ```cpp
+    ```python
     def hash(kv, key):
       # 1. uniqualy identify all keys [compile-time]
       mask = 0b11111111
@@ -495,7 +495,7 @@ inline constexpr auto unpredictable =
       else:
           return unknown
 
-      def pext(a, mask): # https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+      def pext(a, mask):
           tmp := a
           dst := 0
           m := 0
