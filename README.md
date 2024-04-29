@@ -442,7 +442,7 @@ inline constexpr auto unpredictable =
     > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
       `mph` doesn't have a restriction on the number of key/value pairs but its performance is the most benefital for less than 128 key/value pairs.
       For greater number of keys the performance and compilation time overhead should be carefully examined.
-      `mph` requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
+      `mph` requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
       For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
@@ -494,7 +494,7 @@ inline constexpr auto unpredictable =
 
 - I'm getting compilation error `'pext' requires target feature 'bmi2'`?
 
-    > [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support is required.
+    > The following option can be used to add [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support.
 
     ```
     -march=skylake # or any arch which supports x86 bit manipulation instruction set
