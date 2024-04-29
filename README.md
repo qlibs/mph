@@ -509,6 +509,8 @@ inline constexpr auto unpredictable =
           OD
     ```
 
+    Additional resources can be found in the `Acknowledgments` section.
+
 - How to get the max performance out of `mph`?
 
     > Always measure! For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
