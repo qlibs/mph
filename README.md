@@ -484,7 +484,7 @@ inline constexpr auto unpredictable =
       lookup_table = array(typeof{k[0}, 2^popcount(mask))
 
       for k, v in kv:
-          lookup_table[pext(k, mask)] = {k, v}
+          lookup_table[pext(k, mask)] = (k, v)
 
       # 2. lookup [run-time] / if key is a string convert to u32 or u64 first
 
