@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)]
+- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) (Intel Haswell+, AMD Zen3+)]
 
 ### Hello world (https://godbolt.org/z/GxaWGKc18)
 
@@ -497,7 +497,7 @@ inline constexpr auto unpredictable =
     > The following option can be used to add [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support.
 
     ```
-    -march=skylake # or any arch which supports x86 bit manipulation instruction set
+    -march=skylake # Intel Haswell+, AMD Zen3+
     ```
 
 - How to integrate with CMake/CPM?
