@@ -339,9 +339,9 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.148s
  */
 template<
   auto kv,
-  detail::value_type<kv> unknown = detail::value_type<kv>{},
-  auto policy = conditional,
-  size_t alignment = 0u, // no alignment
+  typename decltype(kv)::value_type::second_type unknown = {},
+  auto policy = conditional, // default policy
+  size_t alignment = {}, // no alignment
   auto max_key_len = detail::max_key_len(kv)
 > requires
     requires { kv.size(); } and (
@@ -454,7 +454,7 @@ inline constexpr auto unpredictable =
       if constexpr (requires { mph::hash<ts...>(key); }) {
         return mph::hash<ts...>(key);
       } else {
-        // ... other policy
+        // ... other hash implementation
       }
     }
     ```
@@ -481,7 +481,11 @@ inline constexpr auto unpredictable =
 - Can I disable running tests at compile-time for faster compilation times?
 
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
-    Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
+      Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
+
+- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
+
+    > In principle `bmi2` is not required, [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) can be emulated with a few other instructions (`shr, and`), however, `mph` doesn't support it yet.
 
 - I'm getting a compilation error `constexpr evaluation hit maximum step limit`?
 

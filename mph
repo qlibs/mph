@@ -137,11 +137,10 @@ inline constexpr auto unpredictable =
   };
 #endif
 
+namespace detail {
 #if not defined(MPH_CHAR_BIT)
 #define MPH_CHAR_BIT 8u
 #endif
-
-namespace detail {
 template<class T>
 [[nodiscard]] constexpr decltype(auto) as(const auto& value) noexcept {
   if constexpr (requires { value.size(); }) {
@@ -327,7 +326,7 @@ template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{},
   auto policy = conditional,
-  utility::size_t alignment = 0u, // no alignment
+  utility::size_t alignment = utility::size_t{}, // no alignment
   auto max_key_len = detail::max_key_len(kv)
 > requires
     requires { kv.size(); } and (
@@ -339,7 +338,7 @@ template<
   static_assert([] {
     for (const auto& [_, v] : kv) { if (detail::cmp(v, unknown)) { return false; } }
     return true;
-  }(), "[error] `unknown` can be found in the `kv` values!");
+  }(), "[error] `unknown` can't be found in `keys`!");
   if constexpr (kv.size() == 0u) {
     return unknown;
   } else if constexpr (not requires { key.size(); } and kv.size() == 1u) {
