@@ -43,7 +43,11 @@ static_assert(color::green == mph::hash<colors>("green"sv));
 static_assert(color::red   == mph::hash<colors>("red"sv));
 static_assert(color::blue  == mph::hash<colors>("blue"sv));
 
-std::print("{}", mph::hash<colors>("green"sv)); // prints 2
+std::print("{}", mph::hash<colors>("green"sv));
+```
+
+```
+$CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
 ---
@@ -233,7 +237,7 @@ time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.026s
 time $CXX -x c++ -std=c++20 mph -c                                 # 0.061s
 ```
 
-> [64 key/value pairs] (https://godbolt.org/z/WEvoz4zaE)
+> [64 key/value pairs] (https://godbolt.org/z/3YMxoo1WP)
 
 ```cpp
 time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.113s
@@ -486,6 +490,14 @@ inline constexpr auto unpredictable =
     ```
     gcc:   -fconstexpr-ops-limit=N
     clang: -fconstexpr-steps=N
+    ```
+
+- I'm getting compilation error `'pext' requires target feature 'bmi2', but would be inlined into function 'operator()' that is compiled without support for 'bmi2'`?
+
+    [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support is required.
+
+    ```
+    -march=skylake # any arch which supports bmi2
     ```
 
 - How to integrate with CMake/CPM?
