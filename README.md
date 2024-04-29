@@ -466,6 +466,17 @@ inline constexpr auto unpredictable =
 
     ```python
     def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
+      def pext(a : uN, mask : uN): # from Intel docs - /intrinsics-guide/index.html#text=pext
+        dst, m, k = ([], 0, 0)
+
+        while m < nbits(a):
+          if mask[m] == 1:
+            dst.append(a[m])
+            k += 1
+          m += 1
+
+        return uN(dst)
+
       # 1. find mask which uniqualy identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
@@ -494,17 +505,6 @@ inline constexpr auto unpredictable =
         return v
       else:
         return unknown
-
-    def pext(a : uN, mask : uN): # from Intel docs - /intrinsics-guide/index.html#text=pext
-      dst, m, k = ([], 0, 0)
-
-      while m < nbits(a):
-        if mask[m] == 1:
-          dst.append(a[m])
-          k += 1
-        m += 1
-
-      return uN(dst)
     ```
 
     Additional resources can be found in the `Acknowledgments` section.
