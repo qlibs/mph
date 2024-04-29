@@ -217,6 +217,12 @@ lut:
 
 ---
 
+### Examples
+
+- [feature/performance] branchless dispatcher - https://godbolt.org/z/jeYcE1xoo
+
+---
+
 <a name="compilation"></a>
 ### Compilation-times
 
