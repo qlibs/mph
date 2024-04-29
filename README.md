@@ -492,12 +492,12 @@ inline constexpr auto unpredictable =
     clang: -fconstexpr-steps=N
     ```
 
-- I'm getting compilation error `'pext' requires target feature 'bmi2', but would be inlined into function 'operator()' that is compiled without support for 'bmi2'`?
+- I'm getting compilation error `'pext' requires target feature 'bmi2'`?
 
-    [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support is required.
+    > [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support is required.
 
     ```
-    -march=skylake # any arch which supports bmi2
+    -march=skylake # or any arch which supports x86 bit manipulation instruction set
     ```
 
 - How to integrate with CMake/CPM?
