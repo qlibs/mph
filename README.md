@@ -486,7 +486,7 @@ inline constexpr auto unpredictable =
       for k, v in kv:
           lookup_table[pext(k, mask)] = {k, v}
 
-      # 2. lookup [run-time] / if key is a string conver to u32 or u64
+      # 2. lookup [run-time] / if key is a string convert to u32 or u64 first
 
       k, v = lookup_table[pext(key, mask)]
 
