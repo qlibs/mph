@@ -462,8 +462,52 @@ inline constexpr auto unpredictable =
 - How `mph` is working under the hood?
 
     > `mph` takes advantage of knowing the key/value pairs at compile-time as well as the specific hardware instructions.
-      `mph` evaluates, at compile-time, which policies can be used and which will deliver the fastest performance.
-      `mph`, then, picks the 'best' one and apply input data to it.
+      The following is a pseudo code of the algorithm.
+
+      ```cpp
+      def hash(kv, key):
+        # 1. uniqualy identify all keys [compile-time]
+        mask = 0b11111111
+
+        for i in range(8):
+            masked = []
+            mask.unset(i)
+
+            for key in keys:
+                masked.append(pext(key, mask))
+
+            if not unique(masked):
+                mask.set(i)
+
+        assert unique(masked)
+
+        lookup_table = [] # size 2^popcount(mask)
+
+        for k, v in kv:
+            lookup_table[pext(k, mask)] = {k, v}
+
+        # 2. lookup [run-time]
+
+        k, v = lookup_table[pext(key, mask)]
+
+        if k == key:
+            return v
+        else:
+            return unknown
+
+        def pext(a, mask): # https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+            tmp := a
+            dst := 0
+            m := 0
+            k := 0
+            DO WHILE m < 32
+                IF mask[m] == 1
+                    dst[k] := tmp[m]
+                    k := k + 1
+                FI
+                m := m + 1
+            OD
+      ```
 
 - How to get the max performance out of `mph`?
 
