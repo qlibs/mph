@@ -494,7 +494,7 @@ inline constexpr auto unpredictable =
       assert unique(masked)
       assert mask != ~typeof(kv[0][0])
 
-      static lut = array(typeof(kv[0]), 2^popcount(mask))
+      lut = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr
       for k, v in kv:
         lut[pext(k, mask)] = (k, v)
 
