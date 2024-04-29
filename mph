@@ -200,7 +200,7 @@ inline auto bzhi(const utility::uint64_t src, const utility::uint64_t index) noe
   return __builtin_ia32_bzhi_di(src, index);
 }
 
-template<class T, template<class, auto> class C, class _, auto Size>
+template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * MPH_CHAR_BIT>
 [[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
   T max{};
@@ -212,7 +212,7 @@ template<class T, template<class, auto> class C, class _, auto Size>
   }
 
   utility::array<T, Size> masked;
-  const auto n_bits = __builtin_ctz(max);
+  const auto n_bits = size - __builtin_clz(max) - 1;
   T mask{(T(1) << n_bits) - 1};
   for (int n = n_bits; n >= 0; --n) {
     mask &= ~(T(1) << n);
@@ -651,4 +651,4 @@ static_assert(([] {
   }
 }(), true));
 #endif
-#endif  // MPH
+#endif // MPH
