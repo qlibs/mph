@@ -494,18 +494,16 @@ inline constexpr auto unpredictable =
       else:
         return unknown
 
-    def pext(a, mask): # from Intel docs - /intrinsics-guide/index.html#text=pext
-      tmp := a
-      dst := 0
-      m := 0
-      k := 0
-      DO WHILE m < 32
-        IF mask[m] == 1
-          dst[k] := tmp[m]
-          k := k + 1
-        FI
-        m := m + 1
-      OD
+    def pext(a : uN, mask : uN): # from Intel docs - /intrinsics-guide/index.html#text=pext
+      dst, m, k = ([], 0, 0)
+
+      while m < nbits(a):
+        if mask[m] == 1:
+          dst.append(a[m])
+          k += 1
+        m += 1
+
+      return uN(dst)
     ```
 
     Additional resources can be found in the `Acknowledgments` section.
