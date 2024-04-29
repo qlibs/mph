@@ -7,7 +7,7 @@
 
 ## Perfect hash library
 
-> https://en.wikipedia.org/wiki/Perfect_hash_function#Perfect_hash_function
+> https://en.wikipedia.org/wiki/Perfect_hash_function
 
 ### Use case
 
