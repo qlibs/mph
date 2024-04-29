@@ -465,7 +465,7 @@ inline constexpr auto unpredictable =
       The following is a pseudo code of the algorithm.
 
     ```python
-    def hash(kv : array, key : any):
+    def hash(kv : array, key : any, unknown: typeof(array[0][0])):
       # 1. find mask which uniqualy identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
