@@ -481,8 +481,7 @@ inline constexpr auto unpredictable =
 
       assert unique(masked)
 
-      lookup_table = array(typeof{k[0}, 2^popcount(mask))
-
+      static lookup_table = array(typeof(k[0]), 2^popcount(mask))
       for k, v in kv:
           lookup_table[pext(k, mask)] = (k, v)
 
@@ -495,7 +494,7 @@ inline constexpr auto unpredictable =
       else:
           return unknown
 
-      def pext(a, mask): # from intel - docs/intrinsics-guide/index.html#text=pext
+      def pext(a, mask): # from Intel docs - /intrinsics-guide/index.html#text=pext
           tmp := a
           dst := 0
           m := 0
