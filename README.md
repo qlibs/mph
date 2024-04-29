@@ -466,7 +466,8 @@ inline constexpr auto unpredictable =
 
     ```python
     def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
-      def pext(a : uN, mask : uN): # from Intel docs - /intrinsics-guide/index.html#text=pext
+      # 0. pext from Intel docs - /intrinsics-guide/index.html#text=pext
+      def pext(a : uN, mask : uN):
         dst, m, k = ([], 0, 0)
 
         while m < nbits(a):
