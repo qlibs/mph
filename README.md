@@ -470,42 +470,42 @@ inline constexpr auto unpredictable =
       mask = ~typeof(kv[0][0]) # 0b111111...
 
       for i in range(nbits(mask)):
-          masked = []
-          mask.unset(i)
+        masked = []
+        mask.unset(i)
 
-          for key in keys:
-              masked.append(pext(key, mask))
+        for key in keys:
+          masked.append(pext(key, mask))
 
-          if not unique(masked):
-              mask.set(i)
+        if not unique(masked):
+          mask.set(i)
 
       assert unique(masked)
 
       static lookup_table = array(typeof(k[0]), 2^popcount(mask))
       for k, v in kv:
-          lookup_table[pext(k, mask)] = (k, v)
+        lookup_table[pext(k, mask)] = (k, v)
 
       # 2. lookup [run-time] / if key is a string convert to u32 or u64 first
 
       k, v = lookup_table[pext(key, mask)]
 
       if k == key: # different policies are used here
-          return v
+        return v
       else:
-          return unknown
+        return unknown
 
     def pext(a, mask): # from Intel docs - /intrinsics-guide/index.html#text=pext
-        tmp := a
-        dst := 0
-        m := 0
-        k := 0
-        DO WHILE m < 32
-            IF mask[m] == 1
-                dst[k] := tmp[m]
-                k := k + 1
-            FI
-            m := m + 1
-        OD
+      tmp := a
+      dst := 0
+      m := 0
+      k := 0
+      DO WHILE m < 32
+        IF mask[m] == 1
+          dst[k] := tmp[m]
+          k := k + 1
+        FI
+        m := m + 1
+      OD
     ```
 
     Additional resources can be found in the `Acknowledgments` section.
