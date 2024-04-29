@@ -465,7 +465,7 @@ inline constexpr auto unpredictable =
       The following is a pseudo code of the algorithm.
 
     ```python
-    def hash(kv : array, key):
+    def hash(kv : array, key : any):
       # 1. find mask which uniqualy identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
@@ -490,12 +490,12 @@ inline constexpr auto unpredictable =
 
       k, v = lookup_table[pext(key, mask)]
 
-      if k == key:
+      if k == key: # different policies are used here
           return v
       else:
           return unknown
 
-      def pext(a, mask):
+      def pext(a, mask): # from intel - docs/intrinsics-guide/index.html#text=pext
           tmp := a
           dst := 0
           m := 0
