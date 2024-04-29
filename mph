@@ -170,12 +170,12 @@ template<template<class, auto> class C, class T, auto Size>
   return true;
 }
 
-template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+/// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+template<class T, auto size = sizeof(T) * utility::char_bit>
 [[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
   T result{};
   auto k = 0u;
-  constexpr auto size = sizeof(T) * utility::char_bit;
-  for (auto i = T(); i < T(size); ++i) {
+  for (T i{}; i < T(size); ++i) {
     if (mask & 1) result |= ((a >> i) & 1) << k++;
     mask >>= 1;
   }
@@ -202,11 +202,11 @@ inline auto bzhi(const utility::uint64_t src, const utility::uint64_t index) noe
   return __builtin_ia32_bzhi_di(src, index);
 }
 
-template<class T, template<class, auto> class C, class _, auto Size>
+template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * utility::char_bit>
 [[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> masked;
   T mask{~T{}};
-  constexpr auto size = sizeof(T) * utility::char_bit;
+
   for (int n = size - 1; n >= 0; --n) {
     mask &= ~(T(1) << n);
 
