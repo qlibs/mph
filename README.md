@@ -229,15 +229,15 @@ lut:
 > [include] (https://godbolt.org/z/zKPP8xPfG)
 
 ```cpp
-time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.147s
-time $CXX -x c++ -std=c++20 mph -c                                 # 0.184s
+time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.026s
+time $CXX -x c++ -std=c++20 mph -c                                 # 0.061s
 ```
 
 > [64 key/value pairs] (https://godbolt.org/z/WEvoz4zaE)
 
 ```cpp
-time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.569s
-time $CXX -x c++ -std=c++20 mph -c                                 # 0.612s
+time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.113s
+time $CXX -x c++ -std=c++20 mph -c                                 # 0.148s
 ```
 
 <a name="benchmarks"></a>

@@ -16,12 +16,6 @@ namespace utility {
 using size_t = decltype(sizeof(int));
 using uint32_t = unsigned int;
 using uint64_t = unsigned long int;
-inline constexpr auto char_bit = [] {
-  char bit{1};
-  size_t n{};
-  while (bit) { bit <<= 1; ++n; }
-  return n;
-}();
 
 template<class T1, class T2>
 struct compressed_pair {
@@ -69,10 +63,10 @@ struct aligned {
 template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, size_t alignment>
 using aligned_t = typename aligned<T, alignment>::type;
-}  // namespace utility
+} // namespace utility
 
 template<class T, utility::size_t MaxSize>
-struct basic_fixed_string final {
+struct basic_fixed_string {
   constexpr basic_fixed_string() noexcept = default;
   template<utility::size_t Size>
   constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept
@@ -143,6 +137,10 @@ inline constexpr auto unpredictable =
   };
 #endif
 
+#if not defined(MPH_CHAR_BIT)
+#define MPH_CHAR_BIT 8u
+#endif
+
 namespace detail {
 template<class T>
 [[nodiscard]] constexpr decltype(auto) as(const auto& value) noexcept {
@@ -150,7 +148,7 @@ template<class T>
     T result{};
     const auto size = value.size();
     for (auto i = 0u; i < size; ++i) {
-      result = (result << utility::char_bit) | value[size - i - 1];
+      result = (result << MPH_CHAR_BIT) | value[size - i - 1];
     }
     return result;
   } else {
@@ -171,11 +169,11 @@ template<template<class, auto> class C, class T, auto Size>
 }
 
 /// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-template<class T, auto size = sizeof(T) * utility::char_bit>
+template<class T, T size = sizeof(T) * MPH_CHAR_BIT>
 [[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
   T result{};
   auto k = 0u;
-  for (T i{}; i < T(size); ++i) {
+  for (T i{}; i < size; ++i) {
     if (mask & 1) result |= ((a >> i) & 1) << k++;
     mask >>= 1;
   }
@@ -202,22 +200,32 @@ inline auto bzhi(const utility::uint64_t src, const utility::uint64_t index) noe
   return __builtin_ia32_bzhi_di(src, index);
 }
 
-template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * utility::char_bit>
+template<class T, template<class, auto> class C, class _, auto Size>
 [[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
-  utility::array<T, Size> masked;
-  T mask{~T{}};
+  utility::array<T, Size> vs;
+  T max{};
+  for (auto i = 0u; i < Size; ++i) {
+    vs[i] = as<T>(v[i].first);
+    if (vs[i] > max) {
+      max = vs[i];
+    }
+  }
 
-  for (int n = size - 1; n >= 0; --n) {
+  utility::array<T, Size> masked;
+  const auto n_bits = __builtin_ctz(max);
+  T mask{(T(1) << n_bits) - 1};
+  for (int n = n_bits; n >= 0; --n) {
     mask &= ~(T(1) << n);
 
     for (auto i = 0u; i < Size; ++i) {
-      masked[i] = pext<T>(as<T>(v[i].first), mask);
+      masked[i] = pext<T>(vs[i], mask);
     }
 
     if (not unique(masked)) {
       mask |= (T(1) << n);
     }
   }
+
   return mask;
 }
 
@@ -262,9 +270,9 @@ template<class T>
     #pragma GCC diagnostic pop
 
     if constexpr (sizeof(T) == sizeof(utility::uint32_t)) {
-      return T(bzhi(t, T(data.size() * utility::char_bit)));
+      return T(bzhi(t, T(data.size() * MPH_CHAR_BIT)));
     } else if constexpr (sizeof(T) == sizeof(utility::uint64_t)) {
-      return T(bzhi(t, T(data.size() * utility::char_bit)));
+      return T(bzhi(t, T(data.size() * MPH_CHAR_BIT)));
     }
     return t;
   } else {
@@ -539,13 +547,12 @@ static_assert(([] {
 
   // mph::detail::as
   {
-    using mph::utility::char_bit;
     using mph::utility::array;
 
     static_assert(int(0) == mph::detail::as<int>(array{0}));
     static_assert(int(1) == mph::detail::as<int>(array{1}));
-    static_assert((int(1) << 0) + (int(2) << char_bit) == mph::detail::as<int>(array{1, 2}));
-    static_assert((int(1) << 0) + (int(2) << char_bit)  + (int(3) << char_bit*2) == mph::detail::as<int>(array{1, 2, 3}));
+    static_assert((int(1) << 0) + (int(2) << MPH_CHAR_BIT) == mph::detail::as<int>(array{1, 2}));
+    static_assert((int(1) << 0) + (int(2) << MPH_CHAR_BIT)  + (int(3) << MPH_CHAR_BIT*2) == mph::detail::as<int>(array{1, 2, 3}));
   }
 
   // mph::detail::cmp
