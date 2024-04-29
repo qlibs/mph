@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) (Intel Haswell+, AMD Zen3+)]
+- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)]
 
 ### Hello world (https://godbolt.org/z/GxaWGKc18)
 
