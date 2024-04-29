@@ -70,7 +70,7 @@ struct basic_fixed_string {
   constexpr basic_fixed_string() noexcept = default;
   template<utility::size_t Size>
   constexpr explicit(false) basic_fixed_string(const T (&input)[Size]) noexcept
-    requires (Size-1 <= MaxSize) : size_{Size-1} {
+    requires (Size - 1 <= MaxSize) : size_{Size - 1} {
     for (auto i = 0u; i < size_; ++i) { data_[i] = input[i]; } // no null terminated
   }
   [[nodiscard]] constexpr auto data() const noexcept { return data_.data(); }
@@ -326,7 +326,7 @@ template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{},
   auto policy = conditional,
-  utility::size_t alignment = utility::size_t{}, // no alignment
+  utility::size_t alignment = utility::size_t{}, // no alignment is set
   auto max_key_len = detail::max_key_len(kv)
 > requires
     requires { kv.size(); } and (

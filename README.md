@@ -334,14 +334,14 @@ time $CXX -x c++ -std=c++20 mph -c                                 # 0.148s
  * @tparam kv constexpr array of key/value pairs
            (for string-like mph::fixed_string is required)
  * @tparam unknown returned value when key is not found (default: 0)
- * @tparam alignment of the lookup table (default: 0 / no alignment)
+ * @tparam alignment of the lookup table (default: 0 / no alignment is set)
  * @param key input data (should match kv keys type)
  */
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
   auto policy = conditional, // default policy
-  size_t alignment = {}, // no alignment
+  size_t alignment = {}, // no alignment is set
   auto max_key_len = detail::max_key_len(kv)
 > requires
     requires { kv.size(); } and (
