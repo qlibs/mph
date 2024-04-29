@@ -465,7 +465,7 @@ inline constexpr auto unpredictable =
       The following is a pseudo code of the algorithm.
 
     ```python
-    def hash(kv : array, key : any, unknown: typeof(array[0][0])):
+    def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
       # 1. find mask which uniqualy identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
@@ -473,23 +473,24 @@ inline constexpr auto unpredictable =
         masked = []
         mask.unset(i)
 
-        for key in keys:
-          masked.append(pext(key, mask))
+        for k, v in kv:
+          masked.append(pext(k, mask))
 
         if not unique(masked):
           mask.set(i)
 
       assert unique(masked)
+      assert mask != ~typeof(kv[0][0])
 
-      static lookup_table = array(typeof(k[0]), 2^popcount(mask))
+      static lut = array(typeof(kv[0]), 2^popcount(mask))
       for k, v in kv:
-        lookup_table[pext(k, mask)] = (k, v)
+        lut[pext(k, mask)] = (k, v)
 
-      # 2. lookup [run-time] / if key is a string convert to u32 or u64 first
+      # 2. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
 
-      k, v = lookup_table[pext(key, mask)]
+      k, v = lut[pext(key, mask)]
 
-      if k == key: # different policies are used here
+      if k == key: # policies (conditional, branchless, ...)
         return v
       else:
         return unknown
@@ -507,6 +508,11 @@ inline constexpr auto unpredictable =
     ```
 
     Additional resources can be found in the `Acknowledgments` section.
+
+- Is the `hash/mask` guaranteed to be found?
+
+    > Finding the `hash/mask` is [NP](https://en.wikipedia.org/wiki/NP_(complexity)) problem and therefore `mph` is talking a simplified approach (see [How `mph` is working under the hood?](#faq) for details) which doesn't gurantee finding the hash/mask.
+      If the `hash/mask` can't be found `mph` will not compile and the hash call won't be available. It's advised to have additional fallback policies in case accelerated hash can't be used (see [Limitations](#faq)).
 
 - How to get the max performance out of `mph`?
 
