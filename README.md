@@ -426,7 +426,7 @@ inline constexpr auto unpredictable =
 > Configuration
 
 ```cpp
-#define MPH 2'0'1           // Current library version (SemVer)
+#define MPH 2'1'0           // Current library version (SemVer)
 #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
                             // the input string size is not
                             // known at compile-time
@@ -506,7 +506,7 @@ inline constexpr auto unpredictable =
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v2.0.1
+      GIT_TAG v2.1.0
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})

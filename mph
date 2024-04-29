@@ -6,12 +6,12 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 2'0'1 // SemVer
+#define MPH 2'1'0 // SemVer
 
 /**
  * Perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v2_0_1 {
+namespace mph::inline v2_1_0 {
 namespace utility {
 using size_t = decltype(sizeof(int));
 using uint32_t = unsigned int;
@@ -397,7 +397,7 @@ template<
     }();
   }
 }
-} // namespace mph::inline v2_0_1
+} // namespace mph::inline v2_1_0
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
 static_assert(([] {
