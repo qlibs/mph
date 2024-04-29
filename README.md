@@ -436,7 +436,7 @@ inline constexpr auto unpredictable =
 - Limitations?
 
     > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
-      `mph` doesn't have a restriction on the number of key/value pairs but its performance is the most benefital for less than 128 keys.
+      `mph` doesn't have a restriction on the number of key/value pairs but its performance is the most benefital for less than 128 key/value pairs.
       For greater number of keys the performance and compilation time overhead should be carefully examined.
       `mph` requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
       For string-like lookups, all keys length have to be less-equal 8 characters.
