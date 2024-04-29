@@ -465,11 +465,11 @@ inline constexpr auto unpredictable =
       The following is a pseudo code of the algorithm.
 
     ```python
-    def hash(kv, key):
-      # 1. uniqualy identify all keys [compile-time]
-      mask = 0b11111111
+    def hash(kv : array, key):
+      # 1. find mask which uniqualy identifies all keys [compile-time]
+      mask = ~typeof(kv[0][0]) # 0b111111...
 
-      for i in range(8):
+      for i in range(nbits(mask)):
           masked = []
           mask.unset(i)
 
@@ -481,12 +481,12 @@ inline constexpr auto unpredictable =
 
       assert unique(masked)
 
-      lookup_table = [] # size 2^popcount(mask)
+      lookup_table = array(typeof{k[0}, 2^popcount(mask))
 
       for k, v in kv:
           lookup_table[pext(k, mask)] = {k, v}
 
-      # 2. lookup [run-time]
+      # 2. lookup [run-time] / if key is a string conver to u32 or u64
 
       k, v = lookup_table[pext(key, mask)]
 
