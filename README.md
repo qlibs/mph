@@ -499,7 +499,6 @@ inline constexpr auto unpredictable =
         lut[pext(k, mask)] = (k, v)
 
       # 2. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
-
       k, v = lut[pext(key, mask)]
 
       if k == key: # policies (conditional, branchless, ...)
