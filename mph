@@ -8,17 +8,6 @@
 #ifndef MPH
 #define MPH 2'0'1 // SemVer
 
-#if __has_include(<x86intrin.h>)
-#include <x86intrin.h> // _pext_u32, _pext_u64
-#endif
-
-#if not defined(MPH_PAGE_SIZE)
-#define MPH_PAGE_SIZE 4096u // Used for string-like keys if
-                            // the input string size is not
-                            // known at compile-time
-                            // If set to 0u std::memcpy is used instead
-#endif
-
 /**
  * Perfect hash library (https://github.com/boost-ext/mph)
  */
@@ -100,113 +89,73 @@ struct basic_fixed_string final {
 };
 using fixed_string = basic_fixed_string<char, sizeof(utility::uint64_t)>;
 
-inline constexpr auto unconditional = []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-  return lhs; // [unsafe] returns unconditionally
-};
+inline constexpr auto unconditional =
+  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
+    return lhs; // [unsafe] returns unconditionally
+  };
 
-inline constexpr auto conditional = [](const bool cond, const auto lhs, const auto rhs) noexcept {
-  return cond ? lhs : rhs; // generates jmp (x86-64)
-};
+inline constexpr auto conditional =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    return cond ? lhs : rhs; // generates jmp (x86-64)
+  };
 
-inline constexpr auto likely = [](const bool cond, const auto lhs, const auto rhs) noexcept {
-  if (cond) [[likely]] {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto likely =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (cond) [[likely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 
-inline constexpr auto unlikely = [](const bool cond, const auto lhs, const auto rhs) {
-  if (cond) [[unlikely]] {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto unlikely =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    if (cond) [[unlikely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 
 template<auto Probablity>
-inline constexpr auto conditional_probability = [](const bool cond, const auto lhs, const auto rhs) noexcept{
-  if (__builtin_expect_with_probability(cond, 1, Probablity)) {
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto conditional_probability =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 
-inline constexpr auto branchless = [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-  return cond * lhs; // more likely to generate cmov (x86-64)
-};
+inline constexpr auto branchless =
+  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
+    return cond * lhs; // more likely to generate cmov (x86-64)
+  };
 
 #if defined(__clang__)
-inline constexpr auto unpredictable = [](const bool cond, const auto lhs, const auto rhs) noexcept {
-  if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
-    return lhs;
-  } else {
-    return rhs;
-  }
-};
+inline constexpr auto unpredictable =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
 #endif
 
 namespace detail {
-template<class T, template<class, auto> class R, class _, auto Size>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T {
-  if constexpr (not Size) {
-    return T{};
-  } else if constexpr (Size == sizeof(T)) {
-    return *__builtin_bit_cast(const T*, data.data());
-  } else if constexpr (Size <= sizeof(T)) {
-    T t{};
-    __builtin_memcpy(&t, data.data(), Size);
-    return t;
-  }
-}
-
-template<class T, class cold>
-[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T {
-  T t{};
-  __builtin_memcpy(&t, data.data(), data.size());
-  return t;
-}
-
 template<class T>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
-  if constexpr (MPH_PAGE_SIZE) {
-    // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((utility::uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-      return to<T, class cold>(data);
+[[nodiscard]] constexpr decltype(auto) as(const auto& value) noexcept {
+  if constexpr (requires { value.size(); }) {
+    T result{};
+    const auto size = value.size();
+    for (auto i = 0u; i < size; ++i) {
+      result = (result << utility::char_bit) | value[size - i - 1];
     }
-    T t{};
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Warray-bounds"
-    __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
-    #pragma GCC diagnostic pop
-
-    if constexpr (sizeof(T) == sizeof(utility::uint32_t)) {
-      return T(_bzhi_u32(t, data.size() * utility::char_bit));
-    } else if constexpr (sizeof(T) == sizeof(utility::uint64_t)) {
-      return T(_bzhi_u64(t, data.size() * utility::char_bit));
-    }
-    return t;
+    return result;
   } else {
-    T t{};
-    __builtin_memcpy(&t, data.data(), data.size());
-    return t;
+    return value;
   }
-}
-
-template<class T>
-[[nodiscard]] constexpr auto as(const auto& value) noexcept -> T requires requires { value.size(); } {
-  T result{};
-  const auto size = value.size();
-  for (auto i = 0u; i < size; ++i) {
-    result = (result << utility::char_bit) | value[size - i - 1];
-  }
-  return result;
-}
-
-template<class T>
-[[nodiscard]] constexpr auto as(const T& value) noexcept -> const T& {
-  return value;
 }
 
 template<template<class, auto> class C, class T, auto Size>
@@ -233,15 +182,25 @@ template<class T> // https://www.intel.com/content/www/us/en/docs/intrinsics-gui
   return result;
 }
 
-#if __has_include(<x86intrin.h>)
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const utility::uint32_t a, const utility::uint32_t mask) noexcept {
-  return _pext_u32(a, mask);
+[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
+inline auto pext(const utility::uint32_t a, const utility::uint32_t mask) noexcept {
+  return __builtin_ia32_pext_si(a, mask);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] inline auto pext(const utility::uint64_t a, const utility::uint64_t mask) noexcept {
-  return _pext_u64(a, mask);
+[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
+inline auto pext(const utility::uint64_t a, const utility::uint64_t mask) noexcept {
+  return __builtin_ia32_pext_di(a, mask);
 }
-#endif
+
+[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
+inline auto bzhi(const utility::uint32_t src, const utility::uint32_t index) noexcept {
+  return __builtin_ia32_bzhi_si(src, index);
+}
+
+[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
+inline auto bzhi(const utility::uint64_t src, const utility::uint64_t index) noexcept {
+  return __builtin_ia32_bzhi_di(src, index);
+}
 
 template<class T, template<class, auto> class C, class _, auto Size>
 [[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
@@ -260,6 +219,59 @@ template<class T, template<class, auto> class C, class _, auto Size>
     }
   }
   return mask;
+}
+
+template<class T, template<class, auto> class R, class _, auto Size>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T {
+  if constexpr (not Size) {
+    return T{};
+  } else if constexpr (Size == sizeof(T)) {
+    return *__builtin_bit_cast(const T*, data.data());
+  } else if constexpr (Size <= sizeof(T)) {
+    T t{};
+    __builtin_memcpy(&t, data.data(), Size);
+    return t;
+  }
+}
+
+template<class T, class cold>
+[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T {
+  T t{};
+  __builtin_memcpy(&t, data.data(), data.size());
+  return t;
+}
+
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
+  #if not defined(MPH_PAGE_SIZE)
+  #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
+                              // the input string size is not
+                              // known at compile-time
+                              // If set to 0u __builtin_memcpy is used instead
+  #endif
+
+  if constexpr (MPH_PAGE_SIZE) {
+    // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+    if ((utility::uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+      return to<T, class cold>(data);
+    }
+    T t{};
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Warray-bounds"
+    __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
+    #pragma GCC diagnostic pop
+
+    if constexpr (sizeof(T) == sizeof(utility::uint32_t)) {
+      return T(bzhi(t, T(data.size() * utility::char_bit)));
+    } else if constexpr (sizeof(T) == sizeof(utility::uint64_t)) {
+      return T(bzhi(t, T(data.size() * utility::char_bit)));
+    }
+    return t;
+  } else {
+    T t{};
+    __builtin_memcpy(&t, data.data(), data.size());
+    return t;
+  }
 }
 
 [[nodiscard]] constexpr auto cmp(const auto& lhs, const auto& rhs) noexcept -> bool {

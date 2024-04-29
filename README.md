@@ -27,8 +27,7 @@
 ### Requirements
 
 - C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd))
-    - No STL headers required
-    - [[x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) / [x86intrin.h](https://github.com/gcc-mirror/gcc/blob/master/gcc/config/i386/x86intrin.h)]
+- [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)]
 
 ### Hello world (https://godbolt.org/z/GxaWGKc18)
 
@@ -433,7 +432,7 @@ inline constexpr auto unpredictable =
 
     > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
       `mph` doesn't have a restriction on the number of key/value pairs but its performance is the most benefital for less than 256 keys.  For greater number ok keys the performance and compilation time overhead should be carefully examined.
-      `mph` requires [x86-64:bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set).[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
+      `mph` requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) - [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
       For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
