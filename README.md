@@ -541,11 +541,12 @@ inline constexpr auto unpredictable =
 - How fast compilation times have been achived?
 
     > Most of the compilation time is spent in the `detail::mask` which is mainly dependent on the key/value pair size.
+
     There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation:
 
-    - no abstractions / algorithms (the less levels of indirections the faster the compilation)
-    - precalculate how many max bits is being used by the max key value which allows to limit the iterations
-    - using linear probing hashing to identify whether mask is unique for given keys faster
+    - no abstractions / algorithms (the less levels of indirection the faster the compilation)
+    - precalculate the number of bits used by the max value of keys (allows to limit iterations)
+    - use linear probing hashing to identify whether mask is unique for given keys (faster than unique)
 
 - Can I disable running tests at compile-time?
 
