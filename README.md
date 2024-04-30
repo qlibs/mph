@@ -544,7 +544,8 @@ inline constexpr auto unpredictable =
     There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation.
     Note: It's not a pretty code and/or nice design, just fast to compile.
 
-    - no abstractions / algorithms (the less levels of indirection the faster the compilation)
+    - optimize algorithms for O(N) (constexpr is a virtual machine and no real hardware therefore O(N) is more important than at run-time)
+    - no algorithms (the less levels of indirection the faster the compilation times)
     - precalculate the number of bits used by the max value of keys (allows to limit iterations)
     - use linear probing hashing to identify whether mask is unique for given keys (faster than unique)
 
