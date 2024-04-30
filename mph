@@ -189,7 +189,7 @@ inline auto bzhi(const utility::uint64_t src, const utility::uint64_t index) noe
 }
 
 template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * MPH_CHAR_BIT>
-[[nodiscard]] constexpr auto pext_mask(const C<_, Size>& v) noexcept -> T {
+[[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
   T max{};
   for (auto i = 0u; i < Size; ++i) {
@@ -359,7 +359,7 @@ template<
         utility::uint32_t,
         utility::uint64_t
       >;
-      static constexpr const mask_type mask = detail::pext_mask<key_type>(kv);
+      static constexpr const mask_type mask = detail::mask<key_type>(kv);
       static_assert(mask != ~mask_type{}, "[error] mask can't be found!");
       static constexpr const auto lut = [] {
         utility::aligned_t<
@@ -511,17 +511,17 @@ static_assert(([] {
     static_assert(0b11 == mph::detail::pext(0b11, 0b11));
   }
 
-  // mph::detail::pext_mask
+  // mph::detail::mask
   {
     using mph::utility::uint32_t;
     using mph::utility::array;
     using mph::utility::compressed_pair;
 
-    static_assert(0b10 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::detail::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::detail::as

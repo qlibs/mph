@@ -538,7 +538,15 @@ inline constexpr auto unpredictable =
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!
 
-- Can I disable running tests at compile-time for faster compilation times?
+- How fast compilation times have been achived?
+
+    > Most of the compilation time is spent in the `detail::mask` which is mainly dependent on the key/value pair size.
+    There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation:
+        - no abstractions / algorithms (the less levels of indirections the faster the compilation)
+        - precalculate how many max bits is being used by the max key value which allows to limit the iterations
+        - using linear probing hashing to identify whether mask is unique for given keys faster
+
+- Can I disable running tests at compile-time?
 
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
