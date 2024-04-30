@@ -538,11 +538,11 @@ inline constexpr auto unpredictable =
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!
 
-- How fast compilation times have been achived?
+- How fast compilation times have been achieved?
 
     > Most of the compilation time is spent in the `detail::mask` which is mainly dependent on the key/value pair size.
-
-    There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation:
+    There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation.
+    Note: It's not a pretty code and/or nice design, just fast to compile.
 
     - no abstractions / algorithms (the less levels of indirection the faster the compilation)
     - precalculate the number of bits used by the max value of keys (allows to limit iterations)
