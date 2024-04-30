@@ -522,10 +522,10 @@ inline constexpr auto unpredictable =
 
 - Is the `hash/mask` guaranteed to be found?
 
-    > Finding the `hash/mask` is [NP](https://en.wikipedia.org/wiki/NP_(complexity)) problem and therefore `mph` is talking a simplified approach (see [How `mph` is working under the hood?](#faq) for details) which doesn't gurantee finding the hash/mask.
+    > Finding the `hash/mask` is [NP](https://en.wikipedia.org/wiki/NP_(complexity)) problem and therefore `mph` is taking a simplified approach (see [How `mph` is working under the hood?](#faq) for details) which doesn't gurantee finding the hash/mask.
       If the `hash/mask` can't be found `mph` will not compile and the hash call won't be available. It's advised to have additional fallback policies in case accelerated hash can't be used (see [Limitations](#faq)).
 
-- How to get the max performance out of `mph`?
+- How to get the maximum performance out of `mph`?
 
     > Always measure! For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
       Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
