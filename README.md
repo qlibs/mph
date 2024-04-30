@@ -553,10 +553,6 @@ inline constexpr auto unpredictable =
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
-- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
-
-    > In principle `bmi2` is not required, [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) can be emulated with a few other instructions (`shr, and`), however, `mph` doesn't support it yet.
-
 - I'm getting a compilation error `constexpr evaluation hit maximum step limit`?
 
     > The following options can be used to increase the limits, however, compilation-times should be monitored.
@@ -565,6 +561,10 @@ inline constexpr auto unpredictable =
     gcc:   -fconstexpr-ops-limit=N
     clang: -fconstexpr-steps=N
     ```
+
+- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
+
+    > In principle `bmi2` is not required, [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) can be emulated with a few other instructions (`shr, and`), however, `mph` doesn't support it yet.
 
 - I'm getting compilation error `'pext' requires target feature 'bmi2'`?
 
