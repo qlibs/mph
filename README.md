@@ -350,7 +350,7 @@ template<
   typename decltype(kv)::value_type::second_type unknown = {},
   auto policy = conditional, // default policy
   size_t alignment = {}, // no alignment is set
-  auto max_key_len = detail::max_key_len(kv)
+  auto max_key_len = max_key_len(kv)
 > requires
     requires { kv.size(); } and (
       kv.size() >= 0u and
