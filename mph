@@ -137,10 +137,11 @@ inline constexpr auto unpredictable =
   };
 #endif
 
-namespace detail {
 #if not defined(MPH_CHAR_BIT)
 #define MPH_CHAR_BIT 8u
 #endif
+
+namespace detail {
 template<class T>
 [[nodiscard]] constexpr decltype(auto) as(const auto& value) noexcept {
   if constexpr (requires { value.size(); }) {
@@ -153,18 +154,6 @@ template<class T>
   } else {
     return value;
   }
-}
-
-template<template<class, auto> class C, class T, auto Size>
-[[nodiscard]] constexpr auto unique(const C<T, Size>& v) noexcept -> bool {
-  for (auto i = 0u; i < Size; ++i) {
-    for (auto j = i + 1u; j < Size; ++j) {
-      if (v[i] == v[j]) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 /// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
@@ -209,22 +198,25 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
       max = vs[i];
     }
   }
-
-  utility::array<T, Size> masked;
-  const auto n_bits = size - __builtin_clz(max) - 1;
-  T mask{(T(1) << n_bits) - 1};
-  for (int n = n_bits; n >= 0; --n) {
+  utility::array<utility::compressed_pair<bool, T>, Size> hashed;
+  const auto nbits = size - __builtin_clz(max) - 1;
+  T mask{(T(1) << nbits) - 1};
+  for (int n = nbits; n >= 0; --n) {
     mask &= ~(T(1) << n);
-
+    hashed = {};
     for (auto i = 0u; i < Size; ++i) {
-      masked[i] = pext<T>(vs[i], mask);
-    }
-
-    if (not unique(masked)) {
-      mask |= (T(1) << n);
+      const auto masked = vs[i] & mask;
+      auto hash = masked % Size;
+      while (hashed[hash].first and hashed[hash].second != masked) {
+        hash = (hash + 1) % Size;
+      }
+      if (hashed[hash].first and hashed[hash].second == masked) {
+        mask |= (T(1) << n);
+        break;
+      }
+      hashed[hash] = {true, masked};
     }
   }
-
   return mask;
 }
 
@@ -509,13 +501,13 @@ static_assert(([] {
 
   // mph::detail::pext
   {
-    static_assert(0b00 == mph::detail::pext(0b00, 0b00));
-    static_assert(0b00 == mph::detail::pext(0b01, 0b00));
-    static_assert(0b01 == mph::detail::pext(0b01, 0b01));
+    static_assert(0    == mph::detail::pext(0b00, 0b00));
+    static_assert(0    == mph::detail::pext(0b01, 0b00));
+    static_assert(0b1  == mph::detail::pext(0b01, 0b01));
     static_assert(0b01 == mph::detail::pext(0b01, 0b11));
-    static_assert(0b00 == mph::detail::pext(0b01, 0b10));
-    static_assert(0b01 == mph::detail::pext(0b11, 0b10));
-    static_assert(0b01 == mph::detail::pext(0b11, 0b01));
+    static_assert(0b0  == mph::detail::pext(0b01, 0b10));
+    static_assert(0b1  == mph::detail::pext(0b11, 0b10));
+    static_assert(0b1  == mph::detail::pext(0b11, 0b01));
     static_assert(0b11 == mph::detail::pext(0b11, 0b11));
   }
 
@@ -530,18 +522,6 @@ static_assert(([] {
     static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
     static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
     static_assert(0b01 == mph::detail::pext_mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
-  }
-
-  // mph::detail::unique
-  {
-    using mph::utility::array;
-
-    static_assert(mph::detail::unique(array{1}));
-    static_assert(mph::detail::unique(array{1, 2}));
-    static_assert(mph::detail::unique(array{1, 2, 3}));
-    static_assert(not mph::detail::unique(array{1, 1}));
-    static_assert(not mph::detail::unique(array{1, 2, 1}));
-    static_assert(not mph::detail::unique(array{1, 2, 3, 2}));
   }
 
   // mph::detail::as

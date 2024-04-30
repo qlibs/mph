@@ -22,6 +22,7 @@
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
   - Lookup table size = `2^popcount(mask which uniquely identifies all keys) of pair{key, value}`
+- Fast compilations times (see [compilation-times](#compilation))
 - Limitations - see [FAQ](#faq)
 
 ### Requirements
@@ -233,15 +234,22 @@ lut:
 > [include] (https://godbolt.org/z/zKPP8xPfG)
 
 ```cpp
-time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.026s
-time $CXX -x c++ -std=c++20 mph -c                                 # 0.061s
+time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.017s
+time $CXX -x c++ -std=c++20 mph -c                                  # 0.056s
 ```
 
 > [64 key/value pairs] (https://godbolt.org/z/3YMxoo1WP)
 
 ```cpp
-time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS   # 0.113s
-time $CXX -x c++ -std=c++20 mph -c                                 # 0.148s
+time $CXX -std=c++20 mph_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
+time $CXX -std=c++20 mph_64.cpp -c                                  # 0.090s
+```
+
+> [1024 key/value pairs] (https://godbolt.org/z/vjYj4qo8c)
+
+```cpp
+time $CXX -std=c++20 mph_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.160s
+time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
 ```
 
 <a name="benchmarks"></a>
@@ -466,19 +474,7 @@ inline constexpr auto unpredictable =
 
     ```python
     def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
-      # 0. pext from Intel docs - /intrinsics-guide/index.html#text=pext
-      def pext(a : uN, mask : uN):
-        dst, m, k = ([], 0, 0)
-
-        while m < nbits(a):
-          if mask[m] == 1:
-            dst.append(a[m])
-            k += 1
-          m += 1
-
-        return uN(dst)
-
-      # 1. find mask which uniqualy identifies all keys [compile-time]
+      # 0. find mask which uniquely identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
       for i in range(nbits(mask)):
@@ -486,7 +482,7 @@ inline constexpr auto unpredictable =
         mask.unset(i)
 
         for k, v in kv:
-          masked.append(pext(k, mask))
+          masked.append(k & mask)
 
         if not unique(masked):
           mask.set(i)
@@ -494,11 +490,26 @@ inline constexpr auto unpredictable =
       assert unique(masked)
       assert mask != ~typeof(kv[0][0])
 
-      lut = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr
+      lut = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr + alignment
       for k, v in kv:
         lut[pext(k, mask)] = (k, v)
 
-      # 2. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
+      # 1. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
+        # word: 00101011
+        # mask: 11100001
+        #    &: 000____1
+        # pext: ____0001 # intel/intrinsics-guide/index.html#text=pext
+        def pext(a : uN, mask : uN):
+          dst, m, k = ([], 0, 0)
+
+          while m < nbits(a):
+            if mask[m] == 1:
+              dst.append(a[m])
+              k += 1
+            m += 1
+
+          return uN(dst)
+
       k, v = lut[pext(key, mask)]
 
       if k == key: # policies (conditional, branchless, ...)
