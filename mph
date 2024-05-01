@@ -197,7 +197,8 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
       max = vs[i];
     }
   }
-  utility::array<utility::compressed_pair<bool, T>, Size> hashed;
+  constexpr auto N = Size << 1u;
+  utility::array<utility::compressed_pair<bool, T>, N> hashed;
   const auto nbits = size - __builtin_clz(max) - 1;
   T mask{(T(1) << nbits) - 1};
   for (int n = nbits; n >= 0; --n) {
@@ -205,10 +206,8 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
     hashed = {};
     for (auto i = 0u; i < Size; ++i) {
       const auto masked = vs[i] & mask;
-      auto hash = masked % Size;
-      while (hashed[hash].first and hashed[hash].second != masked) {
-        hash = (hash + 1) % Size;
-      }
+      auto hash = masked % N;
+      while (hashed[hash].first and hashed[hash].second != masked) ++hash;
       if (hashed[hash].first and hashed[hash].second == masked) {
         mask |= (T(1) << n);
         break;
