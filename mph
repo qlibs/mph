@@ -207,7 +207,9 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
     for (auto i = 0u; i < Size; ++i) {
       const auto masked = vs[i] & mask;
       auto hash = masked % N;
-      while (hashed[hash].first and hashed[hash].second != masked) ++hash;
+      while (hashed[hash].first and hashed[hash].second != masked) {
+        hash = (hash + 1u) % N;
+      }
       if (hashed[hash].first and hashed[hash].second == masked) {
         mask |= (T(1) << n);
         break;
