@@ -23,7 +23,7 @@
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
   - Lookup table size = `2^popcount(mask which uniquely identifies all keys) of pair{key, value}`
 - Fast compilations times (see [compilation-times](#compilation))
-- Limitations - see [FAQ](#faq)
+- Limitations (see [FAQ](#faq))
 
 ### Requirements
 
