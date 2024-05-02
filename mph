@@ -12,9 +12,9 @@
  * Perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_2_0 {
-using size_t = decltype(sizeof(int));
-using uint32_t = unsigned int;
-using uint64_t = unsigned long int;
+using size_t = __SIZE_TYPE__;
+using uint32_t = __UINT32_TYPE__;
+using uint64_t = __UINT64_TYPE__;
 namespace utility {
 template<class T1, class T2>
 struct compressed_pair {
@@ -187,6 +187,9 @@ inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
   return __builtin_ia32_bzhi_di(src, index);
 }
 
+[[nodiscard]] constexpr auto clz(const uint32_t x) { return __builtin_clz(x); }
+[[nodiscard]] constexpr auto clz(const uint64_t x) { return __builtin_clzl(x); }
+
 template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * MPH_CHAR_BIT>
 [[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
@@ -199,7 +202,7 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
   }
   constexpr auto N = Size << 1u;
   utility::array<utility::compressed_pair<bool, T>, N> hashed;
-  const auto nbits = size - __builtin_clz(max) - 1;
+  const auto nbits = size - clz(max) - 1;
   T mask{(T(1) << nbits) - 1};
   for (int n = nbits; n >= 0; --n) {
     mask &= ~(T(1) << n);
