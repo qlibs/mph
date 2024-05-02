@@ -136,10 +136,6 @@ inline constexpr auto unpredictable =
   };
 #endif
 
-#if not defined(MPH_CHAR_BIT)
-#define MPH_CHAR_BIT 8u
-#endif
-
 namespace detail {
 template<class T>
 [[nodiscard]] constexpr decltype(auto) as(const auto& value) noexcept {
@@ -147,7 +143,7 @@ template<class T>
     T result{};
     const auto size = value.size();
     for (auto i = 0u; i < size; ++i) {
-      result = (result << MPH_CHAR_BIT) | value[size - i - 1];
+      result = (result << __CHAR_BIT__) | value[size - i - 1];
     }
     return result;
   } else {
@@ -156,7 +152,7 @@ template<class T>
 }
 
 /// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-template<class T, T size = sizeof(T) * MPH_CHAR_BIT>
+template<class T, T size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
   T result{};
   auto k = 0u;
@@ -190,7 +186,7 @@ inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
 [[nodiscard]] constexpr auto clz(const uint32_t x) { return __builtin_clz(x); }
 [[nodiscard]] constexpr auto clz(const uint64_t x) { return __builtin_clzl(x); }
 
-template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * MPH_CHAR_BIT>
+template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
   T max{};
@@ -264,9 +260,9 @@ template<class T>
     #pragma GCC diagnostic pop
 
     if constexpr (sizeof(T) == sizeof(uint32_t)) {
-      return T(bzhi(t, T(data.size() * MPH_CHAR_BIT)));
+      return T(bzhi(t, T(data.size() * __CHAR_BIT__)));
     } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-      return T(bzhi(t, T(data.size() * MPH_CHAR_BIT)));
+      return T(bzhi(t, T(data.size() * __CHAR_BIT__)));
     }
     return t;
   } else {
@@ -533,8 +529,8 @@ static_assert(([] {
 
     static_assert(int(0) == mph::detail::as<int>(array{0}));
     static_assert(int(1) == mph::detail::as<int>(array{1}));
-    static_assert((int(1) << 0) + (int(2) << MPH_CHAR_BIT) == mph::detail::as<int>(array{1, 2}));
-    static_assert((int(1) << 0) + (int(2) << MPH_CHAR_BIT)  + (int(3) << MPH_CHAR_BIT*2) == mph::detail::as<int>(array{1, 2, 3}));
+    static_assert((int(1) << 0) + (int(2) << __CHAR_BIT__) == mph::detail::as<int>(array{1, 2}));
+    static_assert((int(1) << 0) + (int(2) << __CHAR_BIT__)  + (int(3) << __CHAR_BIT__*2) == mph::detail::as<int>(array{1, 2, 3}));
   }
 
   // mph::detail::cmp
