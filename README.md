@@ -133,7 +133,7 @@ int main(int, const char** argv) {
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movq    8(%rsi), %rax
   movl    $1031, %ecx
-  leaq    3lut(%rip), %rdx
+  leaq    lut(%rip), %rdx
   xorl    %esi, %esi
   movq    (%rax), %rax
   pextq   %rcx, %rax, %rcx
