@@ -238,9 +238,9 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movl    (%rax), %eax
   movl    $789, %ecx
   pextl   %ecx, %eax, %ecx
-  leaq    lookup(%rip), %rdx
+  leaq    lookup(%rip), %rdx  # lookup
   movzbl  (%rcx,%rdx), %ecx
-  leaq    storage(%rip), %rdx
+  leaq    storage(%rip), %rdx # additional lookup
   xorl    %esi, %esi
   cmpl    (%rdx,%rcx,8), %eax
   movzbl  4(%rdx,%rcx,8), %eax
@@ -250,7 +250,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 storage: # size = kv.size() of {key, value}
   ...
 
-lookup: # size = 2^popcount(mask) of {value}
+lookup: # size = 2^popcount(mask) of min(sizeof(2^popcount(mask)))
   ...
 ```
 
