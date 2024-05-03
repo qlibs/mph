@@ -420,7 +420,7 @@ template<
           return key;
         }
       }();
-      constexpr const mask_type mask = detail::mask<key_type>(kv);
+      constexpr mask_type mask = detail::mask<key_type>(kv);
       auto&& [rhs, value] = lookup.template operator()<key_type, value_type, kv, unknown, mask>(detail::pext(lhs, mask));
       return cmp(lhs == rhs, value, unknown);
     }();
