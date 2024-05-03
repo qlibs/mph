@@ -341,11 +341,10 @@ inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unkn
     utility::aligned_t<
       utility::array<
         utility::compressed_pair<TKey, TValue>,
-        1u + kv.size()
+        kv.size()
       >, alignment
     > storage;
-    storage[0] = utility::compressed_pair{TKey{}, unknown};
-    for (auto i = 1u; const auto& [key, value] : kv) {
+    for (auto i = 0u; const auto& [key, value] : kv) {
       const auto k = detail::as<TKey>(key);
       storage[i++] = utility::compressed_pair{k, value};
     }

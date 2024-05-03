@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/doxx8eeve">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/W3PjKxPvs">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/GxaWGKc18">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -191,7 +191,7 @@ lut:
   ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/sj4cTnqz9)
+### Performance [potentially unsafe] (https://godbolt.org/z/nbn8q73KE)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` lookup policy can be used which will avoid comparison to the original key
 
