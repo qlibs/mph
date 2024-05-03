@@ -21,7 +21,6 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-  - Lookup table size = `2^popcount(mask which uniquely identifies all keys) of pair{key, value}`
 - Fast compilations times (see [compilation-times](#compilation))
 - Limitations (see [FAQ](#faq))
 
@@ -83,11 +82,11 @@ main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   xorl %eax, %eax
   pext %edx, %edi, %edx
   movl %edx, %edx
-  cmpl %edi, lut(,%rdx,8)
-  cmove lut+4(,%rdx,8), %eax
+  cmpl %edi, lookup(,%rdx,8)
+  cmove lookup+4(,%rdx,8), %eax
   ret
 
-lut:
+lookup: # size = 2^popcount(mask) of {key, value}
   .long   64
   .long   324
   .zero   8
@@ -133,7 +132,7 @@ int main(int, const char** argv) {
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movq    8(%rsi), %rax
   movl    $1031, %ecx
-  leaq    lut(%rip), %rdx
+  leaq    lookup(%rip), %rdx
   xorl    %esi, %esi
   movq    (%rax), %rax
   pextq   %rcx, %rax, %rcx
@@ -143,7 +142,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   cmovnel %esi, %eax
   retq
 
-lut:
+lookup:
   ...
 ```
 
@@ -178,7 +177,7 @@ int main(int, const char** argv) {
 main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movq    8(%rsi), %rax
   movl    $789, %ecx
-  leaq    lut(%rip), %rdx
+  leaq    lookup(%rip), %rdx
   xorl    %esi, %esi
   movl    (%rax), %eax
   pextl   %ecx, %eax, %ecx
@@ -187,7 +186,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   cmovnel %esi, %eax
   retq
 
-lut:
+lookup:
   ...
 ```
 
@@ -212,15 +211,15 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
   movl    $789, %ecx
   movl    (%rax), %eax
   pextl   %ecx, %eax, %eax
-  leaq    lut(%rip), %rcx
+  leaq    lookup(%rip), %rcx
   movzbl  4(%rcx,%rax,8), %eax
   retq
 
-lut:
+lookup:
   ...
 ```
 
-### Performance [size optimization] ()
+### Performance [size optimization] (https://godbolt.org/z/4MsW1W1T5)
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
@@ -234,6 +233,25 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 ```
 
 ```cpp
+main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+  movq    8(%rsi), %rax
+  movl    (%rax), %eax
+  movl    $789, %ecx
+  pextl   %ecx, %eax, %ecx
+  leaq    lookup(%rip), %rdx
+  movzbl  (%rcx,%rdx), %ecx
+  leaq    storage(%rip), %rdx
+  xorl    %esi, %esi
+  cmpl    (%rdx,%rcx,8), %eax
+  movzbl  4(%rdx,%rcx,8), %eax
+  cmovnel %esi, %eax
+  retq
+
+storage: # size = kv.size() of {key, value}
+  ...
+
+lookup: # size = 2^popcount(mask) of {value}
+  ...
 ```
 
 ---
@@ -531,9 +549,9 @@ inline constexpr auto indirect =
       assert unique(masked)
       assert mask != ~typeof(kv[0][0])
 
-      lut = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr + alignment
+      lookup = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr + alignment
       for k, v in kv:
-        lut[pext(k, mask)] = (k, v)
+        lookup[pext(k, mask)] = (k, v)
 
       # 1. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
         # word: 00101011
@@ -551,7 +569,7 @@ inline constexpr auto indirect =
 
           return uN(dst)
 
-      k, v = lut[pext(key, mask)]
+      k, v = lookup[pext(key, mask)]
 
       if k == key: # policies (conditional, branchless, ...)
         return v
