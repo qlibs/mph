@@ -357,8 +357,7 @@ inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unkn
         uint32_t
       >
     >;
-    utility::aligned_t<utility::array<type, (decltype(mask)(1u) << nbits)>, alignment > lookup;
-    lookup.fill(unknown);
+    utility::aligned_t<utility::array<type, (decltype(mask)(1u) << nbits)>, alignment > lookup{};
     for (auto i = 0u; const auto& [key, value] : kv) {
       const auto k = detail::as<TKey>(key);
       const auto p = detail::pext<TKey>(k, mask);
