@@ -358,10 +358,10 @@ inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unkn
       >
     >;
     utility::aligned_t<utility::array<type, (decltype(mask)(1u) << nbits)>, alignment > lookup{};
-    for (auto i = 0u; const auto& [key, value] : kv) {
+    for (type i{}; const auto& [key, value] : kv) {
       const auto k = detail::as<TKey>(key);
       const auto p = detail::pext<TKey>(k, mask);
-      lookup[p] = TValue(i++);
+      lookup[p] = i++;
     }
     return lookup;
   }();
