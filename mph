@@ -13,6 +13,8 @@
  */
 namespace mph::inline v2_2_0 {
 using size_t = __SIZE_TYPE__;
+using uint8_t = __UINT8_TYPE__;
+using uint16_t = __UINT16_TYPE__;
 using uint32_t = __UINT32_TYPE__;
 using uint64_t = __UINT64_TYPE__;
 namespace utility {
@@ -345,7 +347,17 @@ inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unkn
     return storage;
   }();
   static constexpr const auto lookup = [] {
-    utility::aligned_t<utility::array<TValue, (decltype(mask)(1u) << __builtin_popcountll(mask))>, alignment > lookup;
+    constexpr auto nbits = __builtin_popcountll(mask);
+    using type = utility::conditional_t<
+      (nbits <= __CHAR_BIT__),
+      uint8_t,
+      utility::conditional_t<
+        nbits <= (sizeof(uint16_t) * __CHAR_BIT__),
+        uint16_t,
+        uint32_t
+      >
+    >;
+    utility::aligned_t<utility::array<type, (decltype(mask)(1u) << nbits)>, alignment > lookup;
     lookup.fill(unknown);
     for (auto i = 0u; const auto& [key, value] : kv) {
       const auto k = detail::as<TKey>(key);
