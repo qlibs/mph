@@ -338,25 +338,14 @@ inline constexpr auto direct = []<class TKey, class TValue, auto kv, auto unknow
 template<size_t alignment = size_t{}>
 inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unknown, auto mask>(const auto index) -> decltype(auto) {
   static constexpr const auto storage = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::compressed_pair<TKey, TValue>,
-        kv.size()
-      >, alignment
-    > storage;
+    utility::aligned_t<utility::array<utility::compressed_pair<TKey, TValue>, kv.size()>, alignment> storage;
     for (auto i = 0u; const auto& [key, value] : kv) {
-      const auto k = detail::as<TKey>(key);
-      storage[i++] = utility::compressed_pair{k, value};
+      storage[i++] = utility::compressed_pair{detail::as<TKey>(key), value};
     }
     return storage;
   }();
   static constexpr const auto lookup = [] {
-    utility::aligned_t<
-      utility::array<
-        TValue,
-        (decltype(mask)(1u) << __builtin_popcountll(mask))
-      >, alignment
-    > lookup;
+    utility::aligned_t<utility::array<TValue, (decltype(mask)(1u) << __builtin_popcountll(mask))>, alignment > lookup;
     lookup.fill(unknown);
     for (auto i = 0u; const auto& [key, value] : kv) {
       const auto k = detail::as<TKey>(key);
