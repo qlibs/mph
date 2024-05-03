@@ -36,8 +36,8 @@ struct array {
   [[nodiscard]] constexpr auto operator==(const array&) const noexcept -> bool = default;
   [[nodiscard]] constexpr auto begin() const noexcept { return &data_[0]; }
   [[nodiscard]] constexpr auto begin() noexcept { return &data_[0]; }
-  [[nodiscard]] constexpr auto end() const noexcept { return &data_[0]+Size; }
-  [[nodiscard]] constexpr auto end() noexcept { return &data_[0]+Size; }
+  [[nodiscard]] constexpr auto end() const noexcept { return &data_[0] + Size; }
+  [[nodiscard]] constexpr auto end() noexcept { return &data_[0] + Size; }
   constexpr void fill(const T& value) noexcept { for (auto i = 0u; i < Size; ++i) { data_[i] = value; } }
   T data_[Size];
 };
@@ -81,60 +81,6 @@ struct basic_fixed_string {
   utility::array<T, MaxSize> data_{};
 };
 using fixed_string = basic_fixed_string<char, sizeof(uint64_t)>;
-
-inline constexpr auto unconditional =
-  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-    return lhs; // [unsafe] returns unconditionally
-  };
-
-inline constexpr auto conditional =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    return cond ? lhs : rhs; // generates jmp (x86-64)
-  };
-
-inline constexpr auto likely =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (cond) [[likely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-inline constexpr auto unlikely =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    if (cond) [[unlikely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-template<auto Probablity>
-inline constexpr auto conditional_probability =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-inline constexpr auto branchless =
-  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-    return cond * lhs; // more likely to generate cmov (x86-64)
-  };
-
-#if defined(__clang__)
-inline constexpr auto unpredictable =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-#endif
 
 namespace detail {
 template<class T>
@@ -313,11 +259,121 @@ template<class TKey> [[nodiscard]] constexpr auto size(const TKey& key) {
 }
 } // namespace detail
 
+inline constexpr auto unconditional =
+  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
+    return lhs; // [unsafe] returns unconditionally
+  };
+
+inline constexpr auto conditional =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    return cond ? lhs : rhs; // generates jmp (x86-64)
+  };
+
+inline constexpr auto likely =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (cond) [[likely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
+
+inline constexpr auto unlikely =
+  [](const bool cond, const auto lhs, const auto rhs) {
+    if (cond) [[unlikely]] {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
+
+template<auto Probablity>
+inline constexpr auto conditional_probability =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
+
+inline constexpr auto branchless =
+  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
+    return cond * lhs; // more likely to generate cmov (x86-64)
+  };
+
+inline constexpr auto unpredictable =
+  [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    #if defined(__clang__)
+    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
+    #else
+    if (__builtin_expect_with_probability(cond, 1, .5)) {
+    #endif
+      return lhs;
+    } else {
+      return rhs;
+    }
+  };
+
+template<size_t alignment = size_t{}>
+inline constexpr auto direct = []<class TKey, class TValue, auto kv, auto unknown, auto mask>(const auto index) -> decltype(auto) {
+  static constexpr const auto lookup = [] {
+    utility::aligned_t<
+      utility::array<
+        utility::compressed_pair<TKey, TValue>,
+        (decltype(mask)(1u) << __builtin_popcountll(mask))
+      >, alignment
+    > lookup;
+    lookup.fill(utility::compressed_pair{TKey{}, unknown});
+    for (const auto& [key, value] : kv) {
+      const auto k = detail::as<TKey>(key);
+      const auto p = detail::pext<TKey>(k, mask);
+      lookup[p] = utility::compressed_pair{k, value};
+    }
+    return lookup;
+  }();
+  return lookup[index];
+};
+
+template<size_t alignment = size_t{}>
+inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unknown, auto mask>(const auto index) -> decltype(auto) {
+  static constexpr const auto storage = [] {
+    utility::aligned_t<
+      utility::array<
+        utility::compressed_pair<TKey, TValue>,
+        1u + kv.size()
+      >, alignment
+    > storage;
+    storage[0] = utility::compressed_pair{TKey{}, unknown};
+    for (auto i = 1u; const auto& [key, value] : kv) {
+      const auto k = detail::as<TKey>(key);
+      storage[i++] = utility::compressed_pair{k, value};
+    }
+    return storage;
+  }();
+  static constexpr const auto lookup = [] {
+    utility::aligned_t<
+      utility::array<
+        TValue,
+        (decltype(mask)(1u) << __builtin_popcountll(mask))
+      >, alignment
+    > lookup;
+    lookup.fill(unknown);
+    for (auto i = 0u; const auto& [key, value] : kv) {
+      const auto k = detail::as<TKey>(key);
+      const auto p = detail::pext<TKey>(k, mask);
+      lookup[p] = TValue(i++);
+    }
+    return lookup;
+  }();
+  return storage[lookup[index]];
+};
+
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = typename decltype(kv)::value_type::second_type{},
-  auto policy = conditional,
-  size_t alignment = size_t{}, // no alignment is set
+  auto lookup = direct<>,
+  auto cmp = conditional,
   auto max_key_len = detail::max_key_len(kv)
 > requires
     requires { kv.size(); } and (
@@ -358,23 +414,6 @@ template<
         uint32_t,
         uint64_t
       >;
-      static constexpr const mask_type mask = detail::mask<key_type>(kv);
-      static_assert(mask != ~mask_type{}, "[error] mask can't be found!");
-      static constexpr const auto lut = [] {
-        utility::aligned_t<
-          utility::array<
-            utility::compressed_pair<key_type, value_type>,
-            (mask_type(1u) << __builtin_popcountll(mask))
-          >, alignment
-        > lut;
-        lut.fill(utility::compressed_pair{key_type{}, unknown});
-        for (const auto& [key, value] : kv) {
-          const auto k = detail::as<key_type>(key);
-          const auto p = detail::pext<key_type>(k, mask);
-          lut[p] = utility::compressed_pair{k, value};
-        }
-        return lut;
-      }();
       auto&& lhs = [&]() -> decltype(auto) {
         if constexpr (requires { key.size(); }) {
           return detail::to<key_type>(key);
@@ -382,8 +421,9 @@ template<
           return key;
         }
       }();
-      auto&& [rhs, value] = lut[detail::pext(lhs, mask)];
-      return policy(lhs == rhs, value, unknown);
+      constexpr const mask_type mask = detail::mask<key_type>(kv);
+      auto&& [rhs, value] = lookup.template operator()<key_type, value_type, kv, unknown, mask>(detail::pext(lhs, mask));
+      return cmp(lhs == rhs, value, unknown);
     }();
   }
 }

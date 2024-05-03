@@ -193,7 +193,7 @@ lut:
 
 ### Performance [potentially unsafe] (https://godbolt.org/z/sj4cTnqz9)
 
-> If `all` possible inputs are known and can be found in the keys, then `unconditional` policy can be used which will avoid comparison to the original key
+> If `all` possible inputs are known and can be found in the keys, then `unconditional` lookup policy can be used which will avoid comparison to the original key
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
@@ -201,7 +201,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
     // key/value pairs from https://godbolt.org/z/xdTd6YnPG
   };
 
-  return mph::hash<symbols, 0/*unknown*/, mph::unconditional>(
+  return mph::hash<symbols, 0/*unknown*/, mph::direct<>, mph::unconditional>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
 ```
@@ -218,6 +218,22 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
 
 lut:
   ...
+```
+
+### Performance [size optimization] ()
+
+```cpp
+int main(int argc, [[maybe_unused]] const char** argv) {
+  constexpr auto symbols = std::array{
+    // key/value pairs from https://godbolt.org/z/xdTd6YnPG
+  };
+
+  return mph::hash<symbols, 0/*unknown*/, mph::indirect<>>(
+    std::span<const char, 4>(argv[1], argv[1]+4)
+  );
+```
+
+```cpp
 ```
 
 ---
@@ -342,14 +358,15 @@ time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
  * @tparam kv constexpr array of key/value pairs
            (for string-like mph::fixed_string is required)
  * @tparam unknown returned value when key is not found (default: 0)
- * @tparam alignment of the lookup table (default: 0 / no alignment is set)
+ * @tparam lookup storage/lookup policy
+ * @tparam cmp comparison policy
  * @param key input data (should match kv keys type)
  */
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
-  auto policy = conditional, // default policy
-  size_t alignment = {}, // no alignment is set
+  auto lookup = direct<>,
+  auto cmp = conditional,
   auto max_key_len = max_key_len(kv)
 > requires
     requires { kv.size(); } and (
@@ -419,16 +436,40 @@ inline constexpr auto branchless =
 ```
 
 ```cpp
-#if defined(__clang__)
 inline constexpr auto unpredictable =
   [](const bool cond, const auto lhs, const auto rhs) noexcept {
+    #if defined(__clang__)
     if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
+    #else
+    if (__builtin_expect_with_probability(cond, 1, .5)) {
+    #endif
       return lhs;
     } else {
       return rhs;
     }
   };
-#endif
+```
+
+```cpp
+template<size_t alignment = {}>
+inline constexpr auto direct =
+    []<class TKey,
+       class TValue,
+       auto kv,
+       auto unknown,
+       auto mask
+    >(const auto index);
+```
+
+```cpp
+template<size_t alignment = {}>
+inline constexpr auto indirect =
+    []<class TKey,
+       class TValue,
+       auto kv,
+       auto unknown,
+       auto mask
+    >(const auto index);
 ```
 
 > Configuration
@@ -454,7 +495,7 @@ inline constexpr auto unpredictable =
       For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
-      In such case different policy backup should be used instead, for example:
+      In such case different backup policy should be used instead, for example:
 
     ```cpp
     template<auto... ts>
@@ -534,25 +575,22 @@ inline constexpr auto unpredictable =
       That will make the lookup table smaller and it will avoid `shl` for getting the value.
       Consider using minimial required size for values. That will make the lookup table smaller.
       Experiment with different policies for the comparison based on the expert knowledge of future input data (`conditional, likey, unlikely, conditional_probability, branchless, unpredictable`).
-      If input values are always valid (values from predefined keys) consider using `unconditional` policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
+      If input values are always valid (values from predefined keys) consider using `unconditional` lookup policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!
-
-- How fast compilation times have been achieved?
-
-    > Most of the compilation time is spent in the `detail::mask` which is mainly dependent on the key/value pair size.
-    There are a few compile-time optimizations which allows fast compilation times during constexpr evaluation.
-    Note: It's not a pretty code and/or nice design, just fast to compile.
-
-    - optimize algorithms for O(N) (constexpr is a virtual machine and no real hardware therefore O(N) is more important than at run-time)
-    - no algorithms (the less levels of indirection the faster the compilation times)
-    - precalculate the number of bits used by the max value of keys (allows to limit iterations)
-    - use linear probing hashing to identify whether mask is unique for given keys (faster than unique)
 
 - Can I disable running tests at compile-time?
 
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
+
+- Can I disable `cmov` generation?
+
+    > Consider using `conditional` lookuppolicy. Additionaly the following compiler options can be used.
+
+    ```
+    clang: -mllvm -x86-cmov-converter=false
+    ```
 
 - I'm getting a compilation error `constexpr evaluation hit maximum step limit`?
 
