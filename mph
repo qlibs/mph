@@ -365,7 +365,7 @@ inline constexpr auto indirect = []<class TKey, class TValue, auto kv, auto unkn
     }
     return lookup;
   }();
-  return storage[lookup[index]];
+  return storage[size_t(lookup[index])];
 };
 
 template<
