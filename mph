@@ -284,7 +284,6 @@ template<
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-
   static constexpr mask_type mask = detail::mask<key_type>(kv);
   static constexpr const auto lookup = [] {
     utility::aligned_t<
@@ -314,7 +313,6 @@ template<
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-
   static constexpr mask_type mask = detail::mask<key_type>(kv);
   static constexpr const auto storage = [] {
     utility::aligned_t<
@@ -359,12 +357,11 @@ template<
 template<
   auto cmp = conditional,
   size_t alignment = size_t{},
-  auto split_mask = 0xFF // first byte
+  auto split_mask = 0xFF
 > inline constexpr auto split = []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-
   static constexpr auto splits = [] {
     utility::array<
       utility::static_vector<
