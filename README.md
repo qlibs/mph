@@ -104,14 +104,10 @@ lookup: # size = 2^popcount(mask) of {key, value}
 
 ---
 
-### Performance (https://godbolt.org/z/TW8q1b571)
+### Performance (https://godbolt.org/z/zrWf6Kf1s)
 
 ```cpp
 int main(int, const char** argv) {
-  constexpr auto pair = [](mph::fixed_string key, std::uint8_t value) {
-    return std::pair{key, value};
-  };
-
   constexpr auto symbols = std::array{
     pair("AMZN",  1),
     pair("AAPL",  2),
