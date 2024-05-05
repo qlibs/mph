@@ -357,9 +357,9 @@ template<
 template<
   auto cmp = conditional,
   size_t alignment = size_t{},
-  auto split_mask = 0xFF
+  size_t split_index = 0u
 > inline constexpr auto split = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
-    requires requires { key[0]; } {
+    requires requires { key[split_index]; } {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
@@ -371,7 +371,7 @@ template<
       >, (1u << __CHAR_BIT__)
     > splits{};
     for (const auto& [key, value] : kv) {
-      splits[key & key_type(split_mask)].push_back(utility::compressed_pair{key, value});
+      splits[key & key_type(0xFF << split_index)].push_back(utility::compressed_pair{key, value});
     }
     return splits;
   }();
@@ -419,7 +419,7 @@ template<
     return lookups;
   }();
 
-  const auto k = key[0];
+  const auto k = key[split_index];
   const auto mask = masks[k];
   auto&& lhs = to<key_type>(key);
   auto&& [rhs, value] = lookups[k][detail::pext(lhs, mask)];

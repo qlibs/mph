@@ -468,9 +468,9 @@ template<
 template<
   auto cmp = conditional,
   size_t alignment = size_t{},
-  auto split_mask = 0xFF
+  size_t split_index = 0u,
 > inline constexpr auto split = []<auto kv, auto unknown>(const auto& key)
-    requires requires { key[0]; };
+    requires requires { key[split_index]; };
 ```
 
 > Configuration
