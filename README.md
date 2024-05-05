@@ -375,7 +375,7 @@ template<
     kv.end();
     kv[0].first;
     kv[0].second;
-> [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
+} [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
 ```
 
 > Policies
@@ -454,16 +454,14 @@ inline constexpr auto unpredictable =
 template<
   auto cmp = conditional,
   size_t alignment = {}
-> inline constexpr auto direct =
-    []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
+> inline constexpr auto direct = []<auto kv, auto unknown>(const auto& key);
 ```
 
 ```cpp
 template<
   auto cmp = conditional,
   size_t alignment = {}
-> inline constexpr auto indirect =
-    []<auto kv, auto unknown>(const auto& key) -> decltype(auto);
+> inline constexpr auto indirect = []<auto kv, auto unknown>(const auto& key);
 ```
 
 ```cpp
@@ -471,8 +469,8 @@ template<
   auto cmp = conditional,
   size_t alignment = size_t{},
   auto split_mask = 0xFF
-> inline constexpr auto split =
-    []<auto kv, auto unknown>(const auto& key) -> decltype(auto);
+> inline constexpr auto split = []<auto kv, auto unknown>(const auto& key)
+    requires requires { key[0]; };
 ```
 
 > Configuration
