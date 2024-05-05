@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/W3PjKxPvs">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/GxaWGKc18">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/Th8faceqf">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/vooq6obTs">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)]
+- C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)]
 
 ### Hello world (https://godbolt.org/z/GT68j8a96)
 
@@ -34,9 +34,9 @@
 enum class color { red = 1, green = 2, blue = 3 };
 
 constexpr auto colors = std::array{
-  pair("red", color::red},
-  pair("green", color::green},
-  pair("blue", color::blue},
+  pair("red", color::red),
+  pair("green", color::green),
+  pair("blue", color::blue),
 };
 
 static_assert(color::green == mph::hash<colors>("green"sv));
@@ -146,14 +146,10 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/P6TWM4P7c)
+### Performance (https://godbolt.org/z/TGjh38aPc)
 
 ```cpp
 int main(int, const char** argv) {
-  constexpr auto pair = [](mph::fixed_string key, std::uint8_t value) {
-    return std::pair{key, value};
-  };
-
   constexpr std::array symbols{
     pair("BTC",  1),
     pair("ETH",  2),
@@ -190,17 +186,14 @@ lookup:
   ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/nbn8q73KE)
+### Performance [potentially unsafe] (https://godbolt.org/z/nTYTWaMoY)
 
 > If `all` possible inputs are known and can be found in the keys, then `unconditional` lookup policy can be used which will avoid comparison to the original key
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
-  constexpr auto symbols = std::array{
-    // key/value pairs from https://godbolt.org/z/xdTd6YnPG
-  };
-
-  return mph::hash<symbols, 0/*unknown*/, mph::direct<>, mph::unconditional>(
+  // ...
+  return mph::hash<symbols, 0/*unknown*/, mph::direct<mph::unconditional>>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
 ```
@@ -219,14 +212,11 @@ lookup:
   ...
 ```
 
-### Performance [size optimization] (https://godbolt.org/z/4MsW1W1T5)
+### Performance [size optimization] (https://godbolt.org/z/fKTeW7Yzd)
 
 ```cpp
 int main(int argc, [[maybe_unused]] const char** argv) {
-  constexpr auto symbols = std::array{
-    // key/value pairs from https://godbolt.org/z/xdTd6YnPG
-  };
-
+  // ...
   return mph::hash<symbols, 0/*unknown*/, mph::indirect<>>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
@@ -258,7 +248,7 @@ lookup: # size = 2^popcount(mask) of min(sizeof(2^popcount(mask)))
 
 ### Examples
 
-- [feature/performance] branchless dispatcher - https://godbolt.org/z/jeYcE1xoo
+- [feature/performance] branchless dispatcher - https://godbolt.org/z/rx1MnsjeE
 
 ---
 
