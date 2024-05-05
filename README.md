@@ -21,22 +21,22 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-- Fast compilations times (see [compilation-times](#compilation))
+- Fast* compilations times (see [compilation-times](#compilation))
 - Limitations (see [FAQ](#faq))
 
 ### Requirements
 
 - C++20 ([gcc-12+](https://godbolt.org/z/3zh43YTMd), [clang-15+](https://godbolt.org/z/3zh43YTMd)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)]
 
-### Hello world (https://godbolt.org/z/GxaWGKc18)
+### Hello world (https://godbolt.org/z/GT68j8a96)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
 
 constexpr auto colors = std::array{
-  std::pair{mph::fixed_string{"red"}, color::red},
-  std::pair{mph::fixed_string{"green"}, color::green},
-  std::pair{mph::fixed_string{"blue"}, color::blue},
+  pair("red", color::red},
+  pair("green", color::green},
+  pair("blue", color::blue},
 };
 
 static_assert(color::green == mph::hash<colors>("green"sv));
@@ -376,24 +376,20 @@ time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
  * @tparam kv constexpr array of key/value pairs
            (for string-like mph::fixed_string is required)
  * @tparam unknown returned value when key is not found (default: 0)
- * @tparam lookup storage/lookup policy
- * @tparam cmp comparison policy
- * @param key input data (should match kv keys type)
+ * @tparam policy storage/lookup policy
+ * @param key input data
  */
 template<
   auto kv,
   typename decltype(kv)::value_type::second_type unknown = {},
-  auto lookup = direct<>,
-  auto cmp = conditional,
-  auto max_key_len = max_key_len(kv)
-> requires
-    requires { kv.size(); } and (
-      kv.size() >= 0u and
-      max_key_len <= sizeof(uint64_t) and
-      size(kv[0].first) <= sizeof(uint64_t)
-    )
-[[nodiscard]] [[gnu::target("bmi2")]]
-constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
+  auto policy = direct<>,
+> requires requires {
+    kv.size();
+    kv.begin();
+    kv.end();
+    kv[0].first;
+    kv[0].second;
+> [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
 ```
 
 > Policies
@@ -469,25 +465,28 @@ inline constexpr auto unpredictable =
 ```
 
 ```cpp
-template<size_t alignment = {}>
-inline constexpr auto direct =
-    []<class TKey,
-       class TValue,
-       auto kv,
-       auto unknown,
-       auto mask
-    >(const auto index);
+template<
+  auto cmp = conditional,
+  size_t alignment = {}
+> inline constexpr auto direct =
+    []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
 ```
 
 ```cpp
-template<size_t alignment = {}>
-inline constexpr auto indirect =
-    []<class TKey,
-       class TValue,
-       auto kv,
-       auto unknown,
-       auto mask
-    >(const auto index);
+template<
+  auto cmp = conditional,
+  size_t alignment = {}
+> inline constexpr auto indirect =
+    []<auto kv, auto unknown>(const auto& key) -> decltype(auto);
+```
+
+```cpp
+template<
+  auto cmp = conditional,
+  size_t alignment = size_t{},
+  auto split_mask = 0xFF
+> inline constexpr auto split =
+    []<auto kv, auto unknown>(const auto& key) -> decltype(auto);
 ```
 
 > Configuration
@@ -615,7 +614,7 @@ inline constexpr auto indirect =
     > The following options can be used to increase the limits, however, compilation-times should be monitored.
 
     ```
-    gcc:   -fconstexpr-ops-limit=N
+    gcc:   -fconstexpr-ops-limit=N -fconstexpr-loop-limit=N
     clang: -fconstexpr-steps=N
     ```
 
