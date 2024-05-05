@@ -34,9 +34,9 @@
 enum class color { red = 1, green = 2, blue = 3 };
 
 constexpr auto colors = std::array{
-  pair("red", color::red),
+  pair("red",   color::red),
   pair("green", color::green),
-  pair("blue", color::blue),
+  pair("blue",  color::blue),
 };
 
 static_assert(color::green == mph::hash<colors>("green"sv));
