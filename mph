@@ -6,12 +6,12 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 2'2'0 // SemVer
+#define MPH 2'2'1 // SemVer
 
 /**
  * Perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v2_2_0 {
+namespace mph::inline v2_2_1 {
 using size_t = __SIZE_TYPE__;
 using uint8_t = __UINT8_TYPE__;
 using uint16_t = __UINT16_TYPE__;
