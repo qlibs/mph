@@ -358,7 +358,8 @@ template<
   auto cmp = conditional,
   size_t alignment = size_t{},
   auto split_mask = 0xFF
-> inline constexpr auto split = []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
+> inline constexpr auto split = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
+    requires requires { key[0]; } {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
