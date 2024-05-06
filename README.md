@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://godbolt.org/z/ss1bh6GP7">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/vooq6obTs">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/MhPa6exqc">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -47,13 +47,19 @@ std::print("{}", mph::hash<colors>("green"sv));
 ```
 
 ```
+# bmi2/pext - hardware accelerated
 $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
+```
+
+```
+# pext - software accelerated
+$CXX -std=c++20 -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/nvf4xbMea)
+### Performance (https://godbolt.org/z/MhPa6exqc)
 
 ```cpp
 int main(int argc, char**)
