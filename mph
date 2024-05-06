@@ -79,46 +79,101 @@ struct aligned {
 template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, size_t alignment>
 using aligned_t = typename aligned<T, alignment>::type;
-} // namespace utility
 
-namespace detail {
-/// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-template<class T, T size = sizeof(T) * __CHAR_BIT__>
-[[nodiscard]] constexpr auto pext(const T a, T mask) noexcept {
-  T result{};
-  auto k = 0u;
-  for (T i{}; i < size; ++i) {
-    if (mask & 1) result |= ((a >> i) & 1) << k++;
-    mask >>= 1;
-  }
-  return result;
+[[nodiscard]] constexpr auto clz(const uint32_t x) noexcept {
+  return __builtin_clz(x);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
-inline auto pext(const uint32_t a, const uint32_t mask) noexcept {
-  return __builtin_ia32_pext_si(a, mask);
+[[nodiscard]] constexpr auto clz(const uint64_t x) noexcept {
+  return __builtin_clzl(x);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
-inline auto pext(const uint64_t a, const uint64_t mask) noexcept {
-  return __builtin_ia32_pext_di(a, mask);
+[[nodiscard]] constexpr auto popcount(const uint32_t x) noexcept {
+  return __builtin_popcountl(x);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
-inline auto bzhi(const uint32_t src, const uint32_t index) noexcept {
+[[nodiscard]] constexpr auto popcount(const uint64_t x) noexcept {
+  return __builtin_popcountll(x);
+}
+
+#if defined(__BMI2__)
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint32_t src, const uint32_t index) noexcept {
   return __builtin_ia32_bzhi_si(src, index);
 }
 
-[[nodiscard]] [[gnu::target("bmi2")]] [[gnu::always_inline]]
-inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
   return __builtin_ia32_bzhi_di(src, index);
 }
+#else
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const T src, const T index) noexcept -> T {
+  return src & ((T(1) << index) - T(1));
+}
+#endif
 
-[[nodiscard]] constexpr auto clz(const uint32_t x) { return __builtin_clz(x); }
-[[nodiscard]] constexpr auto clz(const uint64_t x) { return __builtin_clzl(x); }
+/// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+template<auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
+[[nodiscard]] constexpr /*consteval*/ auto PEXT(const T a) noexcept -> T {
+  if constexpr (mask) {
+    T result{};
+    T m = mask;
+    auto k = 0u;
+    for (T i{}; i < size; ++i) {
+      if (m & 1) result |= ((a >> i) & 1) << k++;
+      m >>= 1;
+    }
+    return result;
+  } else {
+    return {};
+  }
+}
 
-template<class T, template<class, auto> class C, class _, auto Size, auto size = sizeof(T) * __CHAR_BIT__>
-[[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
+#if defined(__BMI2__)
+template<auto mask>
+[[nodiscard]] [[gnu::always_inline]] inline auto pext(const uint64_t a) noexcept -> uint64_t {
+  if constexpr (mask) {
+    return __builtin_ia32_pext_di(a, mask);
+  } else {
+    return {};
+  }
+}
+
+template<auto mask>
+[[nodiscard]] [[gnu::always_inline]] inline auto pext(const uint32_t a) noexcept -> uint32_t {
+  if constexpr (mask) {
+    return __builtin_ia32_pext_si(a, mask);
+  } else {
+    return {};
+  }
+}
+#else
+/// https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
+template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
+[[nodiscard]] [[gnu::always_inline]] inline auto pext(const T a) noexcept -> T {
+  if constexpr(mask) {
+    constexpr auto nbits = popcount(mask);
+    constexpr auto gbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
+    constexpr auto coefficient = [] {
+      auto set = false;
+      auto dst = gbits;
+      T result{};
+      for (auto i = 0u; i < size; ++i) {
+        const auto curr = (T{1} << i) & mask;
+        if (curr and not set) result = result | (T(1) << (dst - i));
+        dst += curr;
+        set = curr;
+      }
+      return result;
+    }();
+    return ((a & mask) * coefficient >> gbits) & ((T(1) << nbits) - T(1));
+  } else {
+    return {};
+  }
+}
+#endif
+
+template<class T, template<class, auto> class T_, class _, auto Size, auto size = sizeof(T) * __CHAR_BIT__>
+[[nodiscard]] constexpr auto mask(const T_<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
   T max{};
   for (auto i = 0u; i < v.size(); ++i) {
@@ -128,8 +183,8 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
   }
   constexpr auto N = Size << 1u;
   utility::array<utility::compressed_pair<bool, T>, N> hashed;
-  const auto nbits = size - clz(max) - 1;
-  T mask{(T(1) << nbits) - 1};
+  const auto nbits = size - clz(max) - 1u;
+  T mask{(T(1) << nbits) - 1u};
   for (int n = nbits; n >= 0; --n) {
     mask &= ~(T(1) << n);
     hashed = {};
@@ -148,7 +203,7 @@ template<class T, template<class, auto> class C, class _, auto Size, auto size =
   }
   return mask;
 }
-} // namespace detail
+} // namespace utility
 
 template<class T, class C, size_t Size>
   requires (sizeof(C) == sizeof(uint8_t))
@@ -161,7 +216,8 @@ template<class T, class C, size_t Size>
   return result;
 }
 
-template<class T> [[nodiscard]] constexpr auto to(const T& value) noexcept -> const T& {
+template<class T>
+[[nodiscard]] constexpr auto to(const T& value) noexcept -> const T& {
   return value;
 }
 
@@ -209,9 +265,9 @@ template<class T>
     #pragma GCC diagnostic pop
 
     if constexpr (sizeof(T) == sizeof(uint32_t)) {
-      return T(detail::bzhi(t, T(data.size() * __CHAR_BIT__)));
+      return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
     } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
-      return T(detail::bzhi(t, T(data.size() * __CHAR_BIT__)));
+      return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
     }
     return t;
   } else {
@@ -284,25 +340,25 @@ template<
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-  static constexpr mask_type mask = detail::mask<key_type>(kv);
+  static constexpr mask_type mask = utility::mask<key_type>(kv);
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
         utility::compressed_pair<key_type, value_type>,
-        (mask_type(1) << __builtin_popcountll(mask))
+        (mask_type(1) << utility::popcount(mask))
       >, alignment
     > lookup{};
     if constexpr (unknown != decltype(unknown){}) {
       lookup.fill(utility::compressed_pair{key_type{}, unknown});
     }
     for (const auto& [key, value] : kv) {
-      lookup[detail::pext<key_type>(key, mask)] = utility::compressed_pair{key, value};
+      lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
     }
     return lookup;
   }();
 
   auto&& lhs = to<key_type>(key);
-  auto&& [rhs, value] = lookup[detail::pext(lhs, mask)];
+  auto&& [rhs, value] = lookup[utility::pext<mask>(lhs)];
   return cmp(lhs == rhs, value, unknown);
 };
 
@@ -313,7 +369,7 @@ template<
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-  static constexpr mask_type mask = detail::mask<key_type>(kv);
+  static constexpr mask_type mask = utility::mask<key_type>(kv);
   static constexpr const auto storage = [] {
     utility::aligned_t<
       utility::array<
@@ -327,7 +383,7 @@ template<
     return storage;
   }();
   static constexpr const auto lookup = [] {
-    constexpr auto nbits = __builtin_popcountll(mask);
+    constexpr auto nbits = utility::popcount(mask);
     using type = utility::conditional_t<
       (nbits <= __CHAR_BIT__),
       uint8_t,
@@ -344,25 +400,38 @@ template<
       >, alignment
     > lookup{};
     for (type i{}; const auto& [key, value] : kv) {
-      lookup[detail::pext<key_type>(key, mask)] = i++;
+      lookup[utility::PEXT<mask>(key)] = i++;
     }
     return lookup;
   }();
 
   auto&& lhs = to<key_type>(key);
-  auto&& [rhs, value] = storage[size_t(lookup[detail::pext(lhs, mask)])];
+  auto&& [rhs, value] = storage[size_t(lookup[utility::pext<mask>(lhs)])];
   return cmp(lhs == rhs, value, unknown);
 };
 
 template<
-  auto cmp = conditional,
-  size_t alignment = size_t{},
-  size_t split_index = 0u
-> inline constexpr auto split = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
-    requires requires { key[split_index]; } {
+  auto policy = direct<>,
+  size_t index = 0u
+> inline constexpr auto mux = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
+    requires requires { key[index]; } {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
+  static constexpr const auto options = [] {
+    utility::static_vector<uint8_t, kv.size()> options;
+    for (const auto& [key, value] : kv) {
+      const uint8_t k = key & key_type(0xFF << index);
+      auto found = false;
+      for (auto i = 0u; i < options.size(); ++i) {
+        if (options[i] == k) {
+          found = true;
+          break;
+        }
+      }
+      if (not found) options.push_back(k);
+    }
+    return options;
+  }();
   static constexpr auto splits = [] {
     utility::array<
       utility::static_vector<
@@ -371,59 +440,25 @@ template<
       >, (1u << __CHAR_BIT__)
     > splits{};
     for (const auto& [key, value] : kv) {
-      splits[key & key_type(0xFF << split_index)].push_back(utility::compressed_pair{key, value});
+      splits[key & key_type(0xFF << index)].push_back(utility::compressed_pair{key, value});
     }
     return splits;
   }();
-  static constexpr const auto masks = [] {
-    utility::aligned_t<
-      utility::array<
-        mask_type,
-        (1u << __CHAR_BIT__)
-      >, alignment
-    > masks{};
-    for (auto i = 0u; i < splits.size(); ++i) {
-      if (splits[i].size()) {
-        masks[i] = detail::mask<key_type>(splits[i]);
+  const auto switch_key = [&]<auto i = 0u>(auto switch_key, const auto& k) {
+    switch (k) {
+      default: {
+        if constexpr (i < options.size() - 1) {
+          return switch_key.template operator()<i + 1u>(switch_key, k);
+        } else {
+          return unknown;
+        }
+      }
+      case options[i]: {
+        return policy.template operator()<splits[options[i]], unknown>(key);
       }
     }
-    return masks;
-  }();
-  static constexpr auto max = [] {
-    mask_type max{};
-    for (const auto& mask : masks) {
-      if (const mask_type v = __builtin_popcountll(mask); v > max) { max = v; }
-    }
-    return max;
-  }();
-  static constexpr const auto lookups = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::array<
-          utility::compressed_pair<key_type, value_type>,
-          (mask_type(1) << max)
-        >, (1u << __CHAR_BIT__)
-      >, alignment
-    > lookups{};
-    for (auto i = 0u; i < lookups.size(); ++i) {
-      auto& lookup = lookups[i];
-      const auto& mask = masks[i];
-      const auto& split = splits[i];
-      if constexpr (unknown != decltype(unknown){}) {
-        lookup.fill(utility::compressed_pair{key_type{}, unknown});
-      }
-      for (const auto& [key, value] : split) {
-        lookup[detail::pext<key_type>(key, mask)] = utility::compressed_pair{key, value};
-      }
-    }
-    return lookups;
-  }();
-
-  const auto k = key[split_index];
-  const auto mask = masks[k];
-  auto&& lhs = to<key_type>(key);
-  auto&& [rhs, value] = lookups[k][detail::pext(lhs, mask)];
-  return cmp(lhs == rhs, value, unknown);
+  };
+  return switch_key(switch_key, key[index]);
 };
 
 template<
@@ -597,29 +632,29 @@ static_assert(([] {
     static_assert(0 == mph::branchless(false, 1, 2));
   }
 
-  // mph::detail::pext
+  // mph::utility::pext
   {
-    static_assert(0    == mph::detail::pext(0b00, 0b00));
-    static_assert(0    == mph::detail::pext(0b01, 0b00));
-    static_assert(0b1  == mph::detail::pext(0b01, 0b01));
-    static_assert(0b01 == mph::detail::pext(0b01, 0b11));
-    static_assert(0b0  == mph::detail::pext(0b01, 0b10));
-    static_assert(0b1  == mph::detail::pext(0b11, 0b10));
-    static_assert(0b1  == mph::detail::pext(0b11, 0b01));
-    static_assert(0b11 == mph::detail::pext(0b11, 0b11));
+    static_assert(0    == mph::utility::PEXT<0b00>(0b00));
+    static_assert(0    == mph::utility::PEXT<0b00>(0b01));
+    static_assert(0b1  == mph::utility::PEXT<0b01>(0b01));
+    static_assert(0b01 == mph::utility::PEXT<0b11>(0b01));
+    static_assert(0b0  == mph::utility::PEXT<0b10>(0b01));
+    static_assert(0b1  == mph::utility::PEXT<0b10>(0b11));
+    static_assert(0b1  == mph::utility::PEXT<0b01>(0b11));
+    static_assert(0b11 == mph::utility::PEXT<0b11>(0b11));
   }
 
-  // mph::detail::mask
+  // mph::utility::mask
   {
     using mph::uint32_t;
     using mph::utility::array;
     using mph::utility::compressed_pair;
 
-    static_assert(0b10 == mph::detail::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::detail::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::utility::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::to

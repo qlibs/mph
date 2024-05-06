@@ -466,11 +466,10 @@ template<
 
 ```cpp
 template<
-  auto cmp = conditional,
-  size_t alignment = size_t{},
-  size_t split_index = 0u,
-> inline constexpr auto split = []<auto kv, auto unknown>(const auto& key)
-    requires requires { key[split_index]; };
+  auto policy = direct<>,
+  size_t index = 0u
+> inline constexpr auto mux = []<auto kv, auto unknown>(const auto& key)
+    requires requires { key[index]; };
 ```
 
 > Configuration
