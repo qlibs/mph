@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE)) / [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)]
+- C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE))
 
 ### Hello world (https://godbolt.org/z/GT68j8a96)
 
@@ -489,11 +489,8 @@ template<
 - Limitations?
 
     > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
-      `mph` doesn't have a restriction on the number of key/value pairs but its performance is the most benefital for less than 128 key/value pairs.
-      For greater number of keys the performance and compilation time overhead should be carefully examined.
-      `mph` requires [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support for the fastest execution.
-      For string-like lookups, all keys length have to be less-equal 8 characters.
       For integer lookups, all keys have to fit into `std::uint64_t`.
+      For string lookups, all keys have to have less/equal 8 characters.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
       In such case different backup policy should be used instead, for example:
 
@@ -568,7 +565,9 @@ template<
 
 - How to get the maximum performance out of `mph`?
 
-    > Always measure! For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
+    > Always measure!
+      [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation.
+      For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
       Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
       That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
       If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
@@ -579,10 +578,10 @@ template<
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!
 
-- Can I disable running tests at compile-time?
+- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
 
-    > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
-      Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
+    > No, `mph` works on platforms without [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) suppport where bmi2 instructions are emulated.
+    Emulation for pext is using (`imul', `shr`, `and`) and for clz (`shr`, `and`).
 
 - Can I disable `cmov` generation?
 
@@ -601,17 +600,10 @@ template<
     clang: -fconstexpr-steps=N
     ```
 
-- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
+- Can I disable running tests at compile-time?
 
-    > In principle `bmi2` is not required, [pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) can be emulated with a few other instructions (`shr, and`), however, `mph` doesn't support it yet.
-
-- I'm getting compilation error `'pext' requires target feature 'bmi2'`?
-
-    > The following option can be used to enable [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext) support.
-
-    ```
-    -march=skylake # Intel Haswell+, AMD Zen3+
-    ```
+    > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
+      Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
 - How to integrate with CMake/CPM?
 
