@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://godbolt.org/z/7M1cqTMqv">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/MhPa6exqc">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/ej81YP3G9">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -28,7 +28,7 @@
 
 - C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE))
 
-### Hello world (https://godbolt.org/z/GT68j8a96)
+### Hello world (https://godbolt.org/z/ej81YP3G9)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -47,13 +47,8 @@ std::print("{}", mph::hash<colors>("green"sv));
 ```
 
 ```
-# bmi2/pext - hardware accelerated
-$CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
-```
-
-```
-# pext - software accelerated
-$CXX -std=c++20 -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20 -mbmi2 -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20        -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
 ---
@@ -83,7 +78,7 @@ int main(int argc, char**)
 ```
 
 ```cpp
-main(int): // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+main(int): // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movl $7, %edx
   xorl %eax, %eax
   pext %edx, %edi, %edx
@@ -131,7 +126,7 @@ int main(int, const char** argv) {
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    $1031, %ecx
   leaq    lookup(%rip), %rdx
@@ -172,7 +167,7 @@ int main(int, const char** argv) {
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    $789, %ecx
   leaq    lookup(%rip), %rdx
@@ -201,7 +196,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    $789, %ecx
   movl    (%rax), %eax
@@ -225,7 +220,7 @@ int main(int argc, [[maybe_unused]] const char** argv) {
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -march=skylake
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    (%rax), %eax
   movl    $789, %ecx
@@ -281,7 +276,7 @@ time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
 <a name="benchmarks"></a>
 ### Benchmarks (https://github.com/boost-ext/mph/tree/benchmark)
 
-> `clang++ -std=c++20 -O3 -DNDEBUG -march=skylake benchmark.cpp`
+> `clang++ -std=c++20 -O3 -DNDEBUG -mbmi2 benchmark.cpp`
 
 ```
 | ns/op |           op/s | err% |total | benchmark
@@ -319,7 +314,7 @@ time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
 |  1.28 | 778,723,795.75 | 0.1% | 0.02 | `random_uints_5.mph`
 ```
 
-> `g++ -std=c++20 -O3 -DNDEBUG -march=skylake benchmark.cpp`
+> `g++ -std=c++20 -O3 -DNDEBUG -mbmi2 benchmark.cpp`
 
 ```cpp
 | ns/op |           op/s | err% |total | benchmark
@@ -569,7 +564,7 @@ template<
     > Finding the `hash/mask` is [NP](https://en.wikipedia.org/wiki/NP_(complexity)) problem and therefore `mph` is taking a simplified approach (see [How `mph` is working under the hood?](#faq) for details) which doesn't gurantee finding the hash/mask.
       If the `hash/mask` can't be found `mph` will not compile and the hash call won't be available. It's advised to have additional fallback policies in case accelerated hash can't be used (see [Limitations](#faq)).
 
-- How to get the maximum performance out of `mph`?
+- How to tweak `hash` performance for my data/use case?
 
     > Always measure!
       [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation.

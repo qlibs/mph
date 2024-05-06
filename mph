@@ -148,20 +148,20 @@ template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] [[gnu::always_inline]] inline auto pext(const T a) noexcept -> T {
   if constexpr(mask) {
     constexpr auto nbits = popcount(mask);
-    constexpr auto gbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
+    constexpr auto cbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
     constexpr auto coefficient = [] {
       auto set = false;
-      auto dst = gbits;
+      auto dst = cbits;
       T result{};
       for (auto i = 0u; i < size; ++i) {
-        const auto curr = (T{1} << i) & mask;
+        const auto curr = ((T(1) << i) & mask) != T()
         if (curr and not set) result = result | (T(1) << (dst - i));
         dst += curr;
         set = curr;
       }
       return result;
     }();
-    return ((a & mask) * coefficient >> gbits) & ((T(1) << nbits) - T(1));
+    return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
   } else {
     return {};
   }
