@@ -71,6 +71,15 @@ template <> struct conditional<true>  { template <class T, class> using fn = T; 
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
+template<class T, T...> struct integer_sequence { };
+template<size_t... Ns> using index_sequence = integer_sequence<size_t, Ns...>;
+template<size_t Size> using make_index_sequence =
+#if defined(__clang__)
+  __make_integer_seq<integer_sequence, size_t, Size>;
+#else
+   index_sequence<__integer_pack(Size)...>;
+#endif
+
 template<class T, size_t alignment>
 struct aligned {
   using type = struct alignas(alignment) a  : T { };
@@ -80,27 +89,15 @@ template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, size_t alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
-[[nodiscard]] constexpr auto clz(const uint32_t x) noexcept {
-  return __builtin_clz(x);
-}
-
-[[nodiscard]] constexpr auto clz(const uint64_t x) noexcept {
-  return __builtin_clzl(x);
-}
-
-[[nodiscard]] constexpr auto popcount(const uint32_t x) noexcept {
-  return __builtin_popcountl(x);
-}
-
-[[nodiscard]] constexpr auto popcount(const uint64_t x) noexcept {
-  return __builtin_popcountll(x);
-}
+[[nodiscard]] constexpr auto clz(const uint32_t x) noexcept { return __builtin_clz(x); }
+[[nodiscard]] constexpr auto clz(const uint64_t x) noexcept { return __builtin_clzl(x); }
+[[nodiscard]] constexpr auto popcount(const uint32_t x) noexcept { return __builtin_popcountl(x); }
+[[nodiscard]] constexpr auto popcount(const uint64_t x) noexcept { return __builtin_popcountll(x); }
 
 #if defined(__BMI2__)
 [[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint32_t src, const uint32_t index) noexcept {
   return __builtin_ia32_bzhi_si(src, index);
 }
-
 [[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
   return __builtin_ia32_bzhi_di(src, index);
 }
@@ -137,7 +134,6 @@ template<auto mask>
     return {};
   }
 }
-
 template<auto mask>
 [[nodiscard]] [[gnu::always_inline]] inline auto pext(const uint32_t a) noexcept -> uint32_t {
   if constexpr (mask) {
@@ -348,7 +344,7 @@ template<
         (mask_type(1) << utility::popcount(mask))
       >, alignment
     > lookup{};
-    if constexpr (unknown) {
+    if constexpr (unknown != decltype(unknown){}) {
       lookup.fill(utility::compressed_pair{key_type{}, unknown});
     }
     for (const auto& [key, value] : kv) {
@@ -411,27 +407,14 @@ template<
 };
 
 template<
-  auto policy = direct<>,
-  size_t index = 0u
-> inline constexpr auto mux = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
+  size_t index = 0u,
+  auto cmp = conditional,
+  size_t alignment = size_t{}
+> inline constexpr auto jmp = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
     requires requires { key[index]; } {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  static constexpr const auto options = [] {
-    utility::static_vector<uint8_t, kv.size()> options;
-    for (const auto& [key, value] : kv) {
-      const uint8_t k = key & key_type(0xFF << index);
-      auto found = false;
-      for (auto i = 0u; i < options.size(); ++i) {
-        if (options[i] == k) {
-          found = true;
-          break;
-        }
-      }
-      if (not found) options.push_back(k);
-    }
-    return options;
-  }();
+  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
   static constexpr auto splits = [] {
     utility::array<
       utility::static_vector<
@@ -444,21 +427,37 @@ template<
     }
     return splits;
   }();
-  const auto switch_key = [&]<auto i = 0u>(auto switch_key, const auto& k) {
-    switch (k) {
-      default: {
-        if constexpr (i < options.size() - 1) {
-          return switch_key.template operator()<i + 1u>(switch_key, k);
+  return [&key]<size_t... Ns>(utility::index_sequence<Ns...>) {
+    utility::array dispatch{+[](const key_type& lhs) {
+      if constexpr (splits[Ns].size()) {
+        if constexpr (static constexpr mask_type mask = utility::mask<key_type>(splits[Ns]); mask) {
+          static constexpr const auto lookup = [] {
+            utility::aligned_t<
+              utility::array<
+                utility::compressed_pair<key_type, value_type>,
+                (mask_type(1) << utility::popcount(mask))
+              >, alignment
+            > lookup{};
+            if constexpr (unknown != decltype(unknown){}) {
+              lookup.fill(utility::compressed_pair{key_type{}, unknown});
+            }
+            for (const auto& [key, value] : splits[Ns]) {
+              lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
+            }
+            return lookup;
+          }();
+          auto&& [rhs, value] = lookup[utility::pext<mask>(lhs)];
+          return cmp(lhs == rhs, value, unknown);
         } else {
-          return unknown;
+          return cmp(lhs == splits[Ns][0].first, splits[Ns][0].second, unknown);
         }
+      } else {
+        return unknown;
       }
-      case options[i]: {
-        return policy.template operator()<splits[options[i]], unknown>(key);
-      }
-    }
-  };
-  return switch_key(switch_key, key[index]);
+    }...};
+    auto&& lhs = to<key_type>(key);
+    return dispatch[size_t(key[index])](lhs);
+  }(utility::make_index_sequence<splits.size()>{});
 };
 
 template<

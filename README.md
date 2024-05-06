@@ -468,7 +468,7 @@ template<
 template<
   auto policy = direct<>,
   size_t index = 0u
-> inline constexpr auto mux = []<auto kv, auto unknown>(const auto& key)
+> inline constexpr auto jmp = []<auto kv, auto unknown>(const auto& key)
     requires requires { key[index]; };
 ```
 
@@ -596,7 +596,7 @@ template<
     > The following options can be used to increase the limits, however, compilation-times should be monitored.
 
     ```
-    gcc:   -fconstexpr-ops-limit=N -fconstexpr-loop-limit=N
+    gcc:   -fconstexpr-ops-limit=N
     clang: -fconstexpr-steps=N
     ```
 
