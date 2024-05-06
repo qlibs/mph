@@ -348,7 +348,7 @@ template<
         (mask_type(1) << utility::popcount(mask))
       >, alignment
     > lookup{};
-    if constexpr (unknown != decltype(unknown){}) {
+    if constexpr (unknown) {
       lookup.fill(utility::compressed_pair{key_type{}, unknown});
     }
     for (const auto& [key, value] : kv) {
