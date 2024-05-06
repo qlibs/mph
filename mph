@@ -154,7 +154,7 @@ template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
       auto dst = cbits;
       T result{};
       for (auto i = 0u; i < size; ++i) {
-        const auto curr = ((T(1) << i) & mask) != T()
+        const auto curr = ((T(1) << i) & mask) != T();
         if (curr and not set) result = result | (T(1) << (dst - i));
         dst += curr;
         set = curr;
