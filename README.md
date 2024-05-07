@@ -48,6 +48,7 @@ std::print("{}", mph::hash<colors>("green"sv));
 
 ```
 $CXX -std=c++20 -mbmi2 -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20 -mavx2 -DNDEBUG -O3 && ./a.out # prints 2
 $CXX -std=c++20        -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
@@ -357,120 +358,37 @@ time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
 ### API
 
 ```cpp
+struct config {
+  constexpr config() = default;
+  constexpr config(const auto& kv)
+    : probablity{.5}
+    , N{kv.size() < (1 << 8u) ? 1u : 4u}
+    , alignment{}
+  { }
+
+  float probablity{.5}; // .0 - none of the input data can be found in the predifned set
+                        // (.0, .5) - input data is unlikely to be found in the predifined set
+                        // .5 - unpredictable (default)
+                        // (.5, 1.) - input data is likely to be found in the predifined set
+                        // 1. - all input data can be found in the predifiend set
+  u32 N{1u};            // 1 - no collisions
+  u32 alignment{};      // 0 - no alignment
+};
+
+```
+
+```cpp
 /**
  * Perfect hash function
  *
  * @tparam kv constexpr array of key/value pairs
-           (for string-like mph::fixed_string is required)
- * @tparam unknown returned value when key is not found (default: 0)
- * @tparam policy storage/lookup policy
+ * @tparam config configuration
  * @param key input data
  */
-template<
-  auto kv,
-  typename decltype(kv)::value_type::second_type unknown = {},
-  auto policy = direct<>,
-> requires requires {
-    kv.size();
-    kv.begin();
-    kv.end();
-    kv[0].first;
-    kv[0].second;
-} [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown);
-```
-
-> Policies
-
-```cpp
-inline constexpr auto conditional =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    return cond ? lhs : rhs; // generates jmp (x86-64)
-  };
-```
-
-```cpp
-inline constexpr auto unconditional =
-  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-    return lhs; // [unsafe] returns unconditionally
-  };
-```
-
-```cpp
-inline constexpr auto likely =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    if (cond) [[likely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-```
-
-```cpp
-inline constexpr auto unlikely =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    if (cond) [[unlikely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-```
-
-```cpp
-template<auto Probablity>
-inline constexpr auto conditional_probability =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-```
-
-```cpp
-inline constexpr auto branchless =
-  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) {
-    return cond * lhs; // more likely to generate cmov (x86-64)
-  };
-```
-
-```cpp
-inline constexpr auto unpredictable =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    #if defined(__clang__)
-    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
-    #else
-    if (__builtin_expect_with_probability(cond, 1, .5)) {
-    #endif
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-```
-
-```cpp
-template<
-  auto cmp = conditional,
-  size_t alignment = {}
-> inline constexpr auto direct = []<auto kv, auto unknown>(const auto& key);
-```
-
-```cpp
-template<
-  auto cmp = conditional,
-  size_t alignment = {}
-> inline constexpr auto indirect = []<auto kv, auto unknown>(const auto& key);
-```
-
-```cpp
-template<
-  auto policy = direct<>,
-  size_t index = 0u
-> inline constexpr auto jmp = []<auto kv, auto unknown>(const auto& key)
-    requires requires { key[index]; };
+template<auto kv, config cfg = config{kv}>
+  requires (cfg.N >= 1u and cfg.probablity >= .0f) and
+  requires { kv.size(); kv.begin(); kv.end(); kv[0].first; kv[0].second; }
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
 > Configuration

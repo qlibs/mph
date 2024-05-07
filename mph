@@ -12,11 +12,15 @@
  * Perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_2_1 {
-using size_t = __SIZE_TYPE__;
-using uint8_t = __UINT8_TYPE__;
-using uint16_t = __UINT16_TYPE__;
-using uint32_t = __UINT32_TYPE__;
-using uint64_t = __UINT64_TYPE__;
+using u8 = __UINT8_TYPE__;
+using u16 = __UINT16_TYPE__;
+using u32 = __UINT32_TYPE__;
+using u64 = __UINT64_TYPE__;
+using u32x8 = u32 __attribute__((vector_size(8u * __CHAR_BIT__)));
+using u64x4 = u64 __attribute__((vector_size(4u * __CHAR_BIT__)));
+using fx8 = float __attribute__((vector_size(8u * __CHAR_BIT__)));
+using dx4 = double __attribute__((vector_size(4u * __CHAR_BIT__)));
+
 namespace utility {
 template<class T1, class T2>
 struct compressed_pair {
@@ -27,7 +31,7 @@ struct compressed_pair {
 };
 template<class T1, class T2> compressed_pair(T1, T2) -> compressed_pair<T1, T2>;
 
-template<class T, size_t Size>
+template<class T, u32 Size>
 struct array {
   using value_type = T;
   [[nodiscard]] constexpr const T* data() const noexcept { return data_; }
@@ -37,28 +41,12 @@ struct array {
   [[nodiscard]] constexpr auto end() const noexcept { return &data_[0] + Size; }
   [[nodiscard]] constexpr auto end() noexcept { return &data_[0] + Size; }
   [[nodiscard]] constexpr auto size() const noexcept { return Size; }
-  [[nodiscard]] constexpr const auto& operator[](size_t i) const noexcept { return data_[i]; }
-  [[nodiscard]] constexpr auto& operator[](size_t i) noexcept { return data_[i]; }
+  [[nodiscard]] constexpr const auto& operator[](u32 i) const noexcept { return data_[i]; }
+  [[nodiscard]] constexpr auto& operator[](u32 i) noexcept { return data_[i]; }
   constexpr void fill(const T& value) noexcept { for (auto i = 0u; i < Size; ++i) { data_[i] = value; } }
   T data_[Size];
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
-
-template<class T, size_t Size>
-struct static_vector {
-  using value_type = T;
-  constexpr auto push_back(const T& value) noexcept { data_[size_++] = value; }
-  [[nodiscard]] constexpr auto begin() const noexcept { return &data_[0]; }
-  [[nodiscard]] constexpr auto begin() noexcept { return &data_[0]; }
-  [[nodiscard]] constexpr auto end() const noexcept { return &data_[0] + size_; }
-  [[nodiscard]] constexpr auto end() noexcept { return &data_[0] + size_; }
-  [[nodiscard]] constexpr auto operator[](size_t i) const noexcept { return data_[i]; }
-  [[nodiscard]] constexpr auto& operator[](size_t i) noexcept { return data_[i]; }
-  [[nodiscard]] constexpr auto size() const noexcept { return size_; }
-  [[nodiscard]] constexpr auto capacity() const noexcept { return Size; }
-  union { T data_[Size]{}; }; // !trivial union
-  size_t size_{};
-};
 
 template<class...> inline constexpr auto is_same_v = false;
 template<class T>  inline constexpr auto is_same_v<T, T> = true;
@@ -71,34 +59,25 @@ template <> struct conditional<true>  { template <class T, class> using fn = T; 
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
-template<class T, T...> struct integer_sequence { };
-template<size_t... Ns> using index_sequence = integer_sequence<size_t, Ns...>;
-template<size_t Size> using make_index_sequence =
-#if defined(__clang__)
-  __make_integer_seq<integer_sequence, size_t, Size>;
-#else
-   index_sequence<__integer_pack(Size)...>;
-#endif
-
-template<class T, size_t alignment>
+template<class T, u32 alignment>
 struct aligned {
   using type = struct alignas(alignment) a  : T { };
   static_assert(alignment == alignof(type));
 };
 template<class T> struct aligned<T, 0u> { using type = T; };
-template<class T, size_t alignment>
+template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
-[[nodiscard]] constexpr auto clz(const uint32_t x) noexcept { return __builtin_clz(x); }
-[[nodiscard]] constexpr auto clz(const uint64_t x) noexcept { return __builtin_clzl(x); }
-[[nodiscard]] constexpr auto popcount(const uint32_t x) noexcept { return __builtin_popcountl(x); }
-[[nodiscard]] constexpr auto popcount(const uint64_t x) noexcept { return __builtin_popcountll(x); }
+[[nodiscard]] constexpr auto clz(const u32 x) noexcept { return __builtin_clz(x); }
+[[nodiscard]] constexpr auto clz(const u64 x) noexcept { return __builtin_clzl(x); }
+[[nodiscard]] constexpr auto popcount(const u32 x) noexcept { return __builtin_popcountl(x); }
+[[nodiscard]] constexpr auto popcount(const u64 x) noexcept { return __builtin_popcountll(x); }
 
 #if defined(__BMI2__)
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint32_t src, const uint32_t index) noexcept {
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const u32 src, const u32 index) noexcept {
   return __builtin_ia32_bzhi_si(src, index);
 }
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const uint64_t src, const uint64_t index) noexcept {
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const u64 src, const u64 index) noexcept {
   return __builtin_ia32_bzhi_di(src, index);
 }
 #else
@@ -127,7 +106,7 @@ template<auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
 
 #if defined(__BMI2__)
 template<auto mask>
-[[nodiscard]] [[gnu::always_inline]] inline auto pext(const uint64_t a) noexcept -> uint64_t {
+[[nodiscard]] [[gnu::always_inline]] inline auto pext(const u64 a) noexcept -> u64 {
   if constexpr (mask) {
     return __builtin_ia32_pext_di(a, mask);
   } else {
@@ -135,7 +114,7 @@ template<auto mask>
   }
 }
 template<auto mask>
-[[nodiscard]] [[gnu::always_inline]] inline auto pext(const uint32_t a) noexcept -> uint32_t {
+[[nodiscard]] [[gnu::always_inline]] inline auto pext(const u32 a) noexcept -> u32 {
   if constexpr (mask) {
     return __builtin_ia32_pext_si(a, mask);
   } else {
@@ -168,42 +147,45 @@ template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
 }
 #endif
 
-template<class T, template<class, auto> class T_, class _, auto Size, auto size = sizeof(T) * __CHAR_BIT__>
-[[nodiscard]] constexpr auto mask(const T_<_, Size>& v) noexcept -> T {
+template<class T, u32 N, template<class, auto> class C, class _, auto Size>
+[[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
   utility::array<T, Size> vs;
   T max{};
-  for (auto i = 0u; i < v.size(); ++i) {
+  for (auto i = 0u; i < Size; ++i) {
     if (vs[i] = v[i].first; vs[i] > max) {
       max = vs[i];
     }
   }
-  constexpr auto N = Size << 1u;
-  utility::array<utility::compressed_pair<bool, T>, N> hashed;
-  const auto nbits = size - clz(max) - 1u;
+  constexpr auto H = Size << 1u;
+  utility::array<utility::compressed_pair<bool, T>, H> hashed;
+  const auto nbits = (sizeof(T) * __CHAR_BIT__) - clz(max) - 1u;
   T mask{(T(1) << nbits) - 1u};
-  for (int n = nbits; n >= 0; --n) {
-    mask &= ~(T(1) << n);
+
+  for (int i = nbits; i >= 0; --i) {
+    mask &= ~(T(1) << i);
     hashed = {};
-    for (auto i = 0u; i < v.size(); ++i) {
-      const auto masked = vs[i] & mask;
-      auto hash = masked % N;
-      while (hashed[hash].first and hashed[hash].second != masked) {
-        hash = (hash + 1u) % N;
+    for (auto j = 0u; j < Size; ++j) {
+      const auto masked = vs[j] & mask;
+      auto slot = masked % H;
+      auto n = N - 1u;
+      while (hashed[slot].first) {
+        if (hashed[slot].second == masked and not n--) break;
+        slot = (slot + 1u) % H;
       }
-      if (hashed[hash].first and hashed[hash].second == masked) {
-        mask |= (T(1) << n);
+      if (hashed[slot].first and hashed[slot].second == masked) {
+        mask |= (T(1) << i);
         break;
       }
-      hashed[hash] = {true, masked};
+      hashed[slot] = {true, masked};
     }
   }
   return mask;
 }
 } // namespace utility
 
-template<class T, class C, size_t Size>
-  requires (sizeof(C) == sizeof(uint8_t))
-[[nodiscard]] constexpr auto to(const C (&data)[Size]) noexcept {
+template<class T, class C, u32 Size>
+  requires (sizeof(C) == sizeof(u8))
+[[nodiscard]] constexpr /*consteval*/ auto to(const C (&data)[Size]) noexcept {
   T result{};
   constexpr auto size = Size - 1u; // no null terminated
   for (auto i = 0u; i < size; ++i) {
@@ -251,7 +233,7 @@ template<class T>
 
   if constexpr (MPH_PAGE_SIZE) {
     // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((uint64_t(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+    if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
       return to<T, class cold>(data);
     }
     T t{};
@@ -260,9 +242,9 @@ template<class T>
     __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
     #pragma GCC diagnostic pop
 
-    if constexpr (sizeof(T) == sizeof(uint32_t)) {
+    if constexpr (sizeof(T) == sizeof(u32)) {
       return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
-    } else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+    } else if constexpr (sizeof(T) == sizeof(u64)) {
       return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
     }
     return t;
@@ -273,206 +255,37 @@ template<class T>
   }
 }
 
-inline constexpr auto unconditional =
-  []([[maybe_unused]] const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-    return lhs; // [unsafe] returns unconditionally
-  };
+struct config {
+  constexpr config() = default;
+  constexpr config(const auto& kv)
+    : probablity{.5}
+    , N{kv.size() < (1 << 8u) ? 1u : 4u}
+    , alignment{}
+  { }
 
-inline constexpr auto conditional =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    return cond ? lhs : rhs; // generates jmp (x86-64)
-  };
-
-inline constexpr auto likely =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (cond) [[likely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-inline constexpr auto unlikely =
-  [](const bool cond, const auto lhs, const auto rhs) {
-    if (cond) [[unlikely]] {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-template<auto Probablity>
-inline constexpr auto conditional_probability =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    if (__builtin_expect_with_probability(cond, 1, Probablity)) {
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-inline constexpr auto branchless =
-  [](const bool cond, const auto lhs, [[maybe_unused]] const auto rhs) noexcept {
-    return cond * lhs; // more likely to generate cmov (x86-64)
-  };
-
-inline constexpr auto unpredictable =
-  [](const bool cond, const auto lhs, const auto rhs) noexcept {
-    #if defined(__clang__)
-    if (__builtin_unpredictable(cond)) { // generates cmov (x86-64)
-    #else
-    if (__builtin_expect_with_probability(cond, 1, .5)) {
-    #endif
-      return lhs;
-    } else {
-      return rhs;
-    }
-  };
-
-template<
-  auto cmp = conditional,
-  size_t alignment = size_t{}
-> inline constexpr auto direct = []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
-  using key_type = typename decltype(kv)::value_type::first_type;
-  using value_type = typename decltype(kv)::value_type::second_type;
-  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-  static constexpr mask_type mask = utility::mask<key_type>(kv);
-  static constexpr const auto lookup = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::compressed_pair<key_type, value_type>,
-        (mask_type(1) << utility::popcount(mask))
-      >, alignment
-    > lookup{};
-    if constexpr (unknown != decltype(unknown){}) {
-      lookup.fill(utility::compressed_pair{key_type{}, unknown});
-    }
-    for (const auto& [key, value] : kv) {
-      lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
-    }
-    return lookup;
-  }();
-
-  auto&& lhs = to<key_type>(key);
-  auto&& [rhs, value] = lookup[utility::pext<mask>(lhs)];
-  return cmp(lhs == rhs, value, unknown);
+  float probablity{.5}; // .0 - none of the input data can be found in the predifned set
+                        // (.0, .5) - input data is unlikely to be found in the predifined set
+                        // .5 - unpredictable (default)
+                        // (.5, 1.) - input data is likely to be found in the predifined set
+                        // 1. - all input data can be found in the predifiend set
+  u32 N{1u};            // 1 - no collisions
+  u32 alignment{};      // 0 - no alignment
 };
 
-template<
-  auto cmp = conditional,
-  size_t alignment = size_t{}
-> inline constexpr auto indirect = []<auto kv, auto unknown>(const auto& key) -> decltype(auto) {
+/**
+ * Perfect hash function
+ *
+ * @tparam kv constexpr array of key/value pairs
+ * @tparam config configuration
+ * @param key input data
+ */
+template<auto kv, config cfg = config{kv}>
+  requires (cfg.N >= 1u and cfg.probablity >= .0f) and
+  requires { kv.size(); kv.begin(); kv.end(); kv[0].first; kv[0].second; }
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-  static constexpr mask_type mask = utility::mask<key_type>(kv);
-  static constexpr const auto storage = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::compressed_pair<key_type, value_type>,
-        kv.size()
-      >, alignment
-    > storage;
-    for (auto i = 0u; const auto& [key, value] : kv) {
-      storage[i++] = utility::compressed_pair{key, value};
-    }
-    return storage;
-  }();
-  static constexpr const auto lookup = [] {
-    constexpr auto nbits = utility::popcount(mask);
-    using type = utility::conditional_t<
-      (nbits <= __CHAR_BIT__),
-      uint8_t,
-      utility::conditional_t<
-        nbits <= (sizeof(uint16_t) * __CHAR_BIT__),
-        uint16_t,
-        uint32_t
-      >
-    >;
-    utility::aligned_t<
-      utility::array<
-        type,
-        (mask_type(1) << nbits)
-      >, alignment
-    > lookup{};
-    for (type i{}; const auto& [key, value] : kv) {
-      lookup[utility::PEXT<mask>(key)] = i++;
-    }
-    return lookup;
-  }();
 
-  auto&& lhs = to<key_type>(key);
-  auto&& [rhs, value] = storage[size_t(lookup[utility::pext<mask>(lhs)])];
-  return cmp(lhs == rhs, value, unknown);
-};
-
-template<
-  size_t index = 0u,
-  auto cmp = conditional,
-  size_t alignment = size_t{}
-> inline constexpr auto jmp = []<auto kv, auto unknown>(const auto& key) -> decltype(auto)
-    requires requires { key[index]; } {
-  using key_type = typename decltype(kv)::value_type::first_type;
-  using value_type = typename decltype(kv)::value_type::second_type;
-  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(uint32_t), uint32_t, uint64_t>;
-  static constexpr auto splits = [] {
-    utility::array<
-      utility::static_vector<
-        utility::compressed_pair<key_type, value_type>,
-        kv.size()
-      >, (1u << __CHAR_BIT__)
-    > splits{};
-    for (const auto& [key, value] : kv) {
-      splits[key & key_type(0xFF << index)].push_back(utility::compressed_pair{key, value});
-    }
-    return splits;
-  }();
-  return [&key]<size_t... Ns>(utility::index_sequence<Ns...>) {
-    utility::array dispatch{+[](const key_type& lhs) {
-      if constexpr (splits[Ns].size()) {
-        if constexpr (static constexpr mask_type mask = utility::mask<key_type>(splits[Ns]); mask) {
-          static constexpr const auto lookup = [] {
-            utility::aligned_t<
-              utility::array<
-                utility::compressed_pair<key_type, value_type>,
-                (mask_type(1) << utility::popcount(mask))
-              >, alignment
-            > lookup{};
-            if constexpr (unknown != decltype(unknown){}) {
-              lookup.fill(utility::compressed_pair{key_type{}, unknown});
-            }
-            for (const auto& [key, value] : splits[Ns]) {
-              lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
-            }
-            return lookup;
-          }();
-          auto&& [rhs, value] = lookup[utility::pext<mask>(lhs)];
-          return cmp(lhs == rhs, value, unknown);
-        } else {
-          return cmp(lhs == splits[Ns][0].first, splits[Ns][0].second, unknown);
-        }
-      } else {
-        return unknown;
-      }
-    }...};
-    auto&& lhs = to<key_type>(key);
-    return dispatch[size_t(key[index])](lhs);
-  }(utility::make_index_sequence<splits.size()>{});
-};
-
-template<
-  auto kv,
-  typename decltype(kv)::value_type::second_type unknown =
-    typename decltype(kv)::value_type::second_type{},
-  auto policy = direct<>
-> requires requires {
-    kv.size();
-    kv.begin();
-    kv.end();
-    kv[0].first;
-    kv[0].second;
-} [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> decltype(unknown) {
-  using key_type = typename decltype(kv)::value_type::first_type;
   if (__builtin_is_constant_evaluated()) {
     constexpr auto to = [](const auto& data) -> decltype(auto) {
       if constexpr (requires { data.size(); }) {
@@ -490,15 +303,101 @@ template<
         return v;
       }
     }
-    return unknown;
-  } else if constexpr (kv.size() == 0u) {
-    return unknown;
+    return {};
+  } else if constexpr (kv.size() == 0u or not cfg.probablity) {
+    return {};
   } else if constexpr (kv.size() == 1u) {
-    return to<key_type>(key) == kv[0].first ? kv[0].second : unknown;
+    return to<key_type>(key) == kv[0].first ? kv[0].second : value_type{};
+  #if defined (__AVX2__)
+  } else if constexpr (kv.size() * sizeof(key_type) <= 32u) {
+    return [&] {
+      static constexpr const auto lookup = [] {
+        utility::aligned_t<
+            utility::compressed_pair<
+              utility::aligned_t<
+                utility::array<key_type, kv.size()>,
+                cfg.alignment
+              >,
+              utility::aligned_t<
+                utility::array<value_type, 1u + (1u << (kv.size() - 1u))>,
+                cfg.alignment
+              >
+            >, cfg.alignment
+        > lookup{};
+        for (auto n = 0u; const auto& [key, value] : kv) {
+          lookup.first[n] = key;
+          lookup.second[1u << n] = value;
+          ++n;
+        }
+        return lookup;
+      }();
+      return lookup.second[
+        __builtin_ia32_movmskpd256(
+          dx4(to<key_type>(key) == *(u64x4*)(lookup.first.data()))
+        )
+      ];
+    }();
+  #endif
   } else {
-    return policy.template operator()<kv, unknown>(key);
+    return [&] {
+      using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+      static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
+      static constexpr const auto lookup = [] {
+        utility::aligned_t<
+          utility::array<
+            utility::compressed_pair<
+              utility::aligned_t<
+                utility::array<key_type, cfg.N>,
+                cfg.alignment
+              >,
+              utility::aligned_t<
+                utility::array<value_type, cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))>,
+                cfg.alignment
+              >
+            >, mask_type(1) << utility::popcount(mask)
+          >, cfg.alignment
+        > lookup{};
+        for (const auto& [key, value] : kv) {
+          if constexpr (auto& slot = lookup[utility::PEXT<mask>(key)]; cfg.N == 1u) {
+            slot.first[0u] = key;
+            slot.second[0u] = value;
+          } else {
+            auto n = 0u;
+            while (slot.first[n]) n++;
+            slot.first[n] = key;
+            slot.second[1u << n] = value;
+          }
+        }
+        return lookup;
+      }();
+
+      auto&& lhs = to<key_type>(key);
+      auto&& rhs = lookup[utility::pext<mask>(lhs)];
+
+      if constexpr (cfg.N == 1u) {
+        #if defined(__clang__)
+          if constexpr (cfg.probablity == .5f) {
+            if (__builtin_unpredictable(lhs == rhs.first[0])) {
+              return rhs.second[0];
+            }
+          } else
+        #endif
+        if (__builtin_expect_with_probability(lhs == rhs.first[0], 1, cfg.probablity)) {
+          return rhs.second[0];
+        }
+      }
+      #if defined (__AVX2__)
+      else if constexpr (cfg.N <= sizeof(mask_type)) {
+        return rhs.second[__builtin_ia32_movmskpd256(
+          dx4(to<key_type>(key) == *(u64x4*)(rhs.first.data()))
+        )];
+      }
+      #endif
+
+      return value_type{};
+    }();
   }
-}
+};
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
@@ -519,7 +418,7 @@ static_assert(([] {
   // mph::utility::array
   {
     {
-      mph::utility::array<mph::size_t, 1> a{};
+      mph::utility::array<mph::u32, 1> a{};
       expect(1 == a.size());
     }
 
@@ -540,47 +439,8 @@ static_assert(([] {
       mph::utility::array a{1, 2, 3};
       expect(3u == a.size());
       expect(a.begin() != a.end());
-      expect(a.size() == mph::size_t(a.end() - a.begin()));
+      expect(a.size() == mph::u32(a.end() - a.begin()));
       expect(a.end() == a.begin() + a.size());
-    }
-  }
-
-  // mph::utility::static_vector
-  {
-    using mph::size_t;
-
-    {
-      mph::utility::static_vector<size_t, 1> v{};
-      expect(0u == v.size());
-      expect(1 == v.capacity());
-    }
-
-    {
-      mph::utility::static_vector<int, 2> v;
-      expect(0u == v.size());
-      expect(2 == v.capacity());
-
-      v.push_back(1);
-      expect(1u == v.size());
-      expect(1 == v[0]);
-
-      v.push_back(2);
-      expect(2u == v.size());
-      expect(2 == v[1]);
-    }
-
-    {
-      mph::utility::static_vector<int, 42> v{};
-      expect(0u == v.size() && 0u == size_t(v.end() - v.begin()));
-      expect(v.begin() == v.end());
-
-      v.push_back(1);
-      expect(1u == v.size() && 1 == size_t(v.end() - v.begin()));
-      expect(v.begin() != v.end());
-
-      v.push_back(2);
-      expect(2u == v.size() && 2u == size_t(v.end() - v.begin()));
-      expect(v.begin() != v.end());
     }
   }
 
@@ -610,27 +470,6 @@ static_assert(([] {
     static_assert(alignof(int) == alignof(mph::utility::aligned_t<array<int, 42>, 0u>));
   }
 
-  // mph::policies
-  {
-    static_assert(1 == mph::unconditional(true, 1, 2));
-    static_assert(1 == mph::unconditional(false, 1, 2));
-
-    static_assert(1 == mph::conditional(true, 1, 2));
-    static_assert(2 == mph::conditional(false, 1, 2));
-
-    static_assert(1 == mph::likely(true, 1, 2));
-    static_assert(2 == mph::likely(false, 1, 2));
-
-    static_assert(1 == mph::unlikely(true, 1, 2));
-    static_assert(2 == mph::unlikely(false, 1, 2));
-
-    static_assert(1 == mph::conditional_probability<1>(true, 1, 2));
-    static_assert(2 == mph::conditional_probability<1>(false, 1, 2));
-
-    static_assert(1 == mph::branchless(true, 1, 2));
-    static_assert(0 == mph::branchless(false, 1, 2));
-  }
-
   // mph::utility::pext
   {
     static_assert(0    == mph::utility::PEXT<0b00>(0b00));
@@ -645,15 +484,15 @@ static_assert(([] {
 
   // mph::utility::mask
   {
-    using mph::uint32_t;
+    using mph::u32;
     using mph::utility::array;
     using mph::utility::compressed_pair;
 
-    static_assert(0b10 == mph::utility::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::mask<uint32_t>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::to
@@ -665,7 +504,7 @@ static_assert(([] {
 
   // mph::hash
   {
-    using mph::uint32_t;
+    using mph::u32;
     using mph::utility::compressed_pair;
     using mph::utility::array;
 
@@ -673,26 +512,25 @@ static_assert(([] {
     {
       {
         constexpr array kv{
-          compressed_pair{uint32_t(4), uint32_t(2)},
+          compressed_pair{u32(4), u32(2)},
         };
 
-        static_assert(0 == mph::hash<kv, 0>(uint32_t(0)));
-        static_assert(0 == mph::hash<kv, 0>(uint32_t(1)));
-        static_assert(2 == mph::hash<kv, 0>(uint32_t(4)));
+        static_assert(0 == mph::hash<kv>(u32(0)));
+        static_assert(0 == mph::hash<kv>(u32(1)));
+        static_assert(2 == mph::hash<kv>(u32(4)));
       }
 
       {
         constexpr array kv{
-          compressed_pair{uint32_t(4), uint32_t(2)},
-          compressed_pair{uint32_t(42), uint32_t(87)},
-          compressed_pair{uint32_t(100), uint32_t(100)},
+          compressed_pair{u32(4), u32(2)},
+          compressed_pair{u32(42), u32(87)},
+          compressed_pair{u32(100), u32(100)},
         };
 
-        static_assert(0 == mph::hash<kv, 0>(uint32_t(0)));
-        static_assert(1 == mph::hash<kv, 1>(uint32_t(0)));
-        static_assert(2 == mph::hash<kv, 0>(uint32_t(4)));
-        static_assert(87 == mph::hash<kv, 0>(uint32_t(42)));
-        static_assert(100 == mph::hash<kv, 0>(uint32_t(100)));
+        static_assert(0 == mph::hash<kv>(u32(0)));
+        static_assert(2 == mph::hash<kv>(u32(4)));
+        static_assert(87 == mph::hash<kv>(u32(42)));
+        static_assert(100 == mph::hash<kv>(u32(100)));
       }
     }
 
@@ -700,16 +538,15 @@ static_assert(([] {
     {
       {
         constexpr array kv{
-          compressed_pair{mph::to<uint32_t>("BTC"), 1},
-          compressed_pair{mph::to<uint32_t>("ETH"), 2},
-          compressed_pair{mph::to<uint32_t>("XRP"), 3},
+          compressed_pair{mph::to<u32>("BTC"), 1},
+          compressed_pair{mph::to<u32>("ETH"), 2},
+          compressed_pair{mph::to<u32>("XRP"), 3},
         };
 
-        static_assert(0 == mph::hash<kv>(mph::to<uint32_t>("")));
-        static_assert(-1 == mph::hash<kv, -1>(mph::to<uint32_t>("")));
-        static_assert(1 == mph::hash<kv, -1>(mph::to<uint32_t>("BTC")));
-        static_assert(2 == mph::hash<kv, -1>(mph::to<uint32_t>("ETH")));
-        static_assert(3 == mph::hash<kv, -1>(mph::to<uint32_t>("XRP")));
+        static_assert(0 == mph::hash<kv>(mph::to<u32>("")));
+        static_assert(1 == mph::hash<kv>(mph::to<u32>("BTC")));
+        static_assert(2 == mph::hash<kv>(mph::to<u32>("ETH")));
+        static_assert(3 == mph::hash<kv>(mph::to<u32>("XRP")));
       }
     }
   }
