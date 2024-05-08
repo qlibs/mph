@@ -184,64 +184,6 @@ lookup:
   ...
 ```
 
-### Performance [potentially unsafe] (https://godbolt.org/z/nTYTWaMoY)
-
-> If `all` possible inputs are known and can be found in the keys, then `unconditional` lookup policy can be used which will avoid comparison to the original key
-
-```cpp
-int main(int argc, [[maybe_unused]] const char** argv) {
-  // ...
-  return mph::hash<symbols, 0/*unknown*/, mph::direct<mph::unconditional>>(
-    std::span<const char, 4>(argv[1], argv[1]+4)
-  );
-```
-
-```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
-  movq    8(%rsi), %rax
-  movl    $789, %ecx
-  movl    (%rax), %eax
-  pextl   %ecx, %eax, %eax
-  leaq    lookup(%rip), %rcx
-  movzbl  4(%rcx,%rax,8), %eax
-  retq
-
-lookup:
-  ...
-```
-
-### Performance [size optimization] (https://godbolt.org/z/fKTeW7Yzd)
-
-```cpp
-int main(int argc, [[maybe_unused]] const char** argv) {
-  // ...
-  return mph::hash<symbols, 0/*unknown*/, mph::indirect<>>(
-    std::span<const char, 4>(argv[1], argv[1]+4)
-  );
-```
-
-```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
-  movq    8(%rsi), %rax
-  movl    (%rax), %eax
-  movl    $789, %ecx
-  pextl   %ecx, %eax, %ecx
-  leaq    lookup(%rip), %rdx  # lookup
-  movzbl  (%rcx,%rdx), %ecx
-  leaq    storage(%rip), %rdx # additional lookup
-  xorl    %esi, %esi
-  cmpl    (%rdx,%rcx,8), %eax
-  movzbl  4(%rdx,%rcx,8), %eax
-  cmovnel %esi, %eax
-  retq
-
-storage: # size = kv.size() of {key, value}
-  ...
-
-lookup: # size = 2^popcount(mask) of min(sizeof(2^popcount(mask)))
-  ...
-```
-
 ---
 
 ### Examples
@@ -256,22 +198,29 @@ lookup: # size = 2^popcount(mask) of min(sizeof(2^popcount(mask)))
 > [include] (https://godbolt.org/z/zKPP8xPfG)
 
 ```cpp
-time $CXX -x c++ -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.017s
-time $CXX -x c++ -std=c++20 mph -c                                  # 0.056s
+time $CXX -x c++ -O3 -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS        # 0.017s
+time $CXX -x c++ -O3 -std=c++20 mph -c                                      # 0.056s
 ```
 
-> [64 key/value pairs] (https://godbolt.org/z/96871efPo)
+> [64 integral key/value pairs] (https://godbolt.org/z/96871efPo)
 
 ```cpp
-time $CXX -std=c++20 mph_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
-time $CXX -std=c++20 mph_64.cpp -c                                  # 0.090s
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.090s
 ```
 
-> [1024 key/value pairs] (https://godbolt.org/z/fjEYacE6G)
+> [1024 integral key/value pairs] (https://godbolt.org/z/fjEYacE6G)
 
 ```cpp
-time $CXX -std=c++20 mph_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.160s
-time $CXX -std=c++20 mph_1024.cpp -c                                # 0.197s
+time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.160s
+time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.197s
+```
+
+> [6548 string key/value pairs] (https://godbolt.org/z/6q44dhq6c)
+
+```cpp
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 7.178s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 7.213s
 ```
 
 <a name="benchmarks"></a>
