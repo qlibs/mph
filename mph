@@ -266,13 +266,13 @@ struct config {
     , alignment{}
   { }
 
-  float probablity{.5}; // .0 - none of the input data can be found in the predifned set
-                        // (.0, .5) - input data is unlikely to be found in the predifined set
+  float probablity{.5}; // .0 - none of the input data can be found in the kv
+                        // (.0, .5) - input data is unlikely to be found in the kv
                         // .5 - unpredictable (default)
-                        // (.5, 1.) - input data is likely to be found in the predifined set
-                        // 1. - all input data can be found in the predifiend set
-  u32 N{1u};            // 1 - no collisions
-  u32 alignment{};      // 0 - no alignment
+                        // (.5, 1.) - input data is likely to be found in the kv
+                        // 1. - all input data can be found in the kv
+  u32 N{1u};            // 1 - no collisions, N - n collisions allowed
+  u32 alignment{};      // 0 - no alignment, N - lookup alignment
 };
 
 /**
