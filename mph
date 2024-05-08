@@ -258,20 +258,15 @@ template<class T>
   }
 }
 
+template<auto kv>
 struct config {
-  constexpr config() = default;
-  constexpr config(const auto& kv)
-    : probablity{.5}
-    , N{kv.size() < (1 << 8u) ? 1u : 4u}
-    , alignment{}
-  { }
-
   float probablity{.5}; // .0 - none of the input data can be found in the kv
                         // (.0, .5) - input data is unlikely to be found in the kv
                         // .5 - unpredictable (default)
                         // (.5, 1.) - input data is likely to be found in the kv
                         // 1. - all input data can be found in the kv
-  u32 N{1u};            // 1 - no collisions, N - n collisions allowed
+  u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
+                        // 1 - no collisions (deafult), N - n collisions allowed
   u32 alignment{};      // 0 - no alignment, N - lookup alignment
 };
 
@@ -282,7 +277,7 @@ struct config {
  * @tparam config configuration
  * @param key input data
  */
-template<auto kv, config cfg = config{kv}>
+template<auto kv, auto cfg = config<kv>{}>
   requires (cfg.N >= 1u and cfg.probablity >= .0f) and
   requires { kv.size(); kv.begin(); kv.end(); kv[0].first; kv[0].second; }
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {

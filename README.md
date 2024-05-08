@@ -307,23 +307,17 @@ time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 7.
 ### API
 
 ```cpp
+template<auto kv>
 struct config {
-  constexpr config() = default;
-  constexpr config(const auto& kv)
-    : probablity{.5}
-    , N{kv.size() < (1 << 8u) ? 1u : 4u}
-    , alignment{}
-  { }
-
-  float probablity{.5}; // .0 - none of the input data can be found in kv
-                        // (.0, .5) - input data is unlikely to be found in kv
+  float probablity{.5}; // .0 - none of the input data can be found in the kv
+                        // (.0, .5) - input data is unlikely to be found in the kv
                         // .5 - unpredictable (default)
-                        // (.5, 1.) - input data is likely to be found in kv
+                        // (.5, 1.) - input data is likely to be found in the kv
                         // 1. - all input data can be found in the kv
-  u32 N{1u};            // 1 - no collisions, N - n collisions allowed
+  u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
+                        // 1 - no collisions (deafult), N - n collisions allowed
   u32 alignment{};      // 0 - no alignment, N - lookup alignment
 };
-
 ```
 
 ```cpp
