@@ -16,10 +16,13 @@ using u8 = __UINT8_TYPE__;
 using u16 = __UINT16_TYPE__;
 using u32 = __UINT32_TYPE__;
 using u64 = __UINT64_TYPE__;
+
+#if defined (__AVX2__)
 using u32x8 = u32 __attribute__((vector_size(8u * __CHAR_BIT__)));
 using u64x4 = u64 __attribute__((vector_size(4u * __CHAR_BIT__)));
 using fx8 = float __attribute__((vector_size(8u * __CHAR_BIT__)));
 using dx4 = double __attribute__((vector_size(4u * __CHAR_BIT__)));
+#endif
 
 namespace utility {
 template<class T1, class T2>
