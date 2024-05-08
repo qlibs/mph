@@ -449,7 +449,11 @@ template<auto kv, config cfg = config{kv}>
 - Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
 
     > No, `mph` works on platforms without [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) suppport where bmi2 instructions are emulated.
-    Emulation for pext is using (`imul', `shr`, `and`) and for clz (`shr`, `and`).
+    Emulation for pext is using (`imul`, `shr`, `and`) and for clz (`shr`, `and`).
+
+- Is [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) support required?
+
+    > No, `mph` works on platforms without [avx](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) suppport.
 
 - Can I disable `cmov` generation?
 
