@@ -106,7 +106,7 @@ lookup: # size = 2^popcount(mask) of {key, value}
 
 ---
 
-### Performance (https://godbolt.org/z/zrWf6Kf1s)
+### Performance (https://godbolt.org/z/65YncG4h9)
 
 ```cpp
 int main(int, const char** argv) {
@@ -144,7 +144,7 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/TGjh38aPc)
+### Performance (https://godbolt.org/z/9hd49MTcd)
 
 ```cpp
 int main(int, const char** argv) {
@@ -188,7 +188,7 @@ lookup:
 
 ### Examples
 
-- [feature/performance] branchless dispatcher - https://godbolt.org/z/rx1MnsjeE
+- [feature/performance] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
 
 ---
 

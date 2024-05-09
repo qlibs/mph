@@ -17,13 +17,6 @@ using u16 = __UINT16_TYPE__;
 using u32 = __UINT32_TYPE__;
 using u64 = __UINT64_TYPE__;
 
-#if defined (__AVX2__)
-using u32x8 = u32 __attribute__((vector_size(8u * __CHAR_BIT__)));
-using u64x4 = u64 __attribute__((vector_size(4u * __CHAR_BIT__)));
-using fx8 = float __attribute__((vector_size(8u * __CHAR_BIT__)));
-using dx4 = double __attribute__((vector_size(4u * __CHAR_BIT__)));
-#endif
-
 namespace utility {
 template<class T1, class T2>
 struct compressed_pair {
@@ -71,6 +64,9 @@ template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
+template<class T, auto width>
+using simd __attribute__ ((vector_size(width))) = T;
+
 [[nodiscard]] constexpr auto clz(const u32 x) noexcept { return __builtin_clz(x); }
 [[nodiscard]] constexpr auto clz(const u64 x) noexcept { return __builtin_clzl(x); }
 [[nodiscard]] constexpr auto popcount(const u32 x) noexcept { return __builtin_popcountl(x); }
@@ -85,8 +81,17 @@ using aligned_t = typename aligned<T, alignment>::type;
 }
 #else
 template<class T>
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const T src, const T index) noexcept -> T {
+[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const T src, const T index) noexcept {
   return src & ((T(1) << index) - T(1));
+}
+#endif
+
+#if defined(__AVX2__)
+[[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u32, 256u / __CHAR_BIT__> x) noexcept {
+  return __builtin_ia32_movmskps256(x);
+}
+[[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u64, 256u / __CHAR_BIT__> x) noexcept {
+  return __builtin_ia32_movmskpd256(x);
 }
 #endif
 
@@ -244,13 +249,7 @@ template<class T>
     #pragma GCC diagnostic ignored "-Warray-bounds"
     __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
     #pragma GCC diagnostic pop
-
-    if constexpr (sizeof(T) == sizeof(u32)) {
-      return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
-    } else if constexpr (sizeof(T) == sizeof(u64)) {
-      return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
-    }
-    return t;
+    return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
   } else {
     T t{};
     __builtin_memcpy(&t, data.data(), data.size());
@@ -283,8 +282,9 @@ template<auto kv, auto cfg = config<kv>{}>
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-
-  if (__builtin_is_constant_evaluated()) {
+  if constexpr (kv.size() == 0u or not cfg.probablity) {
+    return {};
+  } else if (__builtin_is_constant_evaluated()) {
     constexpr auto to = [](const auto& data) -> decltype(auto) {
       if constexpr (requires { data.size(); }) {
         key_type result{};
@@ -302,40 +302,8 @@ template<auto kv, auto cfg = config<kv>{}>
       }
     }
     return {};
-  } else if constexpr (kv.size() == 0u or not cfg.probablity) {
-    return {};
   } else if constexpr (kv.size() == 1u) {
     return to<key_type>(key) == kv[0].first ? kv[0].second : value_type{};
-  #if defined (__AVX2__)
-  } else if constexpr (kv.size() * sizeof(key_type) <= 32u) {
-    return [&] {
-      static constexpr const auto lookup = [] {
-        utility::aligned_t<
-            utility::compressed_pair<
-              utility::aligned_t<
-                utility::array<key_type, kv.size()>,
-                cfg.alignment
-              >,
-              utility::aligned_t<
-                utility::array<value_type, 1u + (1u << (kv.size() - 1u))>,
-                cfg.alignment
-              >
-            >, cfg.alignment
-        > lookup{};
-        for (auto n = 0u; const auto& [key, value] : kv) {
-          lookup.first[n] = key;
-          lookup.second[1u << n] = value;
-          ++n;
-        }
-        return lookup;
-      }();
-      return lookup.second[
-        __builtin_ia32_movmskpd256(
-          dx4(to<key_type>(key) == *(u64x4*)(lookup.first.data()))
-        )
-      ];
-    }();
-  #endif
   } else {
     return [&] {
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
@@ -349,7 +317,9 @@ template<auto kv, auto cfg = config<kv>{}>
                 cfg.alignment
               >,
               utility::aligned_t<
-                utility::array<value_type, cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))>,
+                utility::array<
+                  value_type,
+                  cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))>,
                 cfg.alignment
               >
             >, mask_type(1) << utility::popcount(mask)
@@ -385,13 +355,12 @@ template<auto kv, auto cfg = config<kv>{}>
         }
       }
       #if defined (__AVX2__)
-      else if constexpr (cfg.N <= sizeof(mask_type)) {
-        return rhs.second[__builtin_ia32_movmskpd256(
-          dx4(to<key_type>(key) == *(u64x4*)(rhs.first.data()))
+      else if constexpr (constexpr auto width = 256u / __CHAR_BIT__; cfg.N * sizeof(key_type) <= width) {
+        return rhs.second[utility::movmsk(
+          utility::simd<key_type, width>(to<key_type>(key) == *(utility::simd<key_type, width>*)(rhs.first.data()))
         )];
       }
       #endif
-
       return value_type{};
     }();
   }
