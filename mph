@@ -242,14 +242,20 @@ template<class T>
 
 template<auto kv>
 struct config {
-  float probablity{.5}; // .0 - none of the input data can be found in the kv
-                        // (.0, .5) - input data is unlikely to be found in the kv
-                        // .5 - unpredictable (default)
-                        // (.5, 1.) - input data is likely to be found in the kv
-                        // 1. - all input data can be found in the kv
+  // .0       - none of the input data can be found in the kv
+  // (.0, .5) - input data is unlikely to be found in the kv
+  // .5       - unpredictable (default)
+  // (.5, 1.) - input data is likely to be found in the kv
+  // 1.       - all input data can be found in the kv
+  float probablity{.5};
+
+  // 1 - no collisions (deafult)
+  // N - n collisions allowed
   u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
-                        // 1 - no collisions (deafult), N - n collisions allowed
-  u32 alignment{};      // 0 - no alignment, N - lookup alignment
+
+  // 0 - no alignment
+  // N - alignas(N) lookup table
+  u32 alignment{};
 };
 
 /**
@@ -324,25 +330,33 @@ template<auto kv, auto cfg = config<kv>{}>
       auto&& lhs = to<key_type>(key);
       auto&& rhs = lookup[utility::pext<mask>(lhs)];
 
-      if constexpr (cfg.N == 1u) {
+      constexpr auto cmp = [](bool cond) {
         #if defined(__clang__)
           if constexpr (cfg.probablity == .5f) {
-            if (__builtin_unpredictable(lhs == rhs.first[0])) {
-              return rhs.second[0];
-            }
+            return __builtin_unpredictable(cond);
           } else
         #endif
-        if (__builtin_expect_with_probability(lhs == rhs.first[0], 1, cfg.probablity)) {
-          return rhs.second[0];
-        }
+          return __builtin_expect_with_probability(cond, 1, cfg.probablity);
+      };
+
+      if constexpr (cfg.N == 1u) {
+        return cmp(lhs == rhs.first[0]) ? rhs.second[0] : value_type{};
       }
       #if defined (__AVX2__)
-      else if constexpr (constexpr auto width = 256u / __CHAR_BIT__; cfg.N * sizeof(key_type) <= width) {
+      else if constexpr (constexpr auto width = 256u / __CHAR_BIT__;
+        cfg.N * sizeof(key_type) <= width and (sizeof(key_type) == sizeof(u32) or sizeof(key_type) == sizeof(u64))) {
         return rhs.second[utility::movmsk(
           utility::simd<key_type, width>(to<key_type>(key) == *(utility::simd<key_type, width>*)(rhs.first.data()))
         )];
       }
       #endif
+      else {
+        for (auto i = 0u; i < rhs.first.size(); ++i) {
+          if (cmp(lhs == rhs.first[i])) {
+            return rhs.second[i];
+          }
+        }
+      }
       return value_type{};
     }();
   }
@@ -446,9 +460,17 @@ static_assert(([] {
 
   // mph::to
   {
-    static_assert(0 == mph::to<int>(""));
-    static_assert((int('A') << 0) + (int('B') << __CHAR_BIT__) == mph::to<int>("AB"));
-    static_assert((int('A') << 0) + (int('B') << __CHAR_BIT__) + (int('C') << __CHAR_BIT__*2) == mph::to<int>("ABC"));
+    using mph::u32;
+    using mph::utility::array;
+
+    static_assert(0 == mph::to<u32>(0));
+    static_assert(42 == mph::to<u32>(42));
+    static_assert(42u == mph::to<u32>(42u));
+    static_assert(0 == mph::to<u32>(""));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::to<u32>("AB"));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>("ABC"));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::to<u32>(array{'A','B'}));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
   // mph::hash

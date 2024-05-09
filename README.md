@@ -326,14 +326,20 @@ template<class T>
 ```cpp
 template<auto kv>
 struct config {
-  float probablity{.5}; // .0 - none of the input data can be found in the kv
-                        // (.0, .5) - input data is unlikely to be found in the kv
-                        // .5 - unpredictable (default)
-                        // (.5, 1.) - input data is likely to be found in the kv
-                        // 1. - all input data can be found in the kv
+  // .0       - none of the input data can be found in the kv
+  // (.0, .5) - input data is unlikely to be found in the kv
+  // .5       - unpredictable (default)
+  // (.5, 1.) - input data is likely to be found in the kv
+  // 1.       - all input data can be found in the kv
+  float probablity{.5};
+
+  // 1 - no collisions (deafult)
+  // N - n collisions allowed
   u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
-                        // 1 - no collisions (deafult), N - n collisions allowed
-  u32 alignment{};      // 0 - no alignment, N - lookup alignment
+
+  // 0 - no alignment
+  // N - alignas(N) lookup table
+  u32 alignment{};
 };
 ```
 
