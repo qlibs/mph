@@ -55,6 +55,10 @@ template <> struct conditional<true>  { template <class T, class> using fn = T; 
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
+template<auto v> struct constant { static constexpr auto value = v; };
+template<template<class R, auto Size> class R, class T, auto Size>
+auto size(R<T, Size>&&) -> constant<Size>;
+
 template<class T, u32 alignment>
 struct aligned {
   using type = struct alignas(alignment) a  : T { };
@@ -174,8 +178,8 @@ template<class T, u32 N, template<class, auto> class C, class _, auto Size>
 }
 } // namespace utility
 
-template<class T, class TData>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const TData& data) noexcept -> T {
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if (__builtin_is_constant_evaluated()) {
     if constexpr (requires { data.data(); data.size(); }) {
       T t{};
@@ -202,8 +206,8 @@ template<class T, class TData>
                                 // known at compile-time
                                 // If set to 0u __builtin_memcpy is used instead
     #endif
-    if constexpr (requires { []<auto = decltype(data){}.size()>{}; }) {
-      if constexpr (constexpr auto size = decltype(data){}.size(); not size) {
+    if constexpr (requires { utility::size(data); }) {
+      if constexpr (constexpr auto size = decltype(utility::size(data))::value; not size) {
         return T{};
       } else if constexpr (size == sizeof(T)) {
         return *__builtin_bit_cast(const T*, data.data());
