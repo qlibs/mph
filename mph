@@ -297,34 +297,83 @@ template<auto kv, auto cfg = config<kv>{}>
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
       static constexpr const auto lookup = [] {
-        utility::aligned_t<
-          utility::array<
-            utility::compressed_pair<
+        if constexpr (cfg.probablity == 1.) {
+          static_assert(cfg.N == 1u);
+          utility::aligned_t<
+            utility::array<
               utility::aligned_t<
                 utility::array<key_type, cfg.N>,
                 cfg.alignment
               >,
+              mask_type(1) << utility::popcount(mask)
+            >,
+            cfg.alignment
+          > lookup{};
+          for (const auto& [key, value] : kv) {
+            lookup[utility::PEXT<mask>(key)] = value;
+          }
+          return lookup;
+        }
+        else {
+          #if defined (__AVX2__)
+          utility::aligned_t<
+            utility::array<
+              utility::compressed_pair<
+                utility::aligned_t<
+                  utility::array<key_type, cfg.N>,
+                  cfg.alignment
+                >,
+                utility::aligned_t<
+                  utility::array<
+                    value_type,
+                    cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))
+                  >,
+                  cfg.alignment
+                >
+              >,
+              mask_type(1) << utility::popcount(mask)
+            >,
+            cfg.alignment
+          > lookup{};
+          for (const auto& [key, value] : kv) {
+            if constexpr (auto& slot = lookup[utility::PEXT<mask>(key)]; cfg.N == 1u) {
+              slot.first[0u] = key;
+              slot.second[0u] = value;
+            } else {
+              auto n = 0u;
+              while (slot.first[n]) n++;
+              slot.first[n] = key;
+              slot.second[1u << n] = value;
+            }
+          }
+          return lookup;
+          #else
+          utility::aligned_t<
+            utility::array<
               utility::aligned_t<
                 utility::array<
-                  value_type,
-                  cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))>,
+                  utility::compressed_pair<key_type, value_type>,
+                  cfg.N
+                >,
                 cfg.alignment
-              >
-            >, mask_type(1) << utility::popcount(mask)
-          >, cfg.alignment
-        > lookup{};
-        for (const auto& [key, value] : kv) {
-          if constexpr (auto& slot = lookup[utility::PEXT<mask>(key)]; cfg.N == 1u) {
-            slot.first[0u] = key;
-            slot.second[0u] = value;
-          } else {
-            auto n = 0u;
-            while (slot.first[n]) n++;
-            slot.first[n] = key;
-            slot.second[1u << n] = value;
+              >,
+              mask_type(1) << utility::popcount(mask)
+            >,
+            cfg.alignment
+          > lookup{};
+          for (const auto& [key, value] : kv) {
+            if constexpr (cfg.N == 1u) {
+              lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
+            } else {
+              auto& slot = lookup[utility::PEXT<mask>(key)];
+              auto n = 0u;
+              while (slot[n]) n++;
+              slot = utility::compressed_pair{key, value};
+            }
           }
+          return lookup;
+          #endif
         }
-        return lookup;
       }();
 
       auto&& lhs = to<key_type>(key);
@@ -340,27 +389,38 @@ template<auto kv, auto cfg = config<kv>{}>
       };
 
       if constexpr (cfg.N == 1u) {
-        return cmp(lhs == rhs.first[0]) ? rhs.second[0] : value_type{};
+        if constexpr (requires { rhs.first[0]; rhs.second[0]; }) {
+          return cmp(lhs == rhs.first[0]) ? rhs.second[0] : value_type{};
+        } else if constexpr (requires { rhs[0].first; rhs[0].second; }) {
+          return cmp(lhs == rhs[0].first) ? rhs[0].second : value_type{};
+        } else if constexpr (requires { rhs[0]; }) {
+          return rhs[0];
+        }
       }
       #if defined (__AVX2__)
       else if constexpr (constexpr auto width = 256u / __CHAR_BIT__;
-        cfg.N * sizeof(key_type) <= width and (sizeof(key_type) == sizeof(u32) or sizeof(key_type) == sizeof(u64))) {
+        cfg.N * sizeof(key_type) <= width and (sizeof(key_type) == sizeof(u32) or
+                                               sizeof(key_type) == sizeof(u64))) {
         return rhs.second[utility::movmsk(
-          utility::simd<key_type, width>(to<key_type>(key) == *(utility::simd<key_type, width>*)(rhs.first.data()))
+          utility::simd<key_type, width>(
+            to<key_type>(key)
+            ==
+            *(utility::simd<key_type, width>*)(rhs.first.data())
+          )
         )];
       }
       #endif
       else {
-        for (auto i = 0u; i < rhs.first.size(); ++i) {
-          if (cmp(lhs == rhs.first[i])) {
-            return rhs.second[i];
+        for (auto i = 0u; i < rhs.size(); ++i) {
+          if (cmp(lhs == rhs[i].first)) {
+            return rhs[i].second;
           }
         }
       }
       return value_type{};
     }();
   }
-};
+}
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
