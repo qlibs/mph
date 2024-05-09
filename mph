@@ -9,7 +9,7 @@
 #define MPH 2'2'1 // SemVer
 
 /**
- * Perfect hash library (https://github.com/boost-ext/mph)
+ * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_2_1 {
 using u8 = __UINT8_TYPE__;

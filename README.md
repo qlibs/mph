@@ -5,7 +5,7 @@
 
 ---------------------------------------
 
-## Perfect hash library
+## [Minimal] Perfect hash library
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function
 
