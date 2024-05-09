@@ -363,7 +363,7 @@ template<auto kv, auto cfg = config<kv>{}>
           > lookup{};
           for (const auto& [key, value] : kv) {
             if constexpr (cfg.N == 1u) {
-              lookup[utility::PEXT<mask>(key)] = utility::compressed_pair{key, value};
+              lookup[utility::PEXT<mask>(key)][0u] = utility::compressed_pair{key, value};
             } else {
               auto& slot = lookup[utility::PEXT<mask>(key)];
               auto n = 0u;
