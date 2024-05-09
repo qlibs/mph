@@ -12,7 +12,7 @@
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_2_1 {
-using u8 = __UINT8_TYPE__;
+using u8  = __UINT8_TYPE__;
 using u16 = __UINT16_TYPE__;
 using u32 = __UINT32_TYPE__;
 using u64 = __UINT64_TYPE__;
@@ -98,60 +98,44 @@ template<class T>
 /// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
 template<auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] constexpr /*consteval*/ auto PEXT(const T a) noexcept -> T {
-  if constexpr (mask) {
-    T result{};
-    T m = mask;
-    auto k = 0u;
-    for (T i{}; i < size; ++i) {
-      if (m & 1) result |= ((a >> i) & 1) << k++;
-      m >>= 1;
-    }
-    return result;
-  } else {
-    return {};
+  T result{};
+  T m = mask;
+  auto k = 0u;
+  for (T i{}; i < size; ++i) {
+    if (m & 1) result |= ((a >> i) & 1) << k++;
+    m >>= 1;
   }
+  return result;
 }
 
 #if defined(__BMI2__)
 template<auto mask>
 [[nodiscard]] [[gnu::always_inline]] inline auto pext(const u64 a) noexcept -> u64 {
-  if constexpr (mask) {
-    return __builtin_ia32_pext_di(a, mask);
-  } else {
-    return {};
-  }
+  return __builtin_ia32_pext_di(a, mask);
 }
 template<auto mask>
 [[nodiscard]] [[gnu::always_inline]] inline auto pext(const u32 a) noexcept -> u32 {
-  if constexpr (mask) {
-    return __builtin_ia32_pext_si(a, mask);
-  } else {
-    return {};
-  }
+  return __builtin_ia32_pext_si(a, mask);
 }
 #else
 /// https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
 template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] [[gnu::always_inline]] inline auto pext(const T a) noexcept -> T {
-  if constexpr(mask) {
-    constexpr auto nbits = popcount(mask);
-    constexpr auto cbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
-    constexpr auto coefficient = [] {
-      auto set = false;
-      auto dst = cbits;
-      T result{};
-      for (auto i = 0u; i < size; ++i) {
-        const auto curr = ((T(1) << i) & mask) != T();
-        if (curr and not set) result = result | (T(1) << (dst - i));
-        dst += curr;
-        set = curr;
-      }
-      return result;
-    }();
-    return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
-  } else {
-    return {};
-  }
+  constexpr auto nbits = popcount(mask);
+  constexpr auto cbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
+  constexpr auto coefficient = [] {
+    auto set = false;
+    auto dst = cbits;
+    T result{};
+    for (auto i = 0u; i < size; ++i) {
+      const auto curr = ((T(1) << i) & mask) != T();
+      if (curr and not set) result = result | (T(1) << (dst - i));
+      dst += curr;
+      set = curr;
+    }
+    return result;
+  }();
+  return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
 }
 #endif
 
@@ -215,7 +199,7 @@ template<class T, template<class, auto> class R, class _, auto Size>
   } else if constexpr (Size == sizeof(T)) {
     return *__builtin_bit_cast(const T*, data.data());
   } else if constexpr (Size <= sizeof(T)) {
-    T t{};
+    T t;
     __builtin_memcpy(&t, data.data(), Size);
     return t;
   }
@@ -244,7 +228,7 @@ template<class T>
     if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
       return to<T, class cold>(data);
     }
-    T t{};
+    T t;
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Warray-bounds"
     __builtin_memcpy(&t, data.data(), sizeof(T)); // not at page boundry
@@ -308,6 +292,7 @@ template<auto kv, auto cfg = config<kv>{}>
     return [&] {
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
+      static_assert(mask);
       static constexpr const auto lookup = [] {
         utility::aligned_t<
           utility::array<
