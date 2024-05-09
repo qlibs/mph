@@ -235,10 +235,9 @@ template<class T, class TData>
       __builtin_memcpy(&t, data.data(), data.size());
       return t;
     }
-  } else if constexpr (requires { T(data); }) {
+  } else if constexpr (requires { T{data}; }) {
     return data;
   }
-  void failed(); failed();
   return {};
 }
 
