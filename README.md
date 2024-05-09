@@ -21,7 +21,7 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-- Fast* compilations times (see [compilation-times](#compilation))
+- Fast* compilation times (see [compilation-times](#compilation))
 - Limitations (see [FAQ](#faq))
 
 ### Requirements
@@ -224,8 +224,8 @@ time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.
 > [6548 string key/value pairs] (https://godbolt.org/z/6q44dhq6c)
 
 ```cpp
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 7.178s
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 7.213s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 5.728s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 5.801s
 ```
 
 <a name="benchmarks"></a>
