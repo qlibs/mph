@@ -301,10 +301,7 @@ template<auto kv, auto cfg = config<kv>{}>
           static_assert(cfg.N == 1u);
           utility::aligned_t<
             utility::array<
-              utility::aligned_t<
-                utility::array<key_type, cfg.N>,
-                cfg.alignment
-              >,
+              value_type,
               mask_type(1) << utility::popcount(mask)
             >,
             cfg.alignment
@@ -393,8 +390,8 @@ template<auto kv, auto cfg = config<kv>{}>
           return cmp(lhs == rhs.first[0]) ? rhs.second[0] : value_type{};
         } else if constexpr (requires { rhs[0].first; rhs[0].second; }) {
           return cmp(lhs == rhs[0].first) ? rhs[0].second : value_type{};
-        } else if constexpr (requires { rhs[0]; }) {
-          return rhs[0];
+        } else {
+          return rhs;
         }
       }
       #if defined (__AVX2__)
