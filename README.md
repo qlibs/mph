@@ -235,6 +235,7 @@ lookup:
 ### Examples
 
 - [feature/performance] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
+- [future/performance] enum name -
 
 ---
 
