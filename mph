@@ -247,7 +247,7 @@ struct config {
   // .5       - unpredictable (default)
   // (.5, 1.) - input data is likely to be found in the kv
   // 1.       - all input data can be found in the kv
-  float probablity{.5};
+  float probability{.5};
 
   // 1 - no collisions (deafult)
   // N - n collisions allowed
@@ -272,11 +272,11 @@ struct config {
  * @param key input data
  */
 template<auto kv, auto cfg = config<kv>{}>
-  requires (cfg.N >= 1u and cfg.probablity >= .0f) and requires { kv.size(); kv.begin(); kv.end(); }
+  requires (cfg.N >= 1u and cfg.probability >= .0f) and requires { kv.size(); kv.begin(); kv.end(); }
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  if constexpr (kv.size() == 0u or not cfg.probablity) {
+  if constexpr (kv.size() == 0u or not cfg.probability) {
     return {};
   } else if (__builtin_is_constant_evaluated()) {
     constexpr auto to = [](const auto& data) -> decltype(auto) {
@@ -303,7 +303,7 @@ template<auto kv, auto cfg = config<kv>{}>
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
       static constexpr const auto lookup = [] {
-        if constexpr (cfg.probablity == 1.) {
+        if constexpr (cfg.probability == 1.) {
           static_assert(cfg.N == 1u);
           utility::aligned_t<
             utility::array<
@@ -384,11 +384,11 @@ template<auto kv, auto cfg = config<kv>{}>
 
       constexpr auto cmp = [](bool cond) {
         #if defined(__clang__)
-          if constexpr (cfg.probablity == .5f) {
+          if constexpr (cfg.probability == .5f) {
             return __builtin_unpredictable(cond);
           } else
         #endif
-          return __builtin_expect_with_probability(cond, 1, cfg.probablity);
+          return __builtin_expect_with_probability(cond, 1, cfg.probability);
       };
 
       if constexpr (cfg.N == 1u) {

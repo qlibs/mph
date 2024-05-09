@@ -191,6 +191,47 @@ lookup:
 
 ---
 
+### Performance (https://godbolt.org/z/7sGrvo8Wb)
+
+```cpp
+int main(int, const char** argv) {
+  constexpr std::array symbols{
+    pair("BTC",  1),
+    pair("ETH",  2),
+    pair("BNB",  3),
+    pair("SOL",  4),
+    pair("XRP",  5),
+    pair("DOGE", 6),
+    pair("TON",  7),
+    pair("ADA",  8),
+    pair("SHIB", 9),
+    pair("AVAX", 10),
+    pair("LINK", 11),
+    pair("BCH",  12),
+  };
+
+  // input keys are always valid aka coming from the predefined set
+  return mph::hash<symbols, mph::config<symbols>{.probability = 1.}>(
+    std::span<const char, 4>(argv[1], argv[1]+4));
+}
+```
+
+```cpp
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
+  movq 8(%rsi), %rax
+  movl $789, %edx
+  movl (%rax), %eax
+  pext %edx, %eax, %eax
+  movl %eax, %eax
+  movzbl lookup(%rax), %eax
+  ret
+
+lookup:
+  ...
+```
+
+---
+
 ### Examples
 
 - [feature/performance] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
@@ -331,7 +372,7 @@ struct config {
   // .5       - unpredictable (default)
   // (.5, 1.) - input data is likely to be found in the kv
   // 1.       - all input data can be found in the kv
-  float probablity{.5};
+  float probability{.5};
 
   // 1 - no collisions (deafult)
   // N - n collisions allowed
@@ -458,7 +499,7 @@ template<auto kv, config cfg = config{kv}>
       If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
       That will make the lookup table smaller and it will avoid `shl` for getting the value.
       Consider using minimial required size for values. That will make the lookup table smaller.
-      Experiment with different policies for the comparison based on the expert knowledge of future input data (`conditional, likey, unlikely, conditional_probability, branchless, unpredictable`).
+      Experiment with different config.probabilities to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 1.).
       If input values are always valid (values from predefined keys) consider using `unconditional` lookup policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
       Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
       Always measure any changes in production like environment!
