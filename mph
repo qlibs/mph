@@ -480,6 +480,21 @@ static_assert(([] {
     static_assert(mph::utility::is_same_v<int, mph::utility::conditional_t<false, void, int>>);
   }
 
+  // mph::utility::constant
+  {
+    static_assert(0 == mph::utility::constant<0>::value);
+    static_assert(42u == mph::utility::constant<42u>::value);
+    static_assert('X' == mph::utility::constant<'X'>::value);
+
+  }
+
+  // mph::utility::size
+  {
+    using mph::utility::array;
+    static_assert(1 == decltype(mph::utility::size(array<bool, 1>{}))::value);
+    static_assert(42 == decltype(mph::utility::size(array<int, 42>{}))::value);
+  }
+
   // mph::utility::aligned_t
   {
     using mph::utility::array;
