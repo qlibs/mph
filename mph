@@ -202,8 +202,8 @@ template<class T, class TData>
                                 // known at compile-time
                                 // If set to 0u __builtin_memcpy is used instead
     #endif
-    if constexpr (requires { []<auto = TData::size()>{}; }) {
-      if constexpr (constexpr auto size = TData::size(); not size) {
+    if constexpr (requires { []<auto = decltype(data){}.size()>{}; }) {
+      if constexpr (constexpr auto size = decltype(data){}.size(); not size) {
         return T{};
       } else if constexpr (size == sizeof(T)) {
         return *__builtin_bit_cast(const T*, data.data());
