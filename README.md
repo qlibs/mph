@@ -446,6 +446,7 @@ template<auto kv, config cfg = config{kv}>
 
     > Always measure!
       [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
+      For integral keys, use u32 or u64, esepcially if cfg.N > 1u as that enables avx2 optimizations. For values, measure, as size optimization can lead to performance degradation.
       For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
       Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
       That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
