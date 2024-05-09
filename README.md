@@ -217,15 +217,15 @@ time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.
 > [1024 integral key/value pairs] (https://godbolt.org/z/fjEYacE6G)
 
 ```cpp
-time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.160s
-time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.197s
+time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.132s
+time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.141s
 ```
 
 > [6548 string key/value pairs] (https://godbolt.org/z/6q44dhq6c)
 
 ```cpp
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 5.728s
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 5.801s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 3.518s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 3.572s
 ```
 
 <a name="benchmarks"></a>
@@ -335,7 +335,12 @@ struct config {
 
   // 1 - no collisions (deafult)
   // N - n collisions allowed
-  u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
+  u32 N{[] {
+    const auto bse = (1 << 14u);
+    const auto max = 4u;
+    const auto res = 1u << u32(kv.size() / (bse / sizeof(key_type)));
+    return res > max ? max : res;
+  }()};
 
   // 0 - no alignment
   // N - alignas(N) lookup table (N needs to be a power of 2)
