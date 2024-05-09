@@ -152,7 +152,6 @@ template<class T, u32 N, template<class, auto> class C, class _, auto Size>
   utility::array<utility::compressed_pair<bool, T>, H> hashed;
   const auto nbits = (sizeof(T) * __CHAR_BIT__) - clz(max) - 1u;
   T mask{(T(1) << nbits) - 1u};
-
   for (int i = nbits; i >= 0; --i) {
     mask &= ~(T(1) << i);
     hashed = {};
@@ -175,72 +174,72 @@ template<class T, u32 N, template<class, auto> class C, class _, auto Size>
 }
 } // namespace utility
 
-template<class T, class C, u32 Size>
-  requires (sizeof(C) == sizeof(u8))
-[[nodiscard]] constexpr /*consteval*/ auto to(const C (&data)[Size]) noexcept {
-  T result{};
-  constexpr auto size = Size - 1u; // no null terminated
-  for (auto i = 0u; i < size; ++i) {
-    result = (result << __CHAR_BIT__) | data[size - i - 1u];
-  }
-  return result;
-}
-
-template<class T>
-[[nodiscard]] constexpr auto to(const T& value) noexcept -> const T& {
-  return value;
-}
-
-template<class T, template<class, auto> class R, class _, auto Size>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const R<_, Size>& data) noexcept -> T
-  requires requires { data.data(); } {
-  if constexpr (not Size) {
-    return T{};
-  } else if constexpr (Size == sizeof(T)) {
-    return *__builtin_bit_cast(const T*, data.data());
-  } else if constexpr (Size <= sizeof(T)) {
-    T t{};
-    __builtin_memcpy(&t, data.data(), Size);
-    return t;
-  } else {
-    static_assert(Size <= sizeof(T));
-  }
-}
-
-template<class T, class cold>
-[[nodiscard]] [[gnu::cold]] constexpr auto to(const auto& data) noexcept -> T
-  requires requires { data.data(); data.size(); } {
-  T t{};
-  __builtin_memcpy(&t, data.data(), data.size());
-  return t;
-}
-
-template<class T>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T
-  requires requires { data.data(); data.size(); } {
-  #if not defined(MPH_PAGE_SIZE)
-  #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
-                              // the input string size is not
-                              // known at compile-time
-                              // If set to 0u __builtin_memcpy is used instead
-  #endif
-
-  if constexpr (MPH_PAGE_SIZE) {
-    // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-    if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-      return to<T, class cold>(data);
+template<class T, class TData>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const TData& data) noexcept -> T {
+  if (__builtin_is_constant_evaluated()) {
+    if constexpr (requires { data.data(); data.size(); }) {
+      T t{};
+      for (auto i = 0u; i < data.size(); ++i) {
+        t = (t << __CHAR_BIT__) | data.data()[data.size() - i - 1u];
+      }
+      return t;
+    } else if constexpr (requires { data[0]; }) {
+      auto size = 0u;
+      auto ptr = data;
+      while (*ptr++) size++;
+      T t{};
+      for (auto i = 0u; i < size; ++i) {
+        t = (t << __CHAR_BIT__) | data[size - i - 1u];
+      }
+      return t;
+    } else {
+      return data;
     }
-    T t;
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Warray-bounds"
-    __builtin_memcpy(&t, data.data(), sizeof(t)); // not at page boundry
-    #pragma GCC diagnostic pop
-    return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
-  } else {
-    T t{};
-    __builtin_memcpy(&t, data.data(), data.size());
-    return t;
+  } else if constexpr (requires { data.data(); data.size(); }) {
+    #if not defined(MPH_PAGE_SIZE)
+    #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
+                                // the input string size is not
+                                // known at compile-time
+                                // If set to 0u __builtin_memcpy is used instead
+    #endif
+    if constexpr (requires { []<auto = TData::size()>{}; }) {
+      if constexpr (constexpr auto size = TData::size(); not size) {
+        return T{};
+      } else if constexpr (size == sizeof(T)) {
+        return *__builtin_bit_cast(const T*, data.data());
+      } else if constexpr (size <= sizeof(T)) {
+        T t{};
+        __builtin_memcpy(&t, data.data(), size);
+        return t;
+      }
+    } else if constexpr (MPH_PAGE_SIZE) {
+      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wc++23-extensions"
+        return [&data] [[gnu::cold]] {
+          T t{};
+          __builtin_memcpy(&t, data.data(), data.size());
+          return t;
+        }();
+        #pragma GCC diagnostic pop
+      }
+      T t;
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Warray-bounds"
+      __builtin_memcpy(&t, data.data(), sizeof(t)); // not at page boundry
+      #pragma GCC diagnostic pop
+      return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
+    } else {
+      T t{};
+      __builtin_memcpy(&t, data.data(), data.size());
+      return t;
+    }
+  } else if constexpr (requires { T(data); }) {
+    return data;
   }
+  void failed(); failed();
+  return {};
 }
 
 template<auto kv>
