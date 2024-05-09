@@ -58,7 +58,7 @@ using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
 template<auto v> struct constant { static constexpr auto value = v; };
 template<template<class R, auto Size> class R, class T, auto Size>
-auto size(R<T, Size>&&) -> constant<Size>;
+auto size(const R<T, Size>&) -> constant<Size>;
 
 template<class T, u32 alignment>
 struct aligned {
@@ -69,8 +69,8 @@ template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
-template<class T, u32 width>
-using simd __attribute__ ((vector_size(width))) = T;
+template<class T, u32 width, u32 alignment = 1u>
+using simd __attribute__ ((vector_size(width), aligned(alignment))) = T;
 
 [[nodiscard]] constexpr auto clz(const u32 x) noexcept { return __builtin_clz(x); }
 [[nodiscard]] constexpr auto clz(const u64 x) noexcept { return __builtin_clzl(x); }
