@@ -88,10 +88,10 @@ template<class T>
 
 #if defined(__AVX2__)
 [[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u32, 256u / __CHAR_BIT__> x) noexcept {
-  return __builtin_ia32_movmskps256(x);
+  return __builtin_ia32_movmskps256(simd<float, 256u / __CHAR_BIT__>(x));
 }
 [[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u64, 256u / __CHAR_BIT__> x) noexcept {
-  return __builtin_ia32_movmskpd256(x);
+  return __builtin_ia32_movmskpd256(simd<double, 256u / __CHAR_BIT__>(x));
 }
 #endif
 
