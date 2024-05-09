@@ -52,9 +52,9 @@ std::print("{}", mph::hash<colors>("green"sv));
 ```
 
 ```
-$CXX -std=c++20 -mbmi2 -DNDEBUG -O3 && ./a.out # prints 2
-$CXX -std=c++20 -mavx2 -DNDEBUG -O3 && ./a.out # prints 2
-$CXX -std=c++20        -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20 -mbmi2        -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20 -mbmi2 -mavx2 -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20               -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
 ---
@@ -373,17 +373,16 @@ template<auto kv, config cfg = config{kv}>
 
 - Limitations?
 
-    > `mph` supports different types of key/value pairs, however it has been optimized for integers and string-like keys.
-      For integer lookups, all keys have to fit into `std::uint64_t`.
-      For string lookups, all keys have to have less/equal 8 characters.
+    > `mph` supports different types of key/value pairs. `mph` supports thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
+      All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
       In such case different backup policy should be used instead, for example:
 
     ```cpp
-    template<auto... ts>
+    template<auto kv>
     [[nodiscard]] constexpr auto hash(const auto& key) noexcept {
-      if constexpr (requires { mph::hash<ts...>(key); }) {
-        return mph::hash<ts...>(key);
+      if constexpr (requires { mph::hash<kv>(key); }) {
+        return mph::hash<kv>(key);
       } else {
         // ... other hash implementation
       }
@@ -443,15 +442,10 @@ template<auto kv, config cfg = config{kv}>
 
     Additional resources can be found in the `Acknowledgments` section.
 
-- Is the `hash/mask` guaranteed to be found?
-
-    > Finding the `hash/mask` is [NP](https://en.wikipedia.org/wiki/NP_(complexity)) problem and therefore `mph` is taking a simplified approach (see [How `mph` is working under the hood?](#faq) for details) which doesn't gurantee finding the hash/mask.
-      If the `hash/mask` can't be found `mph` will not compile and the hash call won't be available. It's advised to have additional fallback policies in case accelerated hash can't be used (see [Limitations](#faq)).
-
 - How to tweak `hash` performance for my data/use case?
 
     > Always measure!
-      [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation.
+      [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
       For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
       Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
       That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
@@ -470,7 +464,7 @@ template<auto kv, config cfg = config{kv}>
 
 - Is [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) support required?
 
-    > No, `mph` works on platforms without [avx](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) suppport.
+    > No, `mph` works on platforms without [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) suppport.
 
 - Can I disable `cmov` generation?
 
