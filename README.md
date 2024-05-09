@@ -265,8 +265,8 @@ time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.
 > [6548 string key/value pairs] (https://godbolt.org/z/6q44dhq6c)
 
 ```cpp
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 3.518s
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 3.572s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 2.821s
+time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 2.912s
 ```
 
 <a name="benchmarks"></a>
