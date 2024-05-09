@@ -365,7 +365,7 @@ template<auto kv, auto cfg = config<kv>{}>
               auto& slot = lookup[utility::PEXT<mask>(key)];
               auto n = 0u;
               while (slot[n].first) n++;
-              slot = utility::compressed_pair{key, value};
+              slot[n] = utility::compressed_pair{key, value};
             }
           }
           return lookup;
