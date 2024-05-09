@@ -254,7 +254,7 @@ struct config {
   u32 N{kv.size() < (1 << 8u) ? 1u : 4u};
 
   // 0 - no alignment
-  // N - alignas(N) lookup table
+  // N - alignas(N) lookup table (N needs to be a power of 2)
   u32 alignment{};
 };
 
