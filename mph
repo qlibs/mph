@@ -7,6 +7,7 @@
 //
 #ifndef MPH
 #define MPH 2'2'1 // SemVer
+#pragma GCC system_header
 
 /**
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
@@ -219,20 +220,14 @@ template<class T>
     } else if constexpr (MPH_PAGE_SIZE) {
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
       if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-        #pragma GCC diagnostic push
-        #pragma GCC diagnostic ignored "-Wc++23-extensions"
         return [&data] [[gnu::cold]] {
           T t{};
           __builtin_memcpy(&t, data.data(), data.size());
           return t;
         }();
-        #pragma GCC diagnostic pop
       }
       T t;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Warray-bounds"
       __builtin_memcpy(&t, data.data(), sizeof(t)); // not at page boundry
-      #pragma GCC diagnostic pop
       return T(utility::bzhi(t, T(data.size() * __CHAR_BIT__)));
     } else {
       T t{};
