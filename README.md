@@ -312,6 +312,18 @@ time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 7.
 ### API
 
 ```cpp
+/**
+ * Converts data to T
+ *
+ * @tparam T type
+ * @param data input
+ * @return data as T
+ */
+template<class T>
+[[nodiscard]] constexpr auto to(const auto& data) noexcept -> T;
+```
+
+```cpp
 template<auto kv>
 struct config {
   float probablity{.5}; // .0 - none of the input data can be found in the kv

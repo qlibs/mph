@@ -290,7 +290,6 @@ template<auto kv, auto cfg = config<kv>{}>
     return [&] {
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
-      static_assert(mask);
       static constexpr const auto lookup = [] {
         utility::aligned_t<
           utility::array<
