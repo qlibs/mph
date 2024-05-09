@@ -64,7 +64,7 @@ template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
-template<class T, auto width>
+template<class T, u32 width>
 using simd __attribute__ ((vector_size(width))) = T;
 
 [[nodiscard]] constexpr auto clz(const u32 x) noexcept { return __builtin_clz(x); }
@@ -202,6 +202,8 @@ template<class T, template<class, auto> class R, class _, auto Size>
     T t{};
     __builtin_memcpy(&t, data.data(), Size);
     return t;
+  } else {
+    static_assert(Size <= sizeof(T));
   }
 }
 
@@ -261,8 +263,7 @@ struct config {
  * @param key input data
  */
 template<auto kv, auto cfg = config<kv>{}>
-  requires (cfg.N >= 1u and cfg.probablity >= .0f) and
-  requires { kv.size(); kv.begin(); kv.end(); kv[0].first; kv[0].second; }
+  requires (cfg.N >= 1u and cfg.probablity >= .0f) and requires { kv.size(); kv.begin(); kv.end(); }
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;

@@ -335,7 +335,7 @@ struct config {
  */
 template<auto kv, config cfg = config{kv}>
   requires (cfg.N >= 1u and cfg.probablity >= .0f) and
-  requires { kv.size(); kv.begin(); kv.end(); kv[0].first; kv[0].second; }
+  requires { kv.size(); kv.begin(); kv.end(); }
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
