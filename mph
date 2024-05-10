@@ -45,134 +45,147 @@ struct array {
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
 
-template<class...> inline constexpr auto is_same_v = false;
-template<class T>  inline constexpr auto is_same_v<T, T> = true;
-
 namespace detail {
 template <bool> struct conditional;
 template <> struct conditional<false> { template <class, class T> using fn = T; };
 template <> struct conditional<true>  { template <class T, class> using fn = T; };
-}  // namespace detail
+} // namespace detail
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
-template<auto v> struct constant { static constexpr auto value = v; };
-template<template<class R, auto Size> class R, class T, auto Size>
-auto size(const R<T, Size>&) -> constant<Size>;
+template<auto v> struct ct {
+  static constexpr auto value = v;
+  constexpr operator auto() const noexcept { return value; }
+};
+template<auto v> inline constexpr auto ct_v = ct<v>{};
+
+template<class> inline constexpr auto size_v = u32{};
+template<template<class, auto> class R, class T, auto Size>
+inline constexpr auto size_v<const R<T, Size>&> = Size;
 
 template<class T, u32 alignment>
 struct aligned {
   using type = struct alignas(alignment) a  : T { };
   static_assert(alignment == alignof(type));
 };
-template<class T> struct aligned<T, 0u> { using type = T; };
+template<class T> struct aligned<T, u32{}> { using type = T; };
 template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
-template<class T, u32 width, u32 alignment = 1u>
-using simd __attribute__ ((vector_size(width), aligned(alignment))) = T;
+inline constexpr auto simd_width =
+  #if defined(__AVX2__)
+    256u
+  #else
+    0u
+  #endif
+/ __CHAR_BIT__;
 
-[[nodiscard]] constexpr auto clz(const u32 x) noexcept { return __builtin_clz(x); }
-[[nodiscard]] constexpr auto clz(const u64 x) noexcept { return __builtin_clzl(x); }
-[[nodiscard]] constexpr auto popcount(const u32 x) noexcept { return __builtin_popcountl(x); }
-[[nodiscard]] constexpr auto popcount(const u64 x) noexcept { return __builtin_popcountll(x); }
-
-#if defined(__BMI2__)
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const u32 src, const u32 index) noexcept {
-  return __builtin_ia32_bzhi_si(src, index);
-}
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const u64 src, const u64 index) noexcept {
-  return __builtin_ia32_bzhi_di(src, index);
-}
-#else
 template<class T>
-[[nodiscard]] [[gnu::always_inline]] inline auto bzhi(const T src, const T index) noexcept {
+using simd __attribute__ ((vector_size(simd_width))) = T;
+
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto movmsk([[maybe_unused]] const auto x) noexcept {
+  #if defined(__AVX2__)
+       if constexpr (sizeof(T) == sizeof(u32)) { return __builtin_ia32_movmskps256(simd<float>(x)); }
+  else if constexpr (sizeof(T) == sizeof(u64)) { return __builtin_ia32_movmskpd256(simd<double>(x)); }
+  #endif
+}
+
+[[nodiscard]] [[gnu::always_inline]] constexpr auto clz([[maybe_unused]] const auto x) noexcept {
+       if constexpr (requires { u32{x}; }) { return __builtin_clz(x); }
+  else if constexpr (requires { u64{x}; }) { return __builtin_clzl(x); }
+}
+
+[[nodiscard]] [[gnu::always_inline]] constexpr auto popcount([[maybe_unused]] const auto x) noexcept {
+       if constexpr (requires { u32{x}; }) { return __builtin_popcount(x); }
+  else if constexpr (requires { u64{x}; }) { return __builtin_popcountl(x); }
+}
+
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto bzhi(const T src, const T index) noexcept {
+  #if defined(__BMI2__)
+       if constexpr (requires { u32{src}; u32{index}; }) { return __builtin_ia32_bzhi_si(src, index); }
+  else if constexpr (requires { u64{src}; u64{index}; }) { return __builtin_ia32_bzhi_di(src, index); }
+  #else
   return src & ((T(1) << index) - T(1));
-}
-#endif
-
-#if defined(__AVX2__)
-[[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u32, 256u / __CHAR_BIT__> x) noexcept {
-  return __builtin_ia32_movmskps256(simd<float, 256u / __CHAR_BIT__>(x));
-}
-[[nodiscard]] [[gnu::always_inline]] inline auto movmsk(const simd<u64, 256u / __CHAR_BIT__> x) noexcept {
-  return __builtin_ia32_movmskpd256(simd<double, 256u / __CHAR_BIT__>(x));
-}
-#endif
-
-/// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-template<auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
-[[nodiscard]] constexpr /*consteval*/ auto PEXT(const T a) noexcept -> T {
-  T result{};
-  T m = mask;
-  auto k = 0u;
-  for (T i{}; i < size; ++i) {
-    if (m & 1) result |= ((a >> i) & 1) << k++;
-    m >>= 1;
-  }
-  return result;
+  #endif
 }
 
-#if defined(__BMI2__)
-template<auto mask>
-[[nodiscard]] [[gnu::always_inline]] inline auto pext(const u64 a) noexcept -> u64 {
-  return __builtin_ia32_pext_di(a, mask);
-}
-template<auto mask>
-[[nodiscard]] [[gnu::always_inline]] inline auto pext(const u32 a) noexcept -> u32 {
-  return __builtin_ia32_pext_si(a, mask);
-}
-#else
-/// https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
-template <auto mask, class T, T size = sizeof(T) * __CHAR_BIT__>
-[[nodiscard]] [[gnu::always_inline]] inline auto pext(const T a) noexcept -> T {
-  constexpr auto nbits = popcount(mask);
-  constexpr auto cbits = (sizeof(T) * __CHAR_BIT__) - nbits - clz(mask);
-  constexpr auto coefficient = [] {
-    auto set = false;
-    auto dst = cbits;
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
+  // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
+  if (constexpr T size = sizeof(T) * __CHAR_BIT__; __builtin_is_constant_evaluated()) {
     T result{};
-    for (auto i = 0u; i < size; ++i) {
-      const auto curr = ((T(1) << i) & mask) != T();
-      if (curr and not set) result = result | (T(1) << (dst - i));
-      dst += curr;
-      set = curr;
+    T m = mask;
+    auto k = 0u;
+    for (T i{}; i < size; ++i) {
+      if (m & 1) result |= ((a >> i) & 1) << k++;
+      m >>= 1;
     }
     return result;
-  }();
-  return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
-}
-#endif
-
-template<class T, u32 N, template<class, auto> class C, class _, auto Size>
-[[nodiscard]] constexpr auto mask(const C<_, Size>& v) noexcept -> T {
-  utility::array<T, Size> vs;
-  T max{};
-  for (auto i = 0u; i < Size; ++i) {
-    if (vs[i] = v[i].first; vs[i] > max) {
-      max = vs[i];
-    }
   }
-  constexpr auto H = (N * Size) << 1u;
-  utility::array<utility::compressed_pair<bool, T>, H> hashed;
+  #if defined(__BMI2__)
+  else if constexpr (requires { u32{a}; u32{mask}; }) { return __builtin_ia32_pext_si(a, mask); }
+  else if constexpr (requires { u64{a}; u64{mask}; }) { return __builtin_ia32_pext_di(a, mask); }
+  #endif
+  else if constexpr (requires { mask.value; }) {
+    // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
+    return [&] {
+      static constexpr auto nbits = popcount(mask);
+      static constexpr auto cbits = size - nbits - clz(mask);
+      static constexpr auto coefficient = [&] {
+        auto set = false;
+        auto dst = cbits;
+        T result{};
+        for (auto i = 0u; i < size; ++i) {
+          const auto curr = ((T(1) << i) & mask) != T();
+          if (curr and not set) result = result | (T(1) << (dst - i));
+          dst += curr;
+          set = curr;
+        }
+        return result;
+      }();
+      return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
+    }();
+  }
+  return {};
+}
+
+template<class T, u32 N>
+[[nodiscard]] constexpr auto mask(const auto& v) noexcept -> T {
+  utility::array<T, utility::size_v<decltype(v)>> vs;
+  T max{};
+  u32 size{};
+  for (auto i = 0u; i < vs.size(); ++i) {
+    if (not v[i].first) break;
+    if (vs[i] = v[i].first; vs[i] > max) max = vs[i];
+    ++size;
+  }
+  constexpr auto H = (N * vs.size()) << 1u;
+  constexpr auto N_ = N - 1u;
   const auto nbits = (sizeof(T) * __CHAR_BIT__) - clz(max) - 1u;
-  T mask{(T(1) << nbits) - 1u};
+  utility::array<T, H> hashed;
+  T mask = ((T(1) << nbits) - 1u);
   for (int i = nbits; i >= 0; --i) {
     mask &= ~(T(1) << i);
     hashed = {};
-    for (auto j = 0u; j < Size; ++j) {
-      const auto masked = vs[j] & mask;
+    for (auto j = 0u; j < size; ++j) {
+      const auto masked = (vs[j] & mask) + 1u;
       auto slot = masked % H;
-      auto n = N - 1u;
-      while (hashed[slot].first) {
-        if (hashed[slot].second == masked and not n--) break;
+      auto n = N_;
+      auto found = false;
+      while (hashed[slot]) {
+        if (hashed[slot] == masked and not n--) {
+          found = true;
+          break;
+        }
         slot = (slot + 1u) % H;
       }
-      if (hashed[slot].first and hashed[slot].second == masked) {
+      if (found) {
         mask |= (T(1) << i);
         break;
       }
-      hashed[slot] = {true, masked};
+      hashed[slot] = masked;
     }
   }
   return mask;
@@ -202,21 +215,15 @@ template<class T>
     }
   } else if constexpr (requires { data.data(); data.size(); }) {
     #if not defined(MPH_PAGE_SIZE)
-    #define MPH_PAGE_SIZE 4096u // Used for string-like keys if
-                                // the input string size is not
-                                // known at compile-time
-                                // If set to 0u __builtin_memcpy is used instead
+    #define MPH_PAGE_SIZE 4096u // [optimization] if set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
+                                //                if not __builtin_memcpy(data, size)
     #endif
-    if constexpr (requires { utility::size(data); }) {
-      if constexpr (constexpr auto size = decltype(utility::size(data))::value; not size) {
-        return T{};
-      } else if constexpr (size == sizeof(T)) {
-        return *__builtin_bit_cast(const T*, data.data());
-      } else if constexpr (size <= sizeof(T)) {
-        T t{};
-        __builtin_memcpy(&t, data.data(), size);
-        return t;
-      }
+    if constexpr (constexpr auto size = utility::size_v<decltype(data)>; size == sizeof(T)) {
+      return *__builtin_bit_cast(const T*, data.data());
+    } else if constexpr (size > 0u and size <= sizeof(T)) {
+      T t{};
+      __builtin_memcpy(&t, data.data(), size);
+      return t;
     } else if constexpr (MPH_PAGE_SIZE) {
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
       if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
@@ -240,188 +247,331 @@ template<class T>
   return {};
 }
 
+namespace concepts {
+template<auto cfg> concept config = requires {
+  cfg.probability;
+  cfg.lookup;
+  cfg.alignment;
+} and (
+  cfg.probability >= 0u and
+  cfg.probability <= 100u and
+  cfg.lookup >= 0u and
+  not (cfg.alignment % 2)
+);
+
+template<auto kv> concept range = requires(u32 n) {
+  kv.size();
+  kv.begin();
+  kv.end();
+  kv[n];
+};
+} // namespace concepts
+
 template<auto kv>
 struct config {
-  // .0       - none of the input data can be found in the kv
-  // (.0, .5) - input data is unlikely to be found in the kv
-  // .5       - unpredictable (default)
-  // (.5, 1.) - input data is likely to be found in the kv
-  // 1.       - all input data can be found in the kv
-  float probability{.5};
+  /// 0         - none of the input data can be found in the kv
+  /// (0, 50)   - input data is unlikely to be found in the kv
+  /// 50        - unpredictable (default)
+  /// (50, 100) - input data is likely to be found in the kv
+  /// 100       - all input data can be found in the kv
+  u8 probability{50};
 
-  // 1 - no collisions (deafult)
-  // N - n collisions allowed
-  u32 N{[] {
-    using key_type = typename decltype(kv)::value_type::first_type;
-    const auto bse = (1 << 14u);
-    const auto max = 4u;
-    const auto res = 1u << u32(kv.size() / (bse / sizeof(key_type)));
-    return res > max ? max : res;
-  }()};
+  /// 1 - one element per lookup (faster but larger memory footprint)
+  /// N - n elements per lookup  (slower but smaller memory footprint)
+  u32 lookup{
+    [this]() -> u32 {
+      using key_type = typename decltype(kv)::value_type::first_type;
+      if (sizeof(key_type) == sizeof(u32) and kv.size() <= sizeof(key_type) * (1u << 10u)) {
+        return 1u;
+      } else if (sizeof(key_type) == sizeof(u64) and kv.size() <= sizeof(key_type) * (1u << 7u)) {
+        return 1u;
+      } else if (probability == 100u) {
+        return 2u * sizeof(key_type);
+      } else if (sizeof(key_type) < utility::simd_width) {
+        return utility::simd_width / sizeof(key_type);
+      } else {
+        return 2u * sizeof(key_type);
+      }
+    }()
+  };
 
-  // 0 - no alignment
-  // N - alignas(N) lookup table (N needs to be a power of 2)
-  u32 alignment{};
+  /// 0 - no alignment for the lookup table
+  /// n - alignas(lookup) - needs to be power of 2, required for simd
+  u32 alignment{
+    []() -> u32 {
+      if (utility::simd_width) {
+        return utility::simd_width / 4u;
+      } else {
+        return {};
+      }
+    }()
+  };
 };
 
-/**
- * Perfect hash function
- *
- * @tparam kv constexpr array of key/value pairs
- * @tparam config configuration
- * @param key input data
- */
 template<auto kv, auto cfg = config<kv>{}>
-  requires (cfg.N >= 1u and cfg.probability >= .0f) and requires { kv.size(); kv.begin(); kv.end(); }
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() == 0u or
+    cfg.probability == 0u
+  )
+[[nodiscard]] constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+  return {};
+}
+
+template<auto kv, auto cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() == 1u and
+    cfg.probability > 0u and cfg.probability < 100u
+  )
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  if constexpr (kv.size() == 0u or not cfg.probability) {
-    return {};
-  } else if (__builtin_is_constant_evaluated()) {
-    constexpr auto to = [](const auto& data) -> decltype(auto) {
-      if constexpr (requires { data.size(); }) {
-        key_type result{};
-        for (auto i = 0u; i < data.size(); ++i) {
-          result = (result << __CHAR_BIT__) | data[data.size() - i - 1u];
-        }
-        return result;
-      } else {
-        return data;
-      }
-    };
-    for (const auto& [k, v] : kv) {
-      if (k == to(key)) {
-        return v;
-      }
+  return to<key_type>(key) == kv[0].first ? kv[0].second : value_type{};
+}
+
+template<auto kv, auto cfg = config<kv>{}, class T, auto Size>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability > 0u
+  )
+[[nodiscard]] consteval auto hash(const T (&key)[Size]) noexcept -> typename decltype(kv)::value_type::second_type {
+  using key_type = typename decltype(kv)::value_type::first_type;
+  for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
+  return {};
+}
+
+template<auto kv, auto cfg = config<kv>{}, auto key>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability > 0u
+  )
+[[nodiscard]] consteval auto hash(const utility::ct<key>) noexcept -> typename decltype(kv)::value_type::second_type {
+  for (const auto& [k, value] : kv) { if (key == k) { return value; } }
+  return {};
+}
+
+template<auto kv, auto cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability == 100u and
+    cfg.lookup == 1u
+  )
+[[nodiscard]] [[gnu::always_inline]]
+inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+  using key_type = typename decltype(kv)::value_type::first_type;
+  using value_type = typename decltype(kv)::value_type::second_type;
+  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr const auto mask = utility::ct_v<mask_type(utility::mask<key_type, cfg.lookup>(kv))>;
+  static constexpr const auto lookup = [] {
+    utility::aligned_t<
+      utility::array<
+        value_type,
+        mask_type(1) << utility::popcount(mask)
+      >,
+      cfg.alignment
+    > lookup{};
+    for (const auto& [key, value] : kv) {
+      lookup[utility::pext(key, mask)] = value;
     }
-    return {};
-  } else if constexpr (kv.size() == 1u) {
-    return to<key_type>(key) == kv[0].first ? kv[0].second : value_type{};
-  } else {
-    return [&] {
-      using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr mask_type mask = utility::mask<key_type, cfg.N>(kv);
-      static constexpr const auto lookup = [] {
-        if constexpr (cfg.probability == 1.) {
-          static_assert(cfg.N == 1u);
+    return lookup;
+  }();
+  return lookup[utility::pext(to<key_type>(key), mask)];
+}
+
+template<auto kv, auto cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability > 0u and cfg.probability < 100u and
+    cfg.lookup == 1u
+  )
+[[nodiscard]] [[gnu::always_inline]]
+inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+  using key_type = typename decltype(kv)::value_type::first_type;
+  using value_type = typename decltype(kv)::value_type::second_type;
+  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr const auto mask = utility::ct_v<mask_type(utility::mask<key_type, cfg.lookup>(kv))>;
+  static constexpr const auto lookup = [] {
+    utility::aligned_t<
+      utility::array<
+        utility::compressed_pair<key_type, value_type>,
+        mask_type(1) << utility::popcount(mask)
+      >,
+      cfg.alignment
+    > lookup{};
+    for (const auto& [key, value] : kv) {
+      lookup[utility::pext(key, mask)] = utility::compressed_pair{key, value};
+    }
+    return lookup;
+  }();
+
+  auto&& lhs = to<key_type>(key);
+  auto&& rhs = lookup[utility::pext(lhs, mask)];
+
+  constexpr auto cmp = [](bool cond) -> decltype(cond) {
+    #if __has_builtin(__builtin_unpredictable)
+    if constexpr (cfg.probability == 50u) {
+      return __builtin_unpredictable(cond);
+    } else
+    #endif
+    return __builtin_expect_with_probability(cond, 1,
+      [] { return float(cfg.probability) / float(100u); }());
+  };
+
+  return cmp(lhs == rhs.first) ? rhs.second : value_type{};
+}
+
+template<auto kv, auto cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability > 0u and cfg.probability < 100u and
+    cfg.lookup > 1u and utility::simd_width > 0u and
+    cfg.lookup <= utility::simd_width / __CHAR_BIT__ and
+    cfg.alignment > 0u
+  )
+[[nodiscard]] [[gnu::always_inline]]
+inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+  using key_type = typename decltype(kv)::value_type::first_type;
+  using value_type = typename decltype(kv)::value_type::second_type;
+  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr const auto mask = utility::ct_v<mask_type(utility::mask<key_type, cfg.lookup>(kv))>;
+  static constexpr const auto lookup = [] {
+    utility::aligned_t<
+      utility::array<
+        utility::compressed_pair<
+          utility::aligned_t<
+            utility::array<key_type, cfg.lookup>,
+            cfg.alignment
+          >,
           utility::aligned_t<
             utility::array<
               value_type,
-              mask_type(1) << utility::popcount(mask)
+              1u + (1u << (cfg.lookup - 1u))
             >,
             cfg.alignment
-          > lookup{};
-          for (const auto& [key, value] : kv) {
-            lookup[utility::PEXT<mask>(key)] = value;
-          }
-          return lookup;
+          >
+        >,
+        mask_type(1) << utility::popcount(mask)
+      >,
+      cfg.alignment
+    > lookup{};
+    for (const auto& [key, value] : kv) {
+      auto& slot = lookup[utility::pext(key, mask)];
+      auto n = 0u;
+      while (slot.first[n]) n++;
+      slot.first[n] = key;
+      slot.second[1u << n] = value;
+    }
+    return lookup;
+  }();
+
+  auto&& lhs = to<key_type>(key);
+  auto&& rhs = lookup[utility::pext(lhs, mask)];
+  return rhs.second[utility::movmsk<key_type>(
+    lhs == *(const utility::simd<key_type>*)rhs.first.data())
+  ];
+}
+
+template<auto kv, auto cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg> and (
+    kv.size() > 1u and
+    cfg.probability > 0u and
+    cfg.lookup > 1u and cfg.lookup > utility::simd_width / __CHAR_BIT__
+  )
+[[nodiscard]] [[gnu::always_inline]]
+inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+  using key_type = typename decltype(kv)::value_type::first_type;
+  using value_type = typename decltype(kv)::value_type::second_type;
+  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr const auto mask = utility::ct_v<mask_type(utility::mask<key_type, cfg.lookup>(kv))>;
+  static constexpr const auto lookup = [] {
+    utility::array<
+      utility::array<
+        utility::compressed_pair<key_type, value_type>,
+        cfg.lookup
+      >,
+      mask_type(1) << utility::popcount(mask)
+    > lookup{};
+    for (const auto& [key, value] : kv) {
+      auto& slot = lookup[utility::pext(key, mask)];
+      auto n = 0u;
+      while (slot[n].first) n++;
+      slot[n] = utility::compressed_pair{key, value};
+    }
+    return lookup;
+  }();
+  static constexpr const auto masks = [] {
+    utility::array<mask_type, lookup.size()> masks{};
+    int max_mask{};
+    for (auto i = 0u; i < lookup.size(); ++i) {
+      if (const auto& slot = lookup[i]; slot[0].first) {
+        const auto mask = utility::mask<key_type, 1u>(slot);
+        if (const auto m = utility::popcount(mask); m > max_mask) {
+          max_mask = m;
         }
-        else {
-          #if defined (__AVX2__)
+        masks[i] = mask;
+      }
+    }
+    return utility::compressed_pair{masks, max_mask};
+  }();
+  static constexpr const auto lookups = [] {
+    utility::aligned_t<
+      utility::array<
+        utility::compressed_pair<
+          mask_type,
           utility::aligned_t<
             utility::array<
-              utility::compressed_pair<
-                utility::aligned_t<
-                  utility::array<key_type, cfg.N>,
-                  cfg.alignment
-                >,
-                utility::aligned_t<
-                  utility::array<
-                    value_type,
-                    cfg.N == 1u ? 1u : 1u + (1u << (cfg.N - 1u))
-                  >,
-                  cfg.alignment
-                >
+              utility::conditional_t<
+                cfg.probability == 100u,
+                value_type,
+                utility::compressed_pair<key_type, value_type>
               >,
-              mask_type(1) << utility::popcount(mask)
+              mask_type(1) << masks.second
             >,
             cfg.alignment
-          > lookup{};
-          for (const auto& [key, value] : kv) {
-            if constexpr (auto& slot = lookup[utility::PEXT<mask>(key)]; cfg.N == 1u) {
-              slot.first[0u] = key;
-              slot.second[0u] = value;
-            } else {
-              auto n = 0u;
-              while (slot.first[n]) n++;
-              slot.first[n] = key;
-              slot.second[1u << n] = value;
-            }
-          }
-          return lookup;
-          #else
-          utility::aligned_t<
-            utility::array<
-              utility::aligned_t<
-                utility::array<
-                  utility::compressed_pair<key_type, value_type>,
-                  cfg.N
-                >,
-                cfg.alignment
-              >,
-              mask_type(1) << utility::popcount(mask)
-            >,
-            cfg.alignment
-          > lookup{};
-          for (const auto& [key, value] : kv) {
-            if constexpr (cfg.N == 1u) {
-              lookup[utility::PEXT<mask>(key)][0u] = utility::compressed_pair{key, value};
-            } else {
-              auto& slot = lookup[utility::PEXT<mask>(key)];
-              auto n = 0u;
-              while (slot[n].first) n++;
-              slot[n] = utility::compressed_pair{key, value};
-            }
-          }
-          return lookup;
-          #endif
-        }
-      }();
+          >
+        >,
+        masks.first.size()
+      >,
+      cfg.alignment
+    > lookups{};
 
-      auto&& lhs = to<key_type>(key);
-      auto&& rhs = lookup[utility::pext<mask>(lhs)];
-
-      constexpr auto cmp = [](bool cond) {
-        #if defined(__clang__)
-          if constexpr (cfg.probability == .5f) {
-            return __builtin_unpredictable(cond);
-          } else
-        #endif
-          return __builtin_expect_with_probability(cond, 1, cfg.probability);
-      };
-
-      if constexpr (cfg.N == 1u) {
-        if constexpr (requires { rhs.first[0]; rhs.second[0]; }) {
-          return cmp(lhs == rhs.first[0]) ? rhs.second[0] : value_type{};
-        } else if constexpr (requires { rhs[0].first; rhs[0].second; }) {
-          return cmp(lhs == rhs[0].first) ? rhs[0].second : value_type{};
-        } else {
-          return rhs;
-        }
-      }
-      #if defined (__AVX2__)
-      else if constexpr (constexpr auto width = 256u / __CHAR_BIT__;
-        cfg.N * sizeof(key_type) <= width and (sizeof(key_type) == sizeof(u32) or
-                                               sizeof(key_type) == sizeof(u64))) {
-        return rhs.second[utility::movmsk(
-          utility::simd<key_type, width>(
-            to<key_type>(key)
-            ==
-            *(utility::simd<key_type, width>*)(rhs.first.data())
-          )
-        )];
-      }
-      #endif
-      else {
-        for (auto i = 0u; i < rhs.size(); ++i) {
-          if (cmp(lhs == rhs[i].first)) {
-            return rhs[i].second;
+    const auto fill = [&](auto fn) {
+      for (auto i = 0u; i < masks.first.size(); ++i) {
+        if (auto& slot = lookups[i]; lookup[i][0].first) {
+          slot.first = masks.first[i];
+          for (const auto& [key, value] : lookup[i]) {
+            if (not key) break;
+            slot.second[utility::pext(key, slot.first)] = fn(key, value);
           }
         }
       }
-      return value_type{};
-    }();
+    };
+
+    if constexpr (cfg.probability == 100u) {
+      fill([]([[maybe_unused]] const auto& key, const auto& value) { return value; });
+    } else {
+      fill([](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; });
+    }
+    return lookups;
+  }();
+
+  auto&& lhs = to<key_type>(key);
+  auto&& lut = lookups[utility::pext(lhs, mask)];
+  auto&& rhs = lut.second[utility::pext(lhs, lut.first)];
+
+  [[maybe_unused]] constexpr auto cmp = [](bool cond) {
+    #if __has_builtin(__builtin_unpredictable)
+      if constexpr (cfg.probability == 50u) {
+        return __builtin_unpredictable(cond);
+      } else
+    #endif
+      return __builtin_expect_with_probability(cond, 1,
+        [] { return float(cfg.probability) / float(100u); }());
+  };
+
+  if constexpr (requires { rhs.first; rhs.second; }) {
+    return cmp(lhs == rhs.first) ? rhs.second : value_type{};
+  } else {
+    return rhs;
   }
 }
 } // namespace mph
@@ -470,35 +620,21 @@ static_assert(([] {
     }
   }
 
-  // mp::utility::is_same_v
+  // mph::utility::ct_v
   {
-    static_assert(mph::utility::is_same_v<void, void>);
-    static_assert(mph::utility::is_same_v<int, int>);
-    static_assert(not mph::utility::is_same_v<int, void>);
-    static_assert(not mph::utility::is_same_v<void, int>);
-    static_assert(not mph::utility::is_same_v<void*, int>);
-    static_assert(not mph::utility::is_same_v<int, const int>);
+    static_assert(0 == mph::utility::ct_v<0>);
+    static_assert(42u == mph::utility::ct_v<42u>);
+    static_assert('X' == mph::utility::ct_v<'X'>);
   }
 
-  // mph::utility::conditional_t
-  {
-    static_assert(mph::utility::is_same_v<void, mph::utility::conditional_t<true, void, int>>);
-    static_assert(mph::utility::is_same_v<int, mph::utility::conditional_t<false, void, int>>);
-  }
-
-  // mph::utility::constant
-  {
-    static_assert(0 == mph::utility::constant<0>::value);
-    static_assert(42u == mph::utility::constant<42u>::value);
-    static_assert('X' == mph::utility::constant<'X'>::value);
-
-  }
-
-  // mph::utility::size
+  // mph::utility::size_v
   {
     using mph::utility::array;
-    static_assert(1 == decltype(mph::utility::size(array<bool, 1>{}))::value);
-    static_assert(42 == decltype(mph::utility::size(array<int, 42>{}))::value);
+
+    static_assert(0 == mph::utility::size_v<int>);
+    static_assert(0 == mph::utility::size_v<void>);
+    static_assert(1 == mph::utility::size_v<const array<bool, 1>&>);
+    static_assert(42 == mph::utility::size_v<const array<int, 42>&>);
   }
 
   // mph::utility::aligned_t
@@ -513,14 +649,16 @@ static_assert(([] {
 
   // mph::utility::pext
   {
-    static_assert(0    == mph::utility::PEXT<0b00>(0b00));
-    static_assert(0    == mph::utility::PEXT<0b00>(0b01));
-    static_assert(0b1  == mph::utility::PEXT<0b01>(0b01));
-    static_assert(0b01 == mph::utility::PEXT<0b11>(0b01));
-    static_assert(0b0  == mph::utility::PEXT<0b10>(0b01));
-    static_assert(0b1  == mph::utility::PEXT<0b10>(0b11));
-    static_assert(0b1  == mph::utility::PEXT<0b01>(0b11));
-    static_assert(0b11 == mph::utility::PEXT<0b11>(0b11));
+    using mph::u32;
+
+    static_assert(0    == mph::utility::pext(0b00, 0b00));
+    static_assert(0    == mph::utility::pext(0b01, 0b00));
+    static_assert(0b1  == mph::utility::pext(0b01, 0b01));
+    static_assert(0b01 == mph::utility::pext(0b01, 0b11));
+    static_assert(0b0  == mph::utility::pext(0b01, 0b10));
+    static_assert(0b1  == mph::utility::pext(0b11, 0b10));
+    static_assert(0b1  == mph::utility::pext(0b11, 0b01));
+    static_assert(0b11 == mph::utility::pext(0b11, 0b11));
   }
 
   // mph::utility::mask
@@ -529,11 +667,13 @@ static_assert(([] {
     using mph::utility::array;
     using mph::utility::compressed_pair;
 
-    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b00, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b01, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b10, 0}}));
+    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b01, 0}, compressed_pair{0b10, 0}}));
     static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b00, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b00, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b11 == mph::utility::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::to
@@ -551,11 +691,47 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
+  // mph::concepts
+  {
+    // mph::concepts::config
+    {
+      struct cfg1{ };
+      struct cfg2{ int probability{}; };
+      struct cfg3{ int probability{}; int alignment{}; };
+      struct cfg4{ int probability{}; int lookup{}; int alignment{}; };
+
+      static_assert(not mph::concepts::config<cfg1{}>);
+      static_assert(not mph::concepts::config<cfg2{}>);
+      static_assert(not mph::concepts::config<cfg3{}>);
+      static_assert(not mph::concepts::config<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
+      static_assert(not mph::concepts::config<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
+      static_assert(mph::concepts::config<cfg4{}>);
+      static_assert(mph::concepts::config<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
+      static_assert(mph::concepts::config<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
+    }
+
+    // mph::concepts::range
+    {
+      using mph::u32;
+
+      struct range1 { };
+      struct range2 { u32 begin() const; u32 end() const; };
+      struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
+      struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
+
+      static_assert(not mph::concepts::range<range1{}>);
+      static_assert(not mph::concepts::range<range2{}>);
+      static_assert(not mph::concepts::range<range3{}>);
+      static_assert(mph::concepts::range<range4{}>);
+    }
+  }
+
   // mph::hash
   {
     using mph::u32;
     using mph::utility::compressed_pair;
     using mph::utility::array;
+    using mph::utility::ct_v;
 
     // integral
     {
@@ -564,9 +740,9 @@ static_assert(([] {
           compressed_pair{u32(4), u32(2)},
         };
 
-        static_assert(0 == mph::hash<kv>(u32(0)));
-        static_assert(0 == mph::hash<kv>(u32(1)));
-        static_assert(2 == mph::hash<kv>(u32(4)));
+        static_assert(0 == mph::hash<kv>(ct_v<0>));
+        static_assert(0 == mph::hash<kv>(ct_v<1>));
+        static_assert(2 == mph::hash<kv>(ct_v<4>));
       }
 
       {
@@ -576,10 +752,10 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         };
 
-        static_assert(0 == mph::hash<kv>(u32(0)));
-        static_assert(2 == mph::hash<kv>(u32(4)));
-        static_assert(87 == mph::hash<kv>(u32(42)));
-        static_assert(100 == mph::hash<kv>(u32(100)));
+        static_assert(0 == mph::hash<kv>(ct_v<0>));
+        static_assert(2 == mph::hash<kv>(ct_v<4>));
+        static_assert(87 == mph::hash<kv>(ct_v<42>));
+        static_assert(100 == mph::hash<kv>(ct_v<100>));
       }
     }
 
@@ -592,10 +768,10 @@ static_assert(([] {
           compressed_pair{mph::to<u32>("XRP"), 3},
         };
 
-        static_assert(0 == mph::hash<kv>(mph::to<u32>("")));
-        static_assert(1 == mph::hash<kv>(mph::to<u32>("BTC")));
-        static_assert(2 == mph::hash<kv>(mph::to<u32>("ETH")));
-        static_assert(3 == mph::hash<kv>(mph::to<u32>("XRP")));
+        static_assert(0 == mph::hash<kv>(""));
+        static_assert(1 == mph::hash<kv>("BTC"));
+        static_assert(2 == mph::hash<kv>("ETH"));
+        static_assert(3 == mph::hash<kv>("XRP"));
       }
     }
   }

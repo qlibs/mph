@@ -366,28 +366,69 @@ template<class T>
 ```
 
 ```cpp
+namespace concepts {
+template<auto cfg> concept config = requires {
+  cfg.probability;
+  cfg.lookup;
+  cfg.alignment;
+} and (
+  cfg.probability >= 0u and
+  cfg.probability <= 100u and
+  cfg.lookup >= 0u and
+  not (cfg.alignment % 2)
+);
+
+template<auto kv> concept range = requires(u32 n) {
+  kv.size();
+  kv.begin();
+  kv.end();
+  kv[n];
+};
+} // namespace concepts
+```
+
+```cpp
 template<auto kv>
 struct config {
-  // .0       - none of the input data can be found in the kv
-  // (.0, .5) - input data is unlikely to be found in the kv
-  // .5       - unpredictable (default)
-  // (.5, 1.) - input data is likely to be found in the kv
-  // 1.       - all input data can be found in the kv
-  float probability{.5};
+  /// 0         - none of the input data can be found in the kv
+  /// (0, 50)   - input data is unlikely to be found in the kv
+  /// 50        - unpredictable (default)
+  /// (50, 100) - input data is likely to be found in the kv
+  /// 100       - all input data can be found in the kv
+  u8 probability{50};
 
-  // 1 - no collisions (deafult)
-  // N - n collisions allowed
-  u32 N{[] {
-    const auto bse = (1 << 14u);
-    const auto max = 4u;
-    const auto res = 1u << u32(kv.size() / (bse / sizeof(key_type)));
-    return res > max ? max : res;
-  }()};
+  /// 1 - one element per lookup (faster but larger memory footprint)
+  /// N - n elements per lookup  (slower but smaller memory footprint)
+  u32 lookup{
+    [this]() -> u32 {
+      using key_type = typename decltype(kv)::value_type::first_type;
+      if (sizeof(key_type) == sizeof(u32) and kv.size() <= sizeof(key_type) * (1u << 10u)) {
+        return 1u;
+      } else if (sizeof(key_type) == sizeof(u64) and kv.size() <= sizeof(key_type) * (1u << 7u)) {
+        return 1u;
+      } else if (probability == 100u) {
+        return 2u * sizeof(key_type);
+      } else if (sizeof(key_type) < utility::simd_width) {
+        return utility::simd_width / sizeof(key_type);
+      } else {
+        return 2u * sizeof(key_type);
+      }
+    }()
+  };
 
-  // 0 - no alignment
-  // N - alignas(N) lookup table (N needs to be a power of 2)
-  u32 alignment{};
+  /// 0 - no alignment for the lookup table
+  /// n - alignas(lookup) - needs to be power of 2, required for simd
+  u32 alignment{
+    []() -> u32 {
+      if (utility::simd_width) {
+        return utility::simd_width / 4u;
+      } else {
+        return {};
+      }
+    }()
+  };
 };
+
 ```
 
 ```cpp
@@ -398,9 +439,8 @@ struct config {
  * @tparam config configuration
  * @param key input data
  */
-template<auto kv, config cfg = config{kv}>
-  requires (cfg.N >= 1u and cfg.probablity >= .0f) and
-  requires { kv.size(); kv.begin(); kv.end(); }
+template<auto kv, config cfg = config<kv>{}>
+  requires concepts::range<kv> and concepts::config<cfg>
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
@@ -426,14 +466,11 @@ template<auto kv, config cfg = config{kv}>
       In such case different backup policy should be used instead, for example:
 
     ```cpp
-    template<auto kv>
-    [[nodiscard]] constexpr auto hash(const auto& key) noexcept {
-      if constexpr (requires { mph::hash<kv>(key); }) {
-        return mph::hash<kv>(key);
-      } else {
-        // ... other hash implementation
-      }
-    }
+    template<auto kv, auto cfg = config<kv>{}>
+      requires concepts::range<kv> and concepts::config<cfg> and (
+        kv.size() > 1'000'000
+      )
+    [[nodiscard]] constexpr auto mph::hash(const auto& key) noexcept;
     ```
 
 - How `mph` is working under the hood?
