@@ -446,8 +446,8 @@ template<auto kv, config cfg = config<kv>{}>
 
 ```cpp
 #define MPH 2'3'0           // Current library version (SemVer)
-#define MPH_PAGE_SIZE 4096u // [optimization] if set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
-                            //                if not __builtin_memcpy(data, size)
+#define MPH_PAGE_SIZE 4096u // If set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
+                            // If not __builtin_memcpy(data, size)
 ```
 
 ---
