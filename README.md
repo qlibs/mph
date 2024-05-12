@@ -446,10 +446,8 @@ template<auto kv, config cfg = config<kv>{}>
 
 ```cpp
 #define MPH 2'3'0           // Current library version (SemVer)
-#define MPH_PAGE_SIZE 4096u // Used for string-like keys if
-                            // the input string size is not
-                            // known at compile-time
-                            // If set to 0u std::memcpy is used instead
+#define MPH_PAGE_SIZE 4096u // [optimization] if set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
+                            //                if not __builtin_memcpy(data, size)
 ```
 
 ---
