@@ -191,7 +191,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/7sGrvo8Wb)
+### Performance (https://godbolt.org/z/MjMzG9zvE)
 
 ```cpp
 int main(int, const char** argv) {
@@ -211,7 +211,7 @@ int main(int, const char** argv) {
   };
 
   // input keys are always valid aka coming from the predefined set
-  return mph::hash<symbols, mph::config<symbols>{.probability = 1.}>(
+  return mph::hash<symbols, mph::config<symbols>{.probability = 100u}>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
