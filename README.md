@@ -234,9 +234,11 @@ lookup:
 
 ### Examples
 
-- [feature/performance] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
-- [feature/performance] headers - https://godbolt.org/z/Kavrn7b9T
-- [future/performance] enum name -
+- [usage] custom config -
+- [usage] custom hash -
+- [feature] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
+- [example] headers - https://godbolt.org/z/Kavrn7b9T
+- [future] enum name -
 
 ---
 
