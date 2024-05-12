@@ -407,18 +407,19 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 
   auto&& lhs = to<key_type>(key);
   auto&& rhs = lookup[utility::pext(lhs, mask)];
-
-  constexpr auto cmp = [](bool cond) -> decltype(cond) {
-    #if __has_builtin(__builtin_unpredictable)
-    if constexpr (cfg.probability == 50u) {
-      return __builtin_unpredictable(cond);
-    } else
-    #endif
-    return __builtin_expect_with_probability(cond, 1,
-      [] { return float(cfg.probability) / float(100u); }());
-  };
-
-  return cmp(lhs == rhs.first) ? rhs.second : value_type{};
+  #if __has_builtin(__builtin_unpredictable)
+  if constexpr (cfg.probability == 50u) {
+    if (__builtin_unpredictable(lhs == rhs.first)) {
+      return rhs.second;
+    }
+  }
+  else
+  #endif
+  if (__builtin_expect_with_probability(lhs == rhs.first, 1,
+    [] { return float(cfg.probability) / float(100u); }())) {
+    return rhs.second;
+  }
+  return {};
 }
 
 template<auto kv, auto cfg = config<kv>{}>
@@ -559,22 +560,23 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   auto&& lhs = to<key_type>(key);
   auto&& lut = lookups[utility::pext(lhs, mask)];
   auto&& rhs = lut.second[utility::pext(lhs, lut.first)];
-
-  [[maybe_unused]] constexpr auto cmp = [](bool cond) {
+  if constexpr (requires { rhs.first; rhs.second; }) {
     #if __has_builtin(__builtin_unpredictable)
       if constexpr (cfg.probability == 50u) {
-        return __builtin_unpredictable(cond);
-      } else
-    #endif
-      return __builtin_expect_with_probability(cond, 1,
-        [] { return float(cfg.probability) / float(100u); }());
-  };
-
-  if constexpr (requires { rhs.first; rhs.second; }) {
-    return cmp(lhs == rhs.first) ? rhs.second : value_type{};
+        if (__builtin_unpredictable(lhs == rhs.first)) {
+          return rhs.second;
+        }
+      }
+      else
+      #endif
+      if (__builtin_expect_with_probability(lhs == rhs.first, 1,
+        [] { return float(cfg.probability) / float(100u); }())) {
+        return rhs.second;
+      }
   } else {
     return rhs;
   }
+  return {};
 }
 } // namespace mph
 
