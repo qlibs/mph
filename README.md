@@ -44,9 +44,9 @@ constexpr auto colors = std::array{
   pair("blue",  color::blue),
 };
 
-static_assert(color::green == mph::hash<colors>("green"sv));
-static_assert(color::red   == mph::hash<colors>("red"sv));
-static_assert(color::blue  == mph::hash<colors>("blue"sv));
+static_assert(color::green == mph::hash<colors>("green"));
+static_assert(color::red   == mph::hash<colors>("red"));
+static_assert(color::blue  == mph::hash<colors>("blue"));
 
 std::print("{}", mph::hash<colors>("green"sv));
 ```
@@ -71,13 +71,6 @@ int main(int argc, char**)
     std::pair{234u,  64u},
     std::pair{ 91u, 234u},
   };
-
-  static_assert(0u   == mph::hash<ids>(0u));
-  static_assert(91u  == mph::hash<ids>(54u));
-  static_assert(54u  == mph::hash<ids>(324u));
-  static_assert(324u == mph::hash<ids>(64u));
-  static_assert(64u  == mph::hash<ids>(234u));
-  static_assert(234u == mph::hash<ids>(91u));
 
   return mph::hash<ids>(argc);
 }
