@@ -33,7 +33,7 @@
 - [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
 - [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions)
 
-### Hello world (https://godbolt.org/z/ej81YP3G9)
+### Hello world (https://godbolt.org/z/1eKbEYrTr)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
@@ -235,6 +235,7 @@ lookup:
 ### Examples
 
 - [feature/performance] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
+- [feature/performance] headers - https://godbolt.org/z/Kavrn7b9T
 - [future/performance] enum name -
 
 ---
