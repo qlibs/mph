@@ -227,11 +227,11 @@ lookup:
 
 ### Examples
 
-- [usage] custom config -
-- [usage] custom hash -
-- [feature] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
-- [example] headers - https://godbolt.org/z/Kavrn7b9T
-- [future] enum name -
+- [feature] custom config -
+- [feature] custom hash -
+- [example] unordered_map -
+- [example] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
+- [performance] enum name -
 
 ---
 
