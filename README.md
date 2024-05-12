@@ -402,9 +402,11 @@ struct config {
   u32 lookup{
     [this]() -> u32 {
       using key_type = typename decltype(kv)::value_type::first_type;
-      if (sizeof(key_type) == sizeof(u32) and kv.size() <= sizeof(key_type) * (1u << 10u)) {
+      if (sizeof(key_type) == sizeof(u32) and
+          kv.size() <= sizeof(key_type) * (1u << 10u)) {
         return 1u;
-      } else if (sizeof(key_type) == sizeof(u64) and kv.size() <= sizeof(key_type) * (1u << 7u)) {
+      } else if (sizeof(key_type) == sizeof(u64) and
+                 kv.size() <= sizeof(key_type) * (1u << 7u)) {
         return 1u;
       } else if (probability == 100u) {
         return 2u * sizeof(key_type);
