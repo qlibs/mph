@@ -230,7 +230,7 @@ lookup:
 - [feature] custom config -
 - [feature] custom hash -
 - [example] unordered_map -
-- [example] branchless dispatcher - https://godbolt.org/z/9hd49MTcd
+- [example] branchless dispatcher - https://godbolt.org/z/1s7fsrjTs
 - [performance] enum name -
 
 ---
