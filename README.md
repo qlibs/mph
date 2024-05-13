@@ -457,9 +457,10 @@ template<auto kv, config cfg = config<kv>{}>
 - Limitations?
 
     > `mph` supports different types of key/value pairs. `mph` supports thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
-      All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
-      If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
-      In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
+
+  - All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
+  - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
+  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
     template<auto kv, auto cfg = config<kv>{}>
@@ -524,7 +525,7 @@ template<auto kv, config cfg = config<kv>{}>
 
 - How to tweak `hash` performance for my data/use case?
 
-    > Always measure in your use case!
+    > Always measure!
 
   - [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. (AMD Zen2 pext takes 18 cycles, is worth disabling hardware accelerated version)
   - In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
@@ -536,9 +537,9 @@ template<auto kv, config cfg = config<kv>{}>
   - Experiment with different `config.probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
   - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
 
-- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[simd](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) support required?
+- Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[simd](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) instructions required?
 
-    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated in software.
+    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated in software with a bit slower execution.
 
     ```cpp
     // bmi2
@@ -553,9 +554,9 @@ template<auto kv, config cfg = config<kv>{}>
     and     ecx, 248
     ```
 
-    `simd` instructions are only used if available and aren't required for `mph` to function.
+    `simd` instructions are only used if available and aren't required for `mph` to function properly.
 
-- Can I disable `cmov` generation?
+- How to disable `cmov` generation?
 
     > Set `config.probability` to value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
 
@@ -563,7 +564,7 @@ template<auto kv, config cfg = config<kv>{}>
     clang: -mllvm -x86-cmov-converter=false
     ```
 
-- I'm getting a compilation error `constexpr evaluation hit maximum step limit`?
+- Getting a compilation error `constexpr evaluation hit maximum step limit`?
 
     > The following options can be used to increase the limits, however, compilation-times should be monitored.
 
@@ -572,7 +573,7 @@ template<auto kv, config cfg = config<kv>{}>
     clang: -fconstexpr-steps=N
     ```
 
-- Can I disable running tests at compile-time?
+- How to disable running tests at compile-time?
 
     > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
