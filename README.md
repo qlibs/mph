@@ -30,8 +30,8 @@
 
 ### [Optional] Hardware acceleration
 
-- [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
-- [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions)
+- [Bit_manipulation_instruction_set](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+- [Advanced_Vector_Extensions](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions)
 
 ### Hello world (https://godbolt.org/z/1eKbEYrTr)
 
@@ -459,7 +459,7 @@ template<auto kv, config cfg = config<kv>{}>
     > `mph` supports different types of key/value pairs. `mph` supports thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
       All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
       If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
-      In such case different backup policy should be used instead, for example:
+      In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
     template<auto kv, auto cfg = config<kv>{}>
@@ -524,24 +524,36 @@ template<auto kv, config cfg = config<kv>{}>
 
 - How to tweak `hash` performance for my data/use case?
 
-    > Always measure!
-      [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
-      For integral keys, use u32 or u64, esepcially if cfg.N > 1u as that enables avx2 optimizations. For values, measure, as size optimization can lead to performance degradation.
-      For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
-      Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`.
-      That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
-      If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available).
-      That will make the lookup table smaller and it will avoid `shl` for getting the value.
-      Consider using minimial required size for values. That will make the lookup table smaller.
-      Experiment with different config.probabilities to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 1.).
-      If input values are always valid (values from predefined keys) consider using `unconditional` lookup policy (unsafe if the input key won't match one of the predefined keys). That will make the lookup table smaller and it will avoid `cmp` and `jmp`.
-      Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash. That will align the underlying lookup table.
-      Always measure any changes in production like environment!
+    > Always measure in your use case!
 
-- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) support required?
+      - [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. (AMD Zen2 pext takes 18 cycles, is worth disabling hardware accelerated version)
+      - In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
+      - For integral keys, use u32 or u64, esepcially if cfg.N > 1u as that enables avx2 optimizations. For values, measure, as size optimization can lead to performance degradation.
+      - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
+      - Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`. That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
+      - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
+      - Consider using minimial required size for values. That will make the lookup table smaller.
+      - Experiment with different `config.probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
+      - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
 
-    > No, `mph` works on platforms without [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) suppport where bmi2 instructions are emulated.
-    Emulation for pext is using (`imul`, `shr`, `and`) and for clz (`shr`, `and`).
+- Is [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[simd](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) support required?
+
+    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated in software.
+
+    ```cpp
+    // bmi2
+    mov     ecx, 789
+    pext    ecx, eax, ecx
+
+    // no bmi2
+    mov     ecx, eax
+    and     ecx, 789
+    imul    ecx, ecx, 57
+    shr     ecx, 2
+    and     ecx, 248
+    ```
+
+    `simd` instructions are only used if available and aren't required for `mph` to function.
 
 - Is [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) support required?
 
@@ -549,7 +561,7 @@ template<auto kv, config cfg = config<kv>{}>
 
 - Can I disable `cmov` generation?
 
-    > Consider using `conditional` lookuppolicy. Additionaly the following compiler options can be used.
+    > Set `config.probability` to `50` - meaning that input data is unpredictable. Additionaly the following compiler options can be used.
 
     ```
     clang: -mllvm -x86-cmov-converter=false
