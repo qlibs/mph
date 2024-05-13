@@ -393,6 +393,16 @@ struct config {
   /// 100       - all input data can be found in the kv
   u8 probability{50};
 
+  /// 0 - simd not used
+  /// N - simd width
+  u32 simd_width{[] {
+    #if defined(__AVX2__)
+    return 256u / __CHAR_BIT__;
+    #else
+    return 0u;
+    #endif
+  }()};
+
   /// 1 - one element per lookup (faster but larger memory footprint)
   /// N - n elements per lookup  (slower but smaller memory footprint)
   u32 lookup{
@@ -405,28 +415,19 @@ struct config {
                  kv.size() <= sizeof(key_type) * (1u << 7u)) {
         return 1u;
       } else if (probability == 100u) {
-        return 2u * sizeof(key_type);
-      } else if (sizeof(key_type) < utility::simd_width) {
-        return utility::simd_width / sizeof(key_type);
+        return 2u * sizeof(key_type) - 4u;
+      } else if (sizeof(key_type) < simd_width) {
+        return simd_width / sizeof(key_type);
       } else {
-        return 2u * sizeof(key_type);
+        return 2u * sizeof(key_type) - 4u;
       }
     }()
   };
 
   /// 0 - no alignment for the lookup table
   /// n - alignas(lookup) - needs to be power of 2, required for simd
-  u32 alignment{
-    []() -> u32 {
-      if (utility::simd_width) {
-        return utility::simd_width / 4u;
-      } else {
-        return {};
-      }
-    }()
-  };
+  u32 alignment{simd_width / 4u};
 };
-
 ```
 
 ```cpp
