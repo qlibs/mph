@@ -215,8 +215,7 @@ template<class T>
 }
 
 template<auto cfg> concept config_c = requires {
-  cfg.key_in_set_probability;
-  cfg.group_size;
+  cfg.key_in_set_probability; cfg.group_size;
 } and (
   cfg.key_in_set_probability >= 0u and
   cfg.key_in_set_probability <= 100u and
@@ -224,10 +223,7 @@ template<auto cfg> concept config_c = requires {
 );
 
 template<auto kv> concept range_c = requires(u32 n) {
-  kv.size();
-  kv.begin();
-  kv.end();
-  kv[n];
+  kv.size(); kv.begin(); kv.end(); kv[n];
 };
 
 template<auto kv>
@@ -395,19 +391,19 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
     return utility::pair{masks_offsets, offset};
   }();
   static constexpr const auto lookups = [] {
+    constexpr auto fill = [] {
+      if constexpr (cfg.key_in_set_probability == 100u) {
+        return []([[maybe_unused]] const auto& key, const auto& value) { return value; };
+      } else {
+        return [](const auto& key, const auto& value) { return utility::pair{key, value}; };
+      }
+    }();
     utility::array<key_value_type, masks_offsets.second> lookups{};
     for (auto i = 0u; i < lookup.size(); ++i) {
       if (auto& mo = masks_offsets.first[i]; lookup[i][0].first) {
         for (const auto& [key, value] : lookup[i]) {
           if (not key) break;
-          auto& slot = lookups[mo.first + utility::pext(key, mo.second)];
-          slot = [&] {
-            if constexpr (requires {slot.first; slot.second; }) {
-              return utility::pair{key, value};
-            } else {
-              return value;
-            }
-          }();
+          lookups[mo.first + utility::pext(key, mo.second)] = fill(key, value);
         }
       }
     }
