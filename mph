@@ -228,7 +228,7 @@ template<class T>
 
 template<auto cfg> concept config_c = requires {
   cfg.key_in_set_probability;
-  cfg.split_group_size;
+  cfg.group_size;
   cfg.lookup_table_alignment;
 } and (
   cfg.key_in_set_probability >= 0u and
@@ -265,7 +265,7 @@ struct config {
 
   /// 1 - one element per group (faster but larger memory footprint)
   /// N - n elements per group  (slower but smaller memory footprint)
-  u32 split_group_size{
+  u32 group_size{
     [this]() -> u32 {
       using key_type = typename decltype(kv)::value_type::first_type;
       if (sizeof(key_type) == sizeof(u32) and
@@ -334,14 +334,14 @@ template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability == 100u and
-    cfg.split_group_size == 1u
+    cfg.group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
@@ -362,14 +362,14 @@ template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u and
-    cfg.split_group_size == 1u
+    cfg.group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
@@ -407,8 +407,8 @@ template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u and
-    cfg.split_group_size > 1u and
-    cfg.split_group_size <= cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type) and
+    cfg.group_size > 1u and
+    cfg.group_size <= cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type) and
     cfg.lookup_table_alignment > 0u
   )
 [[nodiscard]] [[gnu::always_inline]]
@@ -416,19 +416,19 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
         utility::pair<
           utility::aligned_t<
-            utility::array<key_type, cfg.split_group_size>,
+            utility::array<key_type, cfg.group_size>,
             cfg.lookup_table_alignment
           >,
           utility::aligned_t<
             utility::array<
               value_type,
-              1u + (1u << (cfg.split_group_size - 1u))
+              1u + (1u << (cfg.group_size - 1u))
             >,
             cfg.lookup_table_alignment
           >
@@ -463,20 +463,20 @@ template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and
-    cfg.split_group_size > 1u and
-    cfg.split_group_size > cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type)
+    cfg.group_size > 1u and
+    cfg.group_size > cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type)
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::array<
       utility::array<
         utility::pair<key_type, value_type>,
-        cfg.split_group_size
+        cfg.group_size
       >,
       mask_type(1) << __builtin_popcountl(mask)
     > lookup{};
@@ -676,17 +676,17 @@ static_assert(([] {
   {
     struct cfg1{ };
     struct cfg2{ int key_in_set_probability{}; };
-    struct cfg3{ int key_in_set_probability{}; int split_group_size{}; };
-    struct cfg4{ int key_in_set_probability{}; int split_group_size{}; int lookup_table_alignment{}; };
+    struct cfg3{ int key_in_set_probability{}; int group_size{}; };
+    struct cfg4{ int key_in_set_probability{}; int group_size{}; int lookup_table_alignment{}; };
 
     static_assert(not mph::config_c<cfg1{}>);
     static_assert(not mph::config_c<cfg2{}>);
     static_assert(not mph::config_c<cfg3{}>);
-    static_assert(not mph::config_c<cfg4{.key_in_set_probability = -1, .split_group_size = {}, .lookup_table_alignment = {}}>);
-    static_assert(not mph::config_c<cfg4{.key_in_set_probability = {}, .split_group_size = {}, .lookup_table_alignment = 1u}>);
+    static_assert(not mph::config_c<cfg4{.key_in_set_probability = -1, .group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(not mph::config_c<cfg4{.key_in_set_probability = {}, .group_size = {}, .lookup_table_alignment = 1u}>);
     static_assert(mph::config_c<cfg4{}>);
-    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .split_group_size = {}, .lookup_table_alignment = 8u}>);
-    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .split_group_size = 4u, .lookup_table_alignment = 8u}>);
+    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .group_size = {}, .lookup_table_alignment = 8u}>);
+    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .group_size = 4u, .lookup_table_alignment = 8u}>);
   }
 
   // mph::range_c
