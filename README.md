@@ -31,7 +31,6 @@
 ### [Optional] Hardware acceleration
 
 - [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
-- [simd](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions)
 
 ### Hello world (https://godbolt.org/z/1eKbEYrTr)
 
@@ -54,7 +53,6 @@ std::print("{}", mph::hash<colors>("green"sv));
 ```
 $CXX -std=c++20                -DNDEBUG -O3 && ./a.out # prints 2
 $CXX -std=c++20 -mbmi2         -DNDEBUG -O3 && ./a.out # prints 2
-$CXX -std=c++20 -mbmi2 -mavx2  -DNDEBUG -O3 && ./a.out # prints 2
 $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ```
 
@@ -364,14 +362,12 @@ template<class T>
 
 ```cpp
 template<auto cfg> concept config_c = requires {
-  cfg.probability;
-  cfg.lookup;
-  cfg.alignment;
+  cfg.key_in_set_probability;
+  cfg.group_size;
 } and (
-  cfg.probability >= 0u and
-  cfg.probability <= 100u and
-  cfg.lookup >= 0u and
-  not (cfg.alignment % 2)
+  cfg.key_in_set_probability >= 0u and
+  cfg.key_in_set_probability <= 100u and
+  cfg.group_size >= 1u
 );
 
 template<auto kv> concept range_c = requires(u32 n) {
@@ -385,47 +381,33 @@ template<auto kv> concept range_c = requires(u32 n) {
 ```cpp
 template<auto kv>
 struct config {
-  /// 0         - none of the input data can be found in the kv
-  /// (0, 50)   - input data is unlikely to be found in the kv
+  /// 0         - none of the input key can be found in the kv
+  /// (0, 50)   - input key is unlikely to be found in the kv
   /// 50        - unpredictable (default)
-  /// (50, 100) - input data is likely to be found in the kv
-  /// 100       - all input data can be found in the kv
-  u8 probability{50};
+  /// (50, 100) - input key is likely to be found in the kv
+  /// 100       - all input key can be found in the kv
+  u8 key_in_set_probability{50};
 
-  /// 0 - simd not used
-  /// N - simd width
-  u32 simd_width{[] {
-    #if defined(__AVX2__)
-    return 256u / __CHAR_BIT__;
-    #else
-    return 0u;
-    #endif
-  }()};
-
-  /// 1 - one element per lookup (faster but larger memory footprint)
-  /// N - n elements per lookup  (slower but smaller memory footprint)
-  u32 lookup{
-    [this]() -> u32 {
+  /// 1 - one element per group (faster but larger memory footprint)
+  /// N - n elements per group  (slower but smaller memory footprint)
+  u32 group_size{
+    []() -> u32 {
       using key_type = typename decltype(kv)::value_type::first_type;
-      if (sizeof(key_type) == sizeof(u32) and
-          kv.size() <= sizeof(key_type) * (1u << 10u)) {
-        return 1u;
-      } else if (sizeof(key_type) == sizeof(u64) and
-                 kv.size() <= sizeof(key_type) * (1u << 7u)) {
-        return 1u;
-      } else if (probability == 100u) {
-        return 2u * sizeof(key_type) - 4u;
-      } else if (sizeof(key_type) < simd_width) {
-        return simd_width / sizeof(key_type);
-      } else {
-        return 2u * sizeof(key_type) - 4u;
+      if (sizeof(key_type) == sizeof(u32)) {
+          if (kv.size() <= sizeof(key_type) * (1u << 10u)) {
+            return 1u;
+          } else {
+            return 4u * sizeof(key_type);
+          }
+      } else if (sizeof(key_type) == sizeof(u64)) {
+        if (kv.size() <= sizeof(key_type) * (1u << 7u)) {
+          return 1u;
+        } else {
+          return 2u * sizeof(key_type);
+        }
       }
     }()
   };
-
-  /// 0 - no alignment for the lookup table
-  /// n - alignas(lookup) - needs to be power of 2, required for simd
-  u32 alignment{simd_width / 4u};
 };
 ```
 
@@ -528,8 +510,7 @@ template<auto kv, config cfg = config<kv>{}>
     > Always measure!
 
   - [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. (AMD Zen2 pext takes 18 cycles, is worth disabling hardware accelerated version)
-  - In case config.N is greater than (N collisions supported) [avx2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) will be faster than multiple comparision (it's enabled if compiled with `-mbmi2 -mavx2` or `-march=skylake` etc.).
-  - For integral keys, use u32 or u64, esepcially if cfg.N > 1u as that enables avx2 optimizations. For values, measure, as size optimization can lead to performance degradation.
+  - For integral keys, use u32 or u64.
   - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
   - Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`. That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
@@ -537,7 +518,7 @@ template<auto kv, config cfg = config<kv>{}>
   - Experiment with different `config.probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
   - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
 
-- Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)/[simd](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) instructions required?
+- Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
     > No, `mph` works on platforms without them. `bmi2` instructions can be emulated in software with a bit slower execution.
 
