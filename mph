@@ -60,18 +60,6 @@ struct integral_constant {
   static constexpr T value = v;
   constexpr operator value_type() const noexcept { return value; }
 };
-
-template<class T, u32 alignment>
-struct aligned {
-  using type = struct alignas(alignment) a  : T { };
-  static_assert(alignment == alignof(type));
-};
-template<class T> struct aligned<T, u32{}> { using type = T; };
-template<class T, u32 alignment>
-using aligned_t = typename aligned<T, alignment>::type;
-
-template<class T, u32 width>
-using simd_t [[gnu::vector_size(width)]] = T;
 } // namespace utility
 
 template<class T>
@@ -229,12 +217,9 @@ template<class T>
 template<auto cfg> concept config_c = requires {
   cfg.key_in_set_probability;
   cfg.group_size;
-  cfg.lookup_table_alignment;
 } and (
   cfg.key_in_set_probability >= 0u and
-  cfg.key_in_set_probability <= 100u and
-  cfg.lookup_table_alignment >= 0u and
-  not (cfg.lookup_table_alignment % 2)
+  cfg.key_in_set_probability <= 100u
 );
 
 template<auto kv> concept range_c = requires(u32 n) {
@@ -253,16 +238,6 @@ struct config {
   /// 100       - all input key can be found in the kv
   u8 key_in_set_probability{50};
 
-  /// 0 - simd not used
-  /// N - simd width
-  u32 simd_width{[] {
-    #if defined(__AVX2__)
-    return 256u / __CHAR_BIT__;
-    #else
-    return 0u;
-    #endif
-  }()};
-
   /// 1 - one element per group (faster but larger memory footprint)
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
@@ -274,19 +249,11 @@ struct config {
       } else if (sizeof(key_type) == sizeof(u64) and
                  kv.size() <= sizeof(key_type) * (1u << 7u)) {
         return 1u;
-      } else if (key_in_set_probability == 100u) {
-        return 2u * sizeof(key_type) - 4u;
-      } else if (sizeof(key_type) < simd_width) {
-        return simd_width / sizeof(key_type);
       } else {
         return 2u * sizeof(key_type) - 4u;
       }
     }()
   };
-
-  /// 0 - no alignment for the lookup table
-  /// n - alignas(lookup) - needs to be power of 2, required for simd
-  u32 lookup_table_alignment{simd_width / 4u};
 };
 
 template<auto kv, auto cfg = config<kv>{}>
@@ -343,16 +310,8 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
-    utility::aligned_t<
-      utility::array<
-        value_type,
-        mask_type(1) << __builtin_popcountl(mask)
-      >,
-      cfg.lookup_table_alignment
-    > lookup{};
-    for (const auto& [key, value] : kv) {
-      lookup[pext(key, mask)] = value;
-    }
+    utility::array<value_type, mask_type(1) << __builtin_popcountl(mask)> lookup{};
+    for (const auto& [key, value] : kv) { lookup[pext(key, mask)] = value; }
     return lookup;
   }();
   return lookup[pext(to<key_type>(key), mask)];
@@ -371,19 +330,10 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::pair<key_type, value_type>,
-        mask_type(1) << __builtin_popcountl(mask)
-      >,
-      cfg.lookup_table_alignment
-    > lookup{};
-    for (const auto& [key, value] : kv) {
-      lookup[pext(key, mask)] = utility::pair{key, value};
-    }
+    utility::array<utility::pair<key_type, value_type>, mask_type(1) << __builtin_popcountl(mask)> lookup{};
+    for (const auto& [key, value] : kv) { lookup[pext(key, mask)] = utility::pair{key, value}; }
     return lookup;
   }();
-
   auto&& lhs = to<key_type>(key);
   auto&& rhs = lookup[pext(lhs, mask)];
   #if __has_builtin(__builtin_unpredictable)
@@ -401,70 +351,11 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   return {};
 }
 
-#if __has_builtin(__builtin_ia32_movmskps256) or \
-    __has_builtin(__builtin_ia32_movmskps256)
-template<auto kv, auto cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg> and (
-    kv.size() > 1u and
-    cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u and
-    cfg.group_size > 1u and
-    cfg.group_size <= cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type) and
-    cfg.lookup_table_alignment > 0u
-  )
-[[nodiscard]] [[gnu::always_inline]]
-inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
-  using key_type = typename decltype(kv)::value_type::first_type;
-  using value_type = typename decltype(kv)::value_type::second_type;
-  using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.group_size>(kv)>{};
-  static constexpr const auto lookup = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::pair<
-          utility::aligned_t<
-            utility::array<key_type, cfg.group_size>,
-            cfg.lookup_table_alignment
-          >,
-          utility::aligned_t<
-            utility::array<
-              value_type,
-              1u + (1u << (cfg.group_size - 1u))
-            >,
-            cfg.lookup_table_alignment
-          >
-        >,
-        mask_type(1) << __builtin_popcountl(mask)
-      >,
-      cfg.lookup_table_alignment
-    > lookup{};
-    for (const auto& [key, value] : kv) {
-      auto& slot = lookup[pext(key, mask)];
-      auto n = 0u;
-      while (slot.first[n]) n++;
-      slot.first[n] = key;
-      slot.second[1u << n] = value;
-    }
-    return lookup;
-  }();
-
-  auto&& lhs = to<key_type>(key);
-  auto&& rhs = lookup[pext(lhs, mask)];
-  auto&& cmp = lhs == *(utility::simd_t<key_type, cfg.simd_width>*)rhs.first.data();
-
-  if constexpr (sizeof(key_type) == sizeof(u32)) {
-    return rhs.second[__builtin_ia32_movmskps256(utility::simd_t<float, cfg.simd_width>(cmp))];
-  } else if constexpr (sizeof(key_type) == sizeof(u64)) {
-    return rhs.second[__builtin_ia32_movmskpd256(utility::simd_t<double, cfg.simd_width>(cmp))];
-  }
-}
-#endif
-
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and
-    cfg.group_size > 1u and
-    cfg.group_size > cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type)
+    cfg.group_size > 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
@@ -475,16 +366,17 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   static constexpr const auto lookup = [] {
     utility::array<
       utility::array<
-        utility::pair<key_type, value_type>,
+        utility::pair<key_type, utility::pair<value_type, value_type>>,
         cfg.group_size
       >,
       mask_type(1) << __builtin_popcountl(mask)
     > lookup{};
-    for (const auto& [key, value] : kv) {
+    for (value_type i{}; const auto& [key, value] : kv) {
       auto& slot = lookup[pext(key, mask)];
       auto n = 0u;
       while (slot[n].first) n++;
-      slot[n] = utility::pair{key, value};
+      slot[n] = utility::pair{key, utility::pair{value, i}};
+      ++i;
     }
     return lookup;
   }();
@@ -503,68 +395,40 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
     return utility::pair{masks, max_count};
   }();
   static constexpr const auto lookups = [] {
-    utility::aligned_t<
-      utility::array<
-        utility::pair<
-          mask_type,
-          utility::aligned_t<
-            utility::array<
-              utility::conditional_t<
-                cfg.key_in_set_probability == 100u,
-                value_type,
-                utility::pair<key_type, value_type>
-              >,
-              mask_type(1) << masks.second
-            >,
-            cfg.lookup_table_alignment
-          >
-        >,
-        masks.first.size()
-      >,
-      cfg.lookup_table_alignment
-    > lookups{};
-
-    const auto fill = [&](auto fn) {
-      for (auto i = 0u; i < masks.first.size(); ++i) {
-        if (auto& slot = lookups[i]; lookup[i][0].first) {
-          slot.first = masks.first[i];
-          for (const auto& [key, value] : lookup[i]) {
-            if (not key) break;
-            slot.second[pext(key, slot.first)] = fn(key, value);
-          }
+    utility::array<utility::pair<mask_type,
+      utility::array<value_type, mask_type(1) << masks.second>>, masks.first.size()> lookups{};
+    for (auto i = 0u; i < masks.first.size(); ++i) {
+      if (auto& slot = lookups[i]; lookup[i][0].first) {
+        slot.first = masks.first[i];
+        for (const auto& [key, value] : lookup[i]) {
+          if (not key) break;
+          slot.second[pext(key, slot.first)] = value.second;
         }
       }
-    };
-
-    if constexpr (cfg.key_in_set_probability == 100u) {
-      fill([]([[maybe_unused]] const auto& key, const auto& value) { return value; });
-    } else {
-      fill([](const auto& key, const auto& value) { return utility::pair{key, value}; });
     }
     return lookups;
   }();
-
   auto&& lhs = to<key_type>(key);
   auto&& lut = lookups[pext(lhs, mask)];
   auto&& rhs = lut.second[pext(lhs, lut.first)];
-
-  if constexpr (requires { rhs.first; rhs.second; }) {
+  if constexpr (cfg.key_in_set_probability == 100u) {
+    return rhs;
+  } else {
+    static constexpr const auto kv_ = kv;
+    auto&& val = kv_[rhs];
     #if __has_builtin(__builtin_unpredictable)
       if constexpr (cfg.key_in_set_probability == 50u) {
-        if (__builtin_unpredictable(lhs == rhs.first)) {
-          return rhs.second;
+        if (__builtin_unpredictable(lhs == val.first)) {
+          return val.second;
         }
       }
-      else
-      #endif
-      if (__builtin_expect_with_probability(lhs == rhs.first, 1,
-        [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
-        return rhs.second;
-      }
-  } else {
-    return rhs;
+    else
+    #endif
+    if (__builtin_expect_with_probability(lhs == val.first, 1,
+      [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
+      return val.second;
+    }
   }
-  return {};
 }
 } // namespace mph
 
@@ -616,16 +480,6 @@ static_assert(([] {
     static_assert(42 == mph::utility::integral_constant<int, 42>{});
     static_assert(42u == mph::utility::integral_constant<unsigned, 42u>::value);
     static_assert('X' == mph::utility::integral_constant<char, 'X'>::value);
-  }
-
-  // mph::utility::aligned_t
-  {
-    using mph::utility::array;
-
-    static_assert(16u == alignof(mph::utility::aligned_t<array<int, 42>, 16u>));
-    static_assert(32u == alignof(mph::utility::aligned_t<array<int, 42>, 32u>));
-    static_assert(64u == alignof(mph::utility::aligned_t<array<int, 42>, 64u>));
-    static_assert(alignof(int) == alignof(mph::utility::aligned_t<array<int, 42>, 0u>));
   }
 
   // mph::pext
