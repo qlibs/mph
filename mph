@@ -366,7 +366,7 @@ template<auto kv, auto cfg = config<kv>{}>
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
-  using key_value_type = utility::pair<key_type, value_type>;
+  using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, key_type, utility::pair<key_type, value_type>>;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   static constexpr const auto mask = utility::integral_constant<mask_type, utility::mask<key_type, cfg.group_size>(kv)>{};
   static constexpr const auto lookup = [] {
@@ -382,32 +382,39 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
     }
     return lookup;
   }();
-  static constexpr const auto masks = [] {
-    utility::array<utility::pair<u32, mask_type>, lookup.size()> masks{};
+  static constexpr const auto masks_offsets = [] {
+    utility::array<utility::pair<u32, mask_type>, lookup.size()> masks_offsets{};
     u32 offset{};
     for (auto i = 0u; i < lookup.size(); ++i) {
       if (const auto& slot = lookup[i]; slot[0].first) {
         const auto mask = utility::mask<key_type, 1u>(slot);
-        masks[i] = utility::pair{offset, mask};
+        masks_offsets[i] = utility::pair{offset, mask};
         offset += (mask_type(1) << __builtin_popcountl(mask));
       }
     }
-    return utility::pair{masks, offset};
+    return utility::pair{masks_offsets, offset};
   }();
   static constexpr const auto lookups = [] {
-    utility::array<key_value_type, masks.second> lookups{};
+    utility::array<key_value_type, masks_offsets.second> lookups{};
     for (auto i = 0u; i < lookup.size(); ++i) {
-      if (auto& mo = masks.first[i]; lookup[i][0].first) {
+      if (auto& mo = masks_offsets.first[i]; lookup[i][0].first) {
         for (const auto& [key, value] : lookup[i]) {
           if (not key) break;
-          lookups[mo.first + utility::pext(key, mo.second)] = utility::pair{key, value};
+          auto& slot = lookups[mo.first + utility::pext(key, mo.second)];
+          slot = [&] {
+            if constexpr (requires {slot.first; slot.second; }) {
+              return utility::pair{key, value};
+            } else {
+              return value;
+            }
+          }();
         }
       }
     }
     return lookups;
   }();
   auto&& lhs = to<key_type>(key);
-  auto&& mdx = masks.first[utility::pext(lhs, mask)];
+  auto&& mdx = masks_offsets.first[utility::pext(lhs, mask)];
   auto&& rhs = *static_cast<const key_value_type*>(&lookups[mdx.first + utility::pext(lhs, mdx.second)]);
   if constexpr (requires { rhs.first; rhs.second; }) {
     #if __has_builtin(__builtin_unpredictable)
