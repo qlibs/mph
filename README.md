@@ -363,8 +363,7 @@ template<class T>
 ```
 
 ```cpp
-namespace concepts {
-template<auto cfg> concept config = requires {
+template<auto cfg> concept config_c = requires {
   cfg.probability;
   cfg.lookup;
   cfg.alignment;
@@ -375,13 +374,12 @@ template<auto cfg> concept config = requires {
   not (cfg.alignment % 2)
 );
 
-template<auto kv> concept range = requires(u32 n) {
+template<auto kv> concept range_c = requires(u32 n) {
   kv.size();
   kv.begin();
   kv.end();
   kv[n];
 };
-} // namespace concepts
 ```
 
 ```cpp
@@ -440,7 +438,7 @@ struct config {
  * @param key input data
  */
 template<auto kv, config cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg>
+  requires range_c<kv> and config_c<cfg>
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
@@ -466,7 +464,7 @@ template<auto kv, config cfg = config<kv>{}>
 
     ```cpp
     template<auto kv, auto cfg = config<kv>{}>
-      requires concepts::range<kv> and concepts::config<cfg> and (
+      requires range_c<kv> and config_c<cfg> and (
         kv.size() > 1'000'000
       )
     [[nodiscard]] constexpr auto mph::hash(const auto& key) noexcept;

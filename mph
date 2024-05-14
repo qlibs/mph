@@ -222,8 +222,7 @@ template<class T>
   return {};
 }
 
-namespace concepts {
-template<auto cfg> concept config = requires {
+template<auto cfg> concept config_c = requires {
   cfg.probability;
   cfg.lookup;
   cfg.alignment;
@@ -234,13 +233,12 @@ template<auto cfg> concept config = requires {
   not (cfg.alignment % 2)
 );
 
-template<auto kv> concept range = requires(u32 n) {
+template<auto kv> concept range_c = requires(u32 n) {
   kv.size();
   kv.begin();
   kv.end();
   kv[n];
 };
-} // namespace concepts
 
 template<auto kv>
 struct config {
@@ -288,7 +286,7 @@ struct config {
 };
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() == 0u or
     cfg.probability == 0u
   )
@@ -297,7 +295,7 @@ template<auto kv, auto cfg = config<kv>{}>
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() == 1u and
     cfg.probability > 0u and cfg.probability < 100u
   )
@@ -308,7 +306,7 @@ template<auto kv, auto cfg = config<kv>{}>
 }
 
 template<auto kv, auto cfg = config<kv>{}, class T, auto Size>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability > 0u
   )
@@ -319,7 +317,7 @@ template<auto kv, auto cfg = config<kv>{}, class T, auto Size>
 }
 
 template<auto kv, auto cfg = config<kv>{}, template<class T, T> class T, class TKey, TKey key>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability > 0u
   )
@@ -329,7 +327,7 @@ template<auto kv, auto cfg = config<kv>{}, template<class T, T> class T, class T
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability == 100u and
     cfg.lookup == 1u
@@ -357,7 +355,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability > 0u and cfg.probability < 100u and
     cfg.lookup == 1u
@@ -402,7 +400,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 #if __has_builtin(__builtin_ia32_movmskps256) or \
     __has_builtin(__builtin_ia32_movmskps256)
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability > 0u and cfg.probability < 100u and
     cfg.lookup > 1u and
@@ -458,7 +456,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 #endif
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg> and (
+  requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
     cfg.probability > 0u and
     cfg.lookup > 1u and
@@ -671,24 +669,24 @@ static_assert(([] {
 
   // mph::concepts
   {
-    // mph::concepts::config
+    // mph::config_c
     {
       struct cfg1{ };
       struct cfg2{ int probability{}; };
       struct cfg3{ int probability{}; int alignment{}; };
       struct cfg4{ int probability{}; int lookup{}; int alignment{}; };
 
-      static_assert(not mph::concepts::config<cfg1{}>);
-      static_assert(not mph::concepts::config<cfg2{}>);
-      static_assert(not mph::concepts::config<cfg3{}>);
-      static_assert(not mph::concepts::config<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
-      static_assert(not mph::concepts::config<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
-      static_assert(mph::concepts::config<cfg4{}>);
-      static_assert(mph::concepts::config<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
-      static_assert(mph::concepts::config<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
+      static_assert(not mph::config_c<cfg1{}>);
+      static_assert(not mph::config_c<cfg2{}>);
+      static_assert(not mph::config_c<cfg3{}>);
+      static_assert(not mph::config_c<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
+      static_assert(not mph::config_c<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
+      static_assert(mph::config_c<cfg4{}>);
+      static_assert(mph::config_c<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
+      static_assert(mph::config_c<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
     }
 
-    // mph::concepts::range
+    // mph::range_c
     {
       using mph::u32;
 
@@ -697,10 +695,10 @@ static_assert(([] {
       struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
       struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
 
-      static_assert(not mph::concepts::range<range1{}>);
-      static_assert(not mph::concepts::range<range2{}>);
-      static_assert(not mph::concepts::range<range3{}>);
-      static_assert(mph::concepts::range<range4{}>);
+      static_assert(not mph::range_c<range1{}>);
+      static_assert(not mph::range_c<range2{}>);
+      static_assert(not mph::range_c<range3{}>);
+      static_assert(mph::range_c<range4{}>);
     }
   }
 
