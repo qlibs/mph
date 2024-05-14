@@ -667,39 +667,36 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
-  // mph::concepts
+  // mph::config_c
   {
-    // mph::config_c
-    {
-      struct cfg1{ };
-      struct cfg2{ int probability{}; };
-      struct cfg3{ int probability{}; int alignment{}; };
-      struct cfg4{ int probability{}; int lookup{}; int alignment{}; };
+    struct cfg1{ };
+    struct cfg2{ int probability{}; };
+    struct cfg3{ int probability{}; int alignment{}; };
+    struct cfg4{ int probability{}; int lookup{}; int alignment{}; };
 
-      static_assert(not mph::config_c<cfg1{}>);
-      static_assert(not mph::config_c<cfg2{}>);
-      static_assert(not mph::config_c<cfg3{}>);
-      static_assert(not mph::config_c<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
-      static_assert(not mph::config_c<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
-      static_assert(mph::config_c<cfg4{}>);
-      static_assert(mph::config_c<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
-      static_assert(mph::config_c<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
-    }
+    static_assert(not mph::config_c<cfg1{}>);
+    static_assert(not mph::config_c<cfg2{}>);
+    static_assert(not mph::config_c<cfg3{}>);
+    static_assert(not mph::config_c<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
+    static_assert(not mph::config_c<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
+    static_assert(mph::config_c<cfg4{}>);
+    static_assert(mph::config_c<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
+    static_assert(mph::config_c<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
+  }
 
-    // mph::range_c
-    {
-      using mph::u32;
+  // mph::range_c
+  {
+    using mph::u32;
 
-      struct range1 { };
-      struct range2 { u32 begin() const; u32 end() const; };
-      struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
-      struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
+    struct range1 { };
+    struct range2 { u32 begin() const; u32 end() const; };
+    struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
+    struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
 
-      static_assert(not mph::range_c<range1{}>);
-      static_assert(not mph::range_c<range2{}>);
-      static_assert(not mph::range_c<range3{}>);
-      static_assert(mph::range_c<range4{}>);
-    }
+    static_assert(not mph::range_c<range1{}>);
+    static_assert(not mph::range_c<range2{}>);
+    static_assert(not mph::range_c<range3{}>);
+    static_assert(mph::range_c<range4{}>);
   }
 
   // mph::hash
