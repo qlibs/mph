@@ -227,14 +227,14 @@ template<class T>
 }
 
 template<auto cfg> concept config_c = requires {
-  cfg.probability;
-  cfg.lookup;
-  cfg.alignment;
+  cfg.key_in_set_probability;
+  cfg.split_group_size;
+  cfg.lookup_table_alignment;
 } and (
-  cfg.probability >= 0u and
-  cfg.probability <= 100u and
-  cfg.lookup >= 0u and
-  not (cfg.alignment % 2)
+  cfg.key_in_set_probability >= 0u and
+  cfg.key_in_set_probability <= 100u and
+  cfg.lookup_table_alignment >= 0u and
+  not (cfg.lookup_table_alignment % 2)
 );
 
 template<auto kv> concept range_c = requires(u32 n) {
@@ -246,12 +246,12 @@ template<auto kv> concept range_c = requires(u32 n) {
 
 template<auto kv>
 struct config {
-  /// 0         - none of the input data can be found in the kv
-  /// (0, 50)   - input data is unlikely to be found in the kv
+  /// 0         - none of the input key can be found in the kv
+  /// (0, 50)   - input key is unlikely to be found in the kv
   /// 50        - unpredictable (default)
-  /// (50, 100) - input data is likely to be found in the kv
-  /// 100       - all input data can be found in the kv
-  u8 probability{50};
+  /// (50, 100) - input key is likely to be found in the kv
+  /// 100       - all input key can be found in the kv
+  u8 key_in_set_probability{50};
 
   /// 0 - simd not used
   /// N - simd width
@@ -263,9 +263,9 @@ struct config {
     #endif
   }()};
 
-  /// 1 - one element per lookup (faster but larger memory footprint)
-  /// N - n elements per lookup  (slower but smaller memory footprint)
-  u32 lookup{
+  /// 1 - one element per group (faster but larger memory footprint)
+  /// N - n elements per group  (slower but smaller memory footprint)
+  u32 split_group_size{
     [this]() -> u32 {
       using key_type = typename decltype(kv)::value_type::first_type;
       if (sizeof(key_type) == sizeof(u32) and
@@ -274,7 +274,7 @@ struct config {
       } else if (sizeof(key_type) == sizeof(u64) and
                  kv.size() <= sizeof(key_type) * (1u << 7u)) {
         return 1u;
-      } else if (probability == 100u) {
+      } else if (key_in_set_probability == 100u) {
         return 2u * sizeof(key_type) - 4u;
       } else if (sizeof(key_type) < simd_width) {
         return simd_width / sizeof(key_type);
@@ -286,13 +286,13 @@ struct config {
 
   /// 0 - no alignment for the lookup table
   /// n - alignas(lookup) - needs to be power of 2, required for simd
-  u32 alignment{simd_width / 4u};
+  u32 lookup_table_alignment{simd_width / 4u};
 };
 
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() == 0u or
-    cfg.probability == 0u
+    cfg.key_in_set_probability == 0u
   )
 [[nodiscard]] constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   return {};
@@ -301,7 +301,7 @@ template<auto kv, auto cfg = config<kv>{}>
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() == 1u and
-    cfg.probability > 0u and cfg.probability < 100u
+    cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u
   )
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
@@ -312,7 +312,7 @@ template<auto kv, auto cfg = config<kv>{}>
 template<auto kv, auto cfg = config<kv>{}, class T, auto Size>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability > 0u
+    cfg.key_in_set_probability > 0u
   )
 [[nodiscard]] consteval auto hash(const T (&key)[Size]) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
@@ -323,7 +323,7 @@ template<auto kv, auto cfg = config<kv>{}, class T, auto Size>
 template<auto kv, auto cfg = config<kv>{}, template<class T, T> class T, class TKey, TKey key>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability > 0u
+    cfg.key_in_set_probability > 0u
   )
 [[nodiscard]] consteval auto hash(const T<TKey, key>&) noexcept -> typename decltype(kv)::value_type::second_type {
   for (const auto& [k, value] : kv) { if (key == k) { return value; } }
@@ -333,22 +333,22 @@ template<auto kv, auto cfg = config<kv>{}, template<class T, T> class T, class T
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability == 100u and
-    cfg.lookup == 1u
+    cfg.key_in_set_probability == 100u and
+    cfg.split_group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.lookup>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
         value_type,
         mask_type(1) << __builtin_popcountl(mask)
       >,
-      cfg.alignment
+      cfg.lookup_table_alignment
     > lookup{};
     for (const auto& [key, value] : kv) {
       lookup[pext(key, mask)] = value;
@@ -361,22 +361,22 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability > 0u and cfg.probability < 100u and
-    cfg.lookup == 1u
+    cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u and
+    cfg.split_group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.lookup>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
         utility::pair<key_type, value_type>,
         mask_type(1) << __builtin_popcountl(mask)
       >,
-      cfg.alignment
+      cfg.lookup_table_alignment
     > lookup{};
     for (const auto& [key, value] : kv) {
       lookup[pext(key, mask)] = utility::pair{key, value};
@@ -387,7 +387,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   auto&& lhs = to<key_type>(key);
   auto&& rhs = lookup[pext(lhs, mask)];
   #if __has_builtin(__builtin_unpredictable)
-  if constexpr (cfg.probability == 50u) {
+  if constexpr (cfg.key_in_set_probability == 50u) {
     if (__builtin_unpredictable(lhs == rhs.first)) {
       return rhs.second;
     }
@@ -395,7 +395,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   else
   #endif
   if (__builtin_expect_with_probability(lhs == rhs.first, 1,
-    [] { return float(cfg.probability) / float(100u); }())) {
+    [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
     return rhs.second;
   }
   return {};
@@ -406,36 +406,36 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability > 0u and cfg.probability < 100u and
-    cfg.lookup > 1u and
-    cfg.lookup <= cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type) and
-    cfg.alignment > 0u
+    cfg.key_in_set_probability > 0u and cfg.key_in_set_probability < 100u and
+    cfg.split_group_size > 1u and
+    cfg.split_group_size <= cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type) and
+    cfg.lookup_table_alignment > 0u
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.lookup>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::aligned_t<
       utility::array<
         utility::pair<
           utility::aligned_t<
-            utility::array<key_type, cfg.lookup>,
-            cfg.alignment
+            utility::array<key_type, cfg.split_group_size>,
+            cfg.lookup_table_alignment
           >,
           utility::aligned_t<
             utility::array<
               value_type,
-              1u + (1u << (cfg.lookup - 1u))
+              1u + (1u << (cfg.split_group_size - 1u))
             >,
-            cfg.alignment
+            cfg.lookup_table_alignment
           >
         >,
         mask_type(1) << __builtin_popcountl(mask)
       >,
-      cfg.alignment
+      cfg.lookup_table_alignment
     > lookup{};
     for (const auto& [key, value] : kv) {
       auto& slot = lookup[pext(key, mask)];
@@ -462,21 +462,21 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
 template<auto kv, auto cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg> and (
     kv.size() > 1u and
-    cfg.probability > 0u and
-    cfg.lookup > 1u and
-    cfg.lookup > cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type)
+    cfg.key_in_set_probability > 0u and
+    cfg.split_group_size > 1u and
+    cfg.split_group_size > cfg.simd_width / sizeof(typename decltype(kv)::value_type::first_type)
   )
 [[nodiscard]] [[gnu::always_inline]]
 inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
   using key_type = typename decltype(kv)::value_type::first_type;
   using value_type = typename decltype(kv)::value_type::second_type;
   using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.lookup>(kv)>{};
+  static constexpr const auto mask = utility::integral_constant<mask_type, mph::mask<key_type, cfg.split_group_size>(kv)>{};
   static constexpr const auto lookup = [] {
     utility::array<
       utility::array<
         utility::pair<key_type, value_type>,
-        cfg.lookup
+        cfg.split_group_size
       >,
       mask_type(1) << __builtin_popcountl(mask)
     > lookup{};
@@ -510,18 +510,18 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
           utility::aligned_t<
             utility::array<
               utility::conditional_t<
-                cfg.probability == 100u,
+                cfg.key_in_set_probability == 100u,
                 value_type,
                 utility::pair<key_type, value_type>
               >,
               mask_type(1) << masks.second
             >,
-            cfg.alignment
+            cfg.lookup_table_alignment
           >
         >,
         masks.first.size()
       >,
-      cfg.alignment
+      cfg.lookup_table_alignment
     > lookups{};
 
     const auto fill = [&](auto fn) {
@@ -536,7 +536,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
       }
     };
 
-    if constexpr (cfg.probability == 100u) {
+    if constexpr (cfg.key_in_set_probability == 100u) {
       fill([]([[maybe_unused]] const auto& key, const auto& value) { return value; });
     } else {
       fill([](const auto& key, const auto& value) { return utility::pair{key, value}; });
@@ -547,9 +547,10 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
   auto&& lhs = to<key_type>(key);
   auto&& lut = lookups[pext(lhs, mask)];
   auto&& rhs = lut.second[pext(lhs, lut.first)];
+
   if constexpr (requires { rhs.first; rhs.second; }) {
     #if __has_builtin(__builtin_unpredictable)
-      if constexpr (cfg.probability == 50u) {
+      if constexpr (cfg.key_in_set_probability == 50u) {
         if (__builtin_unpredictable(lhs == rhs.first)) {
           return rhs.second;
         }
@@ -557,7 +558,7 @@ inline auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type:
       else
       #endif
       if (__builtin_expect_with_probability(lhs == rhs.first, 1,
-        [] { return float(cfg.probability) / float(100u); }())) {
+        [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
         return rhs.second;
       }
   } else {
@@ -674,18 +675,18 @@ static_assert(([] {
   // mph::config_c
   {
     struct cfg1{ };
-    struct cfg2{ int probability{}; };
-    struct cfg3{ int probability{}; int alignment{}; };
-    struct cfg4{ int probability{}; int lookup{}; int alignment{}; };
+    struct cfg2{ int key_in_set_probability{}; };
+    struct cfg3{ int key_in_set_probability{}; int split_group_size{}; };
+    struct cfg4{ int key_in_set_probability{}; int split_group_size{}; int lookup_table_alignment{}; };
 
     static_assert(not mph::config_c<cfg1{}>);
     static_assert(not mph::config_c<cfg2{}>);
     static_assert(not mph::config_c<cfg3{}>);
-    static_assert(not mph::config_c<cfg4{.probability = -1, .lookup = {}, .alignment = {}}>);
-    static_assert(not mph::config_c<cfg4{.probability = {}, .lookup = {}, .alignment = 1u}>);
+    static_assert(not mph::config_c<cfg4{.key_in_set_probability = -1, .split_group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(not mph::config_c<cfg4{.key_in_set_probability = {}, .split_group_size = {}, .lookup_table_alignment = 1u}>);
     static_assert(mph::config_c<cfg4{}>);
-    static_assert(mph::config_c<cfg4{.probability = 50, .lookup = {}, .alignment = 8u}>);
-    static_assert(mph::config_c<cfg4{.probability = 50, .lookup = 4u, .alignment = 8u}>);
+    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .split_group_size = {}, .lookup_table_alignment = 8u}>);
+    static_assert(mph::config_c<cfg4{.key_in_set_probability = 50, .split_group_size = 4u, .lookup_table_alignment = 8u}>);
   }
 
   // mph::range_c
