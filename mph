@@ -185,17 +185,21 @@ template<class T>
                                 //                if not __builtin_memcpy(data, size)
     #endif
     if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
-      if constexpr (constexpr auto size = decltype(data){}.size(); size == sizeof(T)) {
-        return *__builtin_bit_cast(const T*, data.data());
-      } else if constexpr (size > 0u and size <= sizeof(T)) {
-        T t{};
-        __builtin_memcpy(&t, data.data(), size);
-        return t;
-      }
+      return [&]<template<class, auto> class T_, class _, auto size>(T_<_, size>) {
+        if constexpr (not size) {
+          return T{};
+        } else if constexpr (size == sizeof(T)) {
+          return *__builtin_bit_cast(const T*, data.data());
+        } else if constexpr (size > 0u and size <= sizeof(T)) {
+          T t{};
+          __builtin_memcpy(&t, data.data(), size);
+          return t;
+        }
+      }(data);
     } else if constexpr (MPH_PAGE_SIZE) {
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
       if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-        return [&data] [[gnu::cold]] {
+        return [&data] [[gnu::cold]] { // unlikely path
           T t{};
           __builtin_memcpy(&t, data.data(), data.size());
           return t;
@@ -215,7 +219,7 @@ template<class T>
       #endif
     } else {
       T t{};
-      __builtin_memcpy(&t, data.data(), data.size());
+      __builtin_memcpy(&t, data.data(), data.size()); // slow path
       return t;
     }
   }
