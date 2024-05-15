@@ -60,11 +60,11 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ```cpp
 int main(int argc, char**)
   constexpr std::array ids{
-    std::pair{ 54u,  91u},
-    std::pair{324u,  54u},
-    std::pair{ 64u, 324u},
-    std::pair{234u,  64u},
-    std::pair{ 91u, 234u},
+    pair( 54u,  91u),
+    pair(324u,  54u),
+    pair( 64u, 324u),
+    pair(234u,  64u),
+    pair( 91u, 234u),
   };
 
   return mph::hash<ids>(argc);
@@ -199,7 +199,7 @@ int main(int, const char** argv) {
   };
 
   // input keys are always valid aka coming from the predefined set
-  return mph::hash<symbols, mph::config<symbols>{.probability = 100u}>(
+  return mph::hash<symbols, mph::config<symbols>{.key_in_set_probability = 100u}>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
