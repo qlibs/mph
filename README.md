@@ -34,9 +34,9 @@
 enum class color { red = 1, green = 2, blue = 3 };
 
 constexpr auto colors = std::array{
-  pair("red",   color::red),
+  pair("red", color::red),
   pair("green", color::green),
-  pair("blue",  color::blue),
+  pair("blue", color::blue),
 };
 
 static_assert(color::green == mph::hash<colors>("green"));
@@ -60,11 +60,11 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ```cpp
 int main(int argc, char**)
   constexpr std::array ids{
-    pair( 54u,  91u),
-    pair(324u,  54u),
-    pair( 64u, 324u),
-    pair(234u,  64u),
-    pair( 91u, 234u),
+    pair(54u, 91u),
+    pair(324u, 54u),
+    pair(64u, 324u),
+    pair(234u, 64u),
+    pair(91u, 234u),
   };
 
   return mph::hash<ids>(argc);
