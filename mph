@@ -446,6 +446,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
       } else {
         return rhs;
       }
+      return value_type{};
     }();
   }
   return {};
