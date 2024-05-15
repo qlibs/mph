@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/7KfKEE1br">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/nEh46WKzE">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/ej81YP3G9">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -511,7 +511,7 @@ template<auto kv, config cfg = config<kv>{}>
   - Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`. That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
   - Consider using minimial required size for values. That will make the lookup table smaller.
-  - Experiment with different `config.probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
+  - Experiment with different `config.key_in_set_probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
   - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
@@ -535,7 +535,7 @@ template<auto kv, config cfg = config<kv>{}>
 
 - How to disable `cmov` generation?
 
-    > Set `config.probability` to value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
+    > Set `config.key_in_set_probability` to value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
 
     ```
     clang: -mllvm -x86-cmov-converter=false

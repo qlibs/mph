@@ -60,7 +60,9 @@ struct integral_constant {
   static constexpr T value = v;
   constexpr operator value_type() const noexcept { return value; }
 };
+} // namespace utility
 
+namespace detail {
 template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
   // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
@@ -102,7 +104,7 @@ template<class T>
   return {};
 }
 
-template<class T, u32 N = 1u>
+template<class T, u32 N>
 [[nodiscard]] constexpr auto mask(const auto& v) noexcept -> T {
   utility::array<T, decltype(v){}.size()> vs;
   T max{};
@@ -142,7 +144,7 @@ template<class T, u32 N = 1u>
   }
   return mask;
 }
-} // namespace utility
+} // namespace detail
 
 template<class T, u32... TSize>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
@@ -221,15 +223,15 @@ template<class T, u32... TSize>
   return {};
 }
 
-template<auto cfg> concept config_c = requires {
-  cfg.key_in_set_probability; cfg.group_size;
+template<auto c> concept cfg = requires {
+  c.key_in_set_probability; c.group_size;
 } and (
-  cfg.key_in_set_probability >= 0u and
-  cfg.key_in_set_probability <= 100u and
-  cfg.group_size >= 1u
+  c.key_in_set_probability >= 0u and
+  c.key_in_set_probability <= 100u and
+  c.group_size >= 1u
 );
 
-template<auto kv> concept range_c = requires(u32 n) {
+template<auto kv> concept range = requires(u32 n) {
   kv.size(); kv.begin(); kv.end(); kv[n];
 };
 
@@ -265,7 +267,7 @@ struct config {
 };
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg> and (
+  requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 0u or
     cfg.key_in_set_probability == 0u
   )
@@ -275,7 +277,7 @@ constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> typename declt
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg> and (
+  requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u
   )
@@ -291,7 +293,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg> and (
+  requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size == 1u
@@ -304,9 +306,9 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   } else {
     return [&] {
       using value_type = typename decltype(kv)::value_type::second_type;
-      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, key_type, utility::pair<key_type, value_type>>;
+      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, value_type, utility::pair<key_type, value_type>>;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::integral_constant<mask_type, utility::mask<key_type, cfg.group_size>(kv)>{};
+      static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
       static constexpr const auto lookup = [] {
         constexpr auto fill = [] {
           if constexpr (cfg.key_in_set_probability == 100u) {
@@ -316,11 +318,11 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
           }
         }();
         utility::array<key_value_type, mask_type(1) << __builtin_popcountl(mask)> lookup{};
-        for (const auto& [key, value] : kv) { lookup[utility::pext(key, mask)] = fill(key, value); }
+        for (const auto& [key, value] : kv) { lookup[detail::pext(key, mask)] = fill(key, value); }
         return lookup;
       }();
       auto&& lhs = to<key_type>(key);
-      auto&& rhs = lookup[utility::pext(lhs, mask)];
+      auto&& rhs = lookup[detail::pext(lhs, mask)];
       if constexpr (requires { rhs.first; rhs.second; }) {
         #if __has_builtin(__builtin_unpredictable)
         if constexpr (cfg.key_in_set_probability == 50u) {
@@ -337,13 +339,14 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
       } else {
         return rhs;
       }
+      return value_type{};
     }();
   }
   return {};
 }
 
 template<auto kv, auto cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg> and (
+  requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size > 1u
@@ -356,16 +359,16 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   } else {
     return [&] {
       using value_type = typename decltype(kv)::value_type::second_type;
-      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, key_type, utility::pair<key_type, value_type>>;
+      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, value_type, utility::pair<key_type, value_type>>;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::integral_constant<mask_type, utility::mask<key_type, cfg.group_size>(kv)>{};
+      static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
       static constexpr const auto lookup = [] {
         utility::array<
           utility::array<utility::pair<key_type, value_type>, cfg.group_size>,
           mask_type(1) << __builtin_popcountl(mask)
         > lookup{};
         for (const auto& [key, value] : kv) {
-          auto& slot = lookup[utility::pext(key, mask)];
+          auto& slot = lookup[detail::pext(key, mask)];
           auto n = 0u;
           while (slot[n].first) n++;
           slot[n] = utility::pair{key, value};
@@ -377,7 +380,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
         u32 offset{};
         for (auto i = 0u; i < lookup.size(); ++i) {
           if (const auto& slot = lookup[i]; slot[0].first) {
-            const auto mask = utility::mask<key_type, 1u>(slot);
+            const auto mask = detail::mask<key_type, 1u>(slot);
             masks_offsets[i] = utility::pair{offset, mask};
             offset += (mask_type(1) << __builtin_popcountl(mask));
           }
@@ -397,15 +400,15 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
           if (auto& mo = masks_offsets.first[i]; lookup[i][0].first) {
             for (const auto& [key, value] : lookup[i]) {
               if (not key) break;
-              lookups[mo.first + utility::pext(key, mo.second)] = fill(key, value);
+              lookups[mo.first + detail::pext(key, mo.second)] = fill(key, value);
             }
           }
         }
         return lookups;
       }();
       auto&& lhs = to<key_type>(key);
-      auto&& mdx = masks_offsets.first[utility::pext(lhs, mask)];
-      auto&& rhs = *static_cast<const key_value_type*>(&lookups[mdx.first + utility::pext(lhs, mdx.second)]);
+      auto&& mdx = masks_offsets.first[detail::pext(lhs, mask)];
+      auto&& rhs = *static_cast<const key_value_type*>(&lookups[mdx.first + detail::pext(lhs, mdx.second)]);
       if constexpr (requires { rhs.first; rhs.second; }) {
         #if __has_builtin(__builtin_unpredictable)
           if constexpr (cfg.key_in_set_probability == 50u) {
@@ -478,33 +481,33 @@ static_assert(([] {
     static_assert('X' == mph::utility::integral_constant<char, 'X'>::value);
   }
 
-  // mph::utility::pext
+  // mph::detail::pext
   {
     using mph::u32;
 
-    static_assert(0    == mph::utility::pext(0b00, 0b00));
-    static_assert(0    == mph::utility::pext(0b01, 0b00));
-    static_assert(0b1  == mph::utility::pext(0b01, 0b01));
-    static_assert(0b01 == mph::utility::pext(0b01, 0b11));
-    static_assert(0b0  == mph::utility::pext(0b01, 0b10));
-    static_assert(0b1  == mph::utility::pext(0b11, 0b10));
-    static_assert(0b1  == mph::utility::pext(0b11, 0b01));
-    static_assert(0b11 == mph::utility::pext(0b11, 0b11));
+    static_assert(0    == mph::detail::pext(0b00, 0b00));
+    static_assert(0    == mph::detail::pext(0b01, 0b00));
+    static_assert(0b1  == mph::detail::pext(0b01, 0b01));
+    static_assert(0b01 == mph::detail::pext(0b01, 0b11));
+    static_assert(0b0  == mph::detail::pext(0b01, 0b10));
+    static_assert(0b1  == mph::detail::pext(0b11, 0b10));
+    static_assert(0b1  == mph::detail::pext(0b11, 0b01));
+    static_assert(0b11 == mph::detail::pext(0b11, 0b11));
   }
 
-  // mph::mask
+  // mph::detail::mask
   {
     using mph::u32;
     using mph::utility::array;
     using mph::utility::pair;
 
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b11, 0}}));
-    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b11, 0}}));
-    static_assert(0b10 == mph::utility::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b01, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b10, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b10, 0}}));
-    static_assert(0b01 == mph::utility::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b01, 0}}));
-    static_assert(0b11 == mph::utility::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b11, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b11, 0}}));
+    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b11, 0}}));
+    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b10, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b10, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b01, 0}}));
+    static_assert(0b11 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b11, 0}}));
   }
 
   // mph::to
@@ -522,22 +525,22 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
-  // mph::config_c
+  // mph::cfg
   {
     struct cfg1{ };
     struct cfg2{ int key_in_set_probability{}; };
     struct cfg3{ int key_in_set_probability{}; int group_size{}; };
 
-    static_assert(not mph::config_c<cfg1{}>);
-    static_assert(not mph::config_c<cfg2{}>);
-    static_assert(not mph::config_c<cfg3{.key_in_set_probability = -1, .group_size = {}}>);
-    static_assert(not mph::config_c<cfg3{.key_in_set_probability = 100u, .group_size = {}}>);
-    static_assert(mph::config_c<cfg3{.key_in_set_probability = 0u, .group_size = 1u}>);
-    static_assert(mph::config_c<cfg3{.key_in_set_probability = 50u, .group_size = 4u}>);
-    static_assert(mph::config_c<cfg3{.key_in_set_probability = 100u, .group_size = 8u}>);
+    static_assert(not mph::cfg<cfg1{}>);
+    static_assert(not mph::cfg<cfg2{}>);
+    static_assert(not mph::cfg<cfg3{.key_in_set_probability = -1, .group_size = {}}>);
+    static_assert(not mph::cfg<cfg3{.key_in_set_probability = 100u, .group_size = {}}>);
+    static_assert(mph::cfg<cfg3{.key_in_set_probability = 0u, .group_size = 1u}>);
+    static_assert(mph::cfg<cfg3{.key_in_set_probability = 50u, .group_size = 4u}>);
+    static_assert(mph::cfg<cfg3{.key_in_set_probability = 100u, .group_size = 8u}>);
   }
 
-  // mph::range_c
+  // mph::range
   {
     using mph::u32;
 
@@ -546,10 +549,10 @@ static_assert(([] {
     struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
     struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
 
-    static_assert(not mph::range_c<range1{}>);
-    static_assert(not mph::range_c<range2{}>);
-    static_assert(not mph::range_c<range3{}>);
-    static_assert(mph::range_c<range4{}>);
+    static_assert(not mph::range<range1{}>);
+    static_assert(not mph::range<range2{}>);
+    static_assert(not mph::range<range3{}>);
+    static_assert(mph::range<range4{}>);
   }
 
   // mph::hash
