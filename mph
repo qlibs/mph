@@ -235,8 +235,7 @@ template<class T, u32... TSize>
 template<auto c> concept cfg = requires {
   c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
 } and (
-  c.key_in_set_probability >= 0u and
-  c.key_in_set_probability <= 100u and
+  c.key_in_set_probability >= 0u and c.key_in_set_probability <= 100u and
   c.group_size >= 1u and
   c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
 );
@@ -320,7 +319,11 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   } else {
     return [&] {
       using value_type = typename decltype(kv)::value_type::second_type;
-      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, value_type, utility::pair<key_type, value_type>>;
+      using key_value_type = utility::conditional_t<
+        cfg.key_in_set_probability == 100u,
+        value_type,
+        utility::pair<key_type, value_type>
+      >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
       static constexpr const auto lookup = [] {
@@ -376,7 +379,11 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   } else {
     return [&] {
       using value_type = typename decltype(kv)::value_type::second_type;
-      using key_value_type = utility::conditional_t<cfg.key_in_set_probability == 100u, value_type, utility::pair<key_type, value_type>>;
+      using key_value_type = utility::conditional_t<
+        cfg.key_in_set_probability == 100u,
+        value_type,
+        utility::pair<key_type, value_type>
+      >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
       static constexpr const auto lookup = [] {
