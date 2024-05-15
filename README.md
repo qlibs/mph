@@ -435,7 +435,7 @@ template<auto kv, config cfg = config<kv>{}>
 
 - Limitations?
 
-    > `mph` supports different types of key/value pairs. `mph` supports thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
+    > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
 
   - All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
@@ -443,7 +443,7 @@ template<auto kv, config cfg = config<kv>{}>
 
     ```cpp
     template<auto kv, auto cfg = config<kv>{}>
-      requires range_c<kv> and config_c<cfg> and (
+      requires mph::range<kv> and mph::cfg<cfg> and (
         kv.size() > 1'000'000
       )
     [[nodiscard]] constexpr auto mph::hash(const auto& key) noexcept;
