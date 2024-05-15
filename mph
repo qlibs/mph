@@ -136,7 +136,7 @@ template<class T, u32 N>
       auto n = N_;
       auto found = false;
       while (hashed[slot]) {
-        if (not n-- and hashed[slot] == masked) {
+        if (hashed[slot] == masked and not n--) {
           found = true;
           break;
         }
