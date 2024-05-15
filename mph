@@ -20,13 +20,13 @@ using u64 = __UINT64_TYPE__;
 
 namespace utility {
 template<class T1, class T2>
-struct pair {
+struct compressed_pair {
   using first_type = T1;
   using second_type = T2;
-  T1 first;
-  T2 second;
+  [[no_unique_address]] T1 first;
+  [[no_unique_address]] T2 second;
 };
-template<class T1, class T2> pair(T1, T2) -> pair<T1, T2>;
+template<class T1, class T2> compressed_pair(T1, T2) -> compressed_pair<T1, T2>;
 
 template<class T, u32 Size>
 struct array {
@@ -183,7 +183,7 @@ template<class T, u32... TSize>
     } else {
       return data;
     }
-  } else if constexpr (requires { T{data}; }) {
+  } else if constexpr (requires { T(data); data + decltype(data){}; }) {
     return data;
   } else if constexpr (requires { data.data(); data.size(); }) {
     #if not defined(MPH_PAGE_SIZE)
@@ -322,7 +322,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
-        utility::pair<key_type, value_type>
+        utility::compressed_pair<key_type, value_type>
       >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
@@ -331,7 +331,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
           if constexpr (cfg.key_in_set_probability == 100u) {
             return []([[maybe_unused]] const auto& key, const auto& value) { return value; };
           } else {
-            return [](const auto& key, const auto& value) { return utility::pair{key, value}; };
+            return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
           }
         }();
         utility::aligned_t<
@@ -382,44 +382,44 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
-        utility::pair<key_type, value_type>
+        utility::compressed_pair<key_type, value_type>
       >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
       static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
       static constexpr const auto lookup = [] {
         utility::array<
-          utility::array<utility::pair<key_type, value_type>, cfg.group_size>,
+          utility::array<utility::compressed_pair<key_type, value_type>, cfg.group_size>,
           mask_type(1) << __builtin_popcountl(mask)
         > lookup{};
         for (const auto& [key, value] : kv) {
           auto& slot = lookup[detail::pext(key, mask)];
           auto n = 0u;
           while (slot[n].first) n++;
-          slot[n] = utility::pair{key, value};
+          slot[n] = utility::compressed_pair{key, value};
         }
         return lookup;
       }();
       static constexpr const auto masks_offsets = [] {
         utility::aligned_t<
-          utility::array<utility::pair<u32, mask_type>, lookup.size()>,
+          utility::array<utility::compressed_pair<u32, mask_type>, lookup.size()>,
           cfg.lookup_table_alignment
         > masks_offsets{};
         u32 offset{};
         for (auto i = 0u; i < lookup.size(); ++i) {
           if (const auto& slot = lookup[i]; slot[0].first) {
             const auto mask = detail::mask<key_type, 1u>(slot);
-            masks_offsets[i] = utility::pair{offset, mask};
+            masks_offsets[i] = utility::compressed_pair{offset, mask};
             offset += (mask_type(1) << __builtin_popcountl(mask));
           }
         }
-        return utility::pair{masks_offsets, offset};
+        return utility::compressed_pair{masks_offsets, offset};
       }();
       static constexpr const auto lookups = [] {
         constexpr auto fill = [] {
           if constexpr (cfg.key_in_set_probability == 100u) {
             return []([[maybe_unused]] const auto& key, const auto& value) { return value; };
           } else {
-            return [](const auto& key, const auto& value) { return utility::pair{key, value}; };
+            return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
           }
         }();
         utility::aligned_t<
@@ -465,13 +465,15 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
 static_assert(([] {
   constexpr auto expect = [](bool cond) { if (not cond) { void failed(); failed(); } };
 
-  // mph::utility::pair
+  // mph::utility::compressed_pair
   {
-    static_assert(1 == mph::utility::pair{1, 2}.first);
-    static_assert(2 == mph::utility::pair{1, 2}.second);
-    static_assert(sizeof(int) + sizeof(int) == sizeof(mph::utility::pair{int{}, int{}}));
+    static_assert(1 == mph::utility::compressed_pair{1, 2}.first);
+    static_assert(2 == mph::utility::compressed_pair{1, 2}.second);
+    static_assert(sizeof(int) + sizeof(int) == sizeof(mph::utility::compressed_pair{int{}, int{}}));
     struct empty { };
-    static_assert(sizeof(empty) + sizeof(empty) == sizeof(mph::utility::pair{empty{}, empty{}}));
+    static_assert(sizeof(int) == sizeof(mph::utility::compressed_pair{empty{}, 42}));
+    static_assert(sizeof(int) == sizeof(mph::utility::compressed_pair{42, empty{}}));
+    static_assert(sizeof(empty) + sizeof(empty) == sizeof(mph::utility::compressed_pair{empty{}, empty{}}));
   }
 
   // mph::utility::array
@@ -539,15 +541,15 @@ static_assert(([] {
   {
     using mph::u32;
     using mph::utility::array;
-    using mph::utility::pair;
+    using mph::utility::compressed_pair;
 
-    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b11, 0}}));
-    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b11, 0}}));
-    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b01, 0}}));
-    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b10, 0}}));
-    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b01, 0}, pair{0b10, 0}}));
-    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{pair{0b10, 0}, pair{0b01, 0}}));
-    static_assert(0b11 == mph::detail::mask<u32, 1u>(array{pair{0b11, 0}, pair{0b11, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b01, 0}, compressed_pair{0b11, 0}}));
+    static_assert(0b10 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b10, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b01, 0}, compressed_pair{0b10, 0}}));
+    static_assert(0b01 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b10, 0}, compressed_pair{0b01, 0}}));
+    static_assert(0b11 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b11, 0}}));
   }
 
   // mph::to
@@ -599,7 +601,7 @@ static_assert(([] {
   // mph::hash
   {
     using mph::u32;
-    using mph::utility::pair;
+    using mph::utility::compressed_pair;
     using mph::utility::array;
     using mph::utility::integral_constant;
 
@@ -607,7 +609,7 @@ static_assert(([] {
     {
       {
         constexpr array kv{
-          pair{u32(4), u32(2)},
+          compressed_pair{u32(4), u32(2)},
         };
 
         static_assert(0 == mph::hash<kv>(u32(0)));
@@ -617,9 +619,9 @@ static_assert(([] {
 
       {
         constexpr array kv{
-          pair{u32(4), u32(2)},
-          pair{u32(42), u32(87)},
-          pair{u32(100), u32(100)},
+          compressed_pair{u32(4), u32(2)},
+          compressed_pair{u32(42), u32(87)},
+          compressed_pair{u32(100), u32(100)},
         };
 
         static_assert(0 == mph::hash<kv>(u32(0)));
@@ -633,9 +635,9 @@ static_assert(([] {
     {
       {
         constexpr array kv{
-          pair{mph::to<u32>("BTC"), 1},
-          pair{mph::to<u32>("ETH"), 2},
-          pair{mph::to<u32>("XRP"), 3},
+          compressed_pair{mph::to<u32>("BTC"), 1},
+          compressed_pair{mph::to<u32>("ETH"), 2},
+          compressed_pair{mph::to<u32>("XRP"), 3},
         };
 
         static_assert(0 == mph::hash<kv>(""));
