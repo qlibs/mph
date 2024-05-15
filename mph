@@ -53,12 +53,10 @@ template <> struct conditional<true>  { template <class T, class> using fn = T; 
 template <bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
-template<class T, T v>
-struct integral_constant {
-  using type = integral_constant;
-  using value_type = T;
-  static constexpr T value = v;
-  constexpr operator value_type() const noexcept { return value; }
+template<auto v>
+struct constant {
+  static constexpr auto value = v;
+  constexpr operator auto() const noexcept { return value; }
 };
 
 template<class T, u32 alignment>
@@ -325,7 +323,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
         utility::compressed_pair<key_type, value_type>
       >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
+      static constexpr const auto mask = utility::constant<mask_type(detail::mask<key_type, cfg.group_size>(kv))>{};
       static constexpr const auto lookup = [] {
         constexpr auto fill = [] {
           if constexpr (cfg.key_in_set_probability == 100u) {
@@ -385,7 +383,7 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
         utility::compressed_pair<key_type, value_type>
       >;
       using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::integral_constant<mask_type, detail::mask<key_type, cfg.group_size>(kv)>{};
+      static constexpr const auto mask = utility::constant<mask_type(detail::mask<key_type, cfg.group_size>(kv))>{};
       static constexpr const auto lookup = [] {
         utility::array<
           utility::array<utility::compressed_pair<key_type, value_type>, cfg.group_size>,
@@ -505,12 +503,12 @@ static_assert(([] {
     }
   }
 
-  // mph::utility::integral_constant
+  // mph::utility::constant
   {
-    static_assert(0 == mph::utility::integral_constant<int, 0>::value);
-    static_assert(42 == mph::utility::integral_constant<int, 42>{});
-    static_assert(42u == mph::utility::integral_constant<unsigned, 42u>::value);
-    static_assert('X' == mph::utility::integral_constant<char, 'X'>::value);
+    static_assert(0 == mph::utility::constant<0>::value);
+    static_assert(42 == mph::utility::constant<42>{});
+    static_assert(42u == mph::utility::constant<42u>::value);
+    static_assert('X' == mph::utility::constant<'X'>::value);
   }
 
     // mph::utility::aligned_t
@@ -603,7 +601,6 @@ static_assert(([] {
     using mph::u32;
     using mph::utility::compressed_pair;
     using mph::utility::array;
-    using mph::utility::integral_constant;
 
     // integral
     {
