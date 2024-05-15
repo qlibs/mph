@@ -153,7 +153,7 @@ template<class T, u32 N>
 }
 } // namespace detail
 
-template<class T, u32... TSize>
+template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if (__builtin_is_constant_evaluated()) {
     if constexpr (requires { data.data(); data.size(); }) {
@@ -163,16 +163,9 @@ template<class T, u32... TSize>
       }
       return t;
     } else if constexpr (requires { data[0]; }) {
-      const u32 size = [&] {
-        if constexpr (sizeof...(TSize)) {
-          return u32(TSize...);
-        } else {
-          u32 size{};
-          auto ptr = data;
-          while (*ptr++) size++;
-          return size;
-        };
-      }();
+      u32 size{};
+      auto ptr = data;
+      while (*ptr++) size++;
       T t{};
       for (auto i = 0u; i < size; ++i) {
         t = (t << __CHAR_BIT__) | data[size - i - 1u];
