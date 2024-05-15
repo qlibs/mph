@@ -27,10 +27,7 @@
 ### Requirements
 
 - C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE))
-
-### [Optional] Hardware acceleration
-
-- [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
+- [optional] [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)
 
 ### Hello world (https://godbolt.org/z/1eKbEYrTr)
 
