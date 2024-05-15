@@ -357,20 +357,17 @@ template<class T>
 ```
 
 ```cpp
-template<auto cfg> concept config_c = requires {
-  cfg.key_in_set_probability;
-  cfg.group_size;
+template<auto c> concept cfg = requires {
+  c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
 } and (
-  cfg.key_in_set_probability >= 0u and
-  cfg.key_in_set_probability <= 100u and
-  cfg.group_size >= 1u
+  c.key_in_set_probability >= 0u and
+  c.key_in_set_probability <= 100u and
+  c.group_size >= 1u and
+  c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
 );
 
-template<auto kv> concept range_c = requires(u32 n) {
-  kv.size();
-  kv.begin();
-  kv.end();
-  kv[n];
+template<auto kv> concept range = requires(u32 n) {
+  kv.size(); kv.begin(); kv.end(); kv[n];
 };
 ```
 
@@ -404,6 +401,10 @@ struct config {
       }
     }()
   };
+
+  /// 0 - no alignment
+  /// N - alignas(N) lookup_table
+  u32 lookup_table_alignment{};
 };
 ```
 

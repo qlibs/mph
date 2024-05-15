@@ -60,6 +60,15 @@ struct integral_constant {
   static constexpr T value = v;
   constexpr operator value_type() const noexcept { return value; }
 };
+
+template<class T, u32 alignment>
+struct aligned {
+  using type = struct alignas(alignment) a  : T { };
+  static_assert(alignment == alignof(type));
+};
+template<class T> struct aligned<T, 0u> { using type = T; };
+template<class T, u32 alignment>
+using aligned_t = typename aligned<T, alignment>::type;
 } // namespace utility
 
 namespace detail {
@@ -224,11 +233,12 @@ template<class T, u32... TSize>
 }
 
 template<auto c> concept cfg = requires {
-  c.key_in_set_probability; c.group_size;
+  c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
 } and (
   c.key_in_set_probability >= 0u and
   c.key_in_set_probability <= 100u and
-  c.group_size >= 1u
+  c.group_size >= 1u and
+  c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
 );
 
 template<auto kv> concept range = requires(u32 n) {
@@ -264,6 +274,10 @@ struct config {
       }
     }()
   };
+
+  /// 0 - no alignment
+  /// N - alignas(N) lookup_table
+  u32 lookup_table_alignment{};
 };
 
 template<auto kv, auto cfg = config<kv>{}>
@@ -317,7 +331,10 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
             return [](const auto& key, const auto& value) { return utility::pair{key, value}; };
           }
         }();
-        utility::array<key_value_type, mask_type(1) << __builtin_popcountl(mask)> lookup{};
+        utility::aligned_t<
+          utility::array<key_value_type, mask_type(1) << __builtin_popcountl(mask)>,
+          cfg.lookup_table_alignment
+        > lookup{};
         for (const auto& [key, value] : kv) { lookup[detail::pext(key, mask)] = fill(key, value); }
         return lookup;
       }();
@@ -376,7 +393,10 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
         return lookup;
       }();
       static constexpr const auto masks_offsets = [] {
-        utility::array<utility::pair<u32, mask_type>, lookup.size()> masks_offsets{};
+        utility::aligned_t<
+          utility::array<utility::pair<u32, mask_type>, lookup.size()>,
+          cfg.lookup_table_alignment
+        > masks_offsets{};
         u32 offset{};
         for (auto i = 0u; i < lookup.size(); ++i) {
           if (const auto& slot = lookup[i]; slot[0].first) {
@@ -395,7 +415,10 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
             return [](const auto& key, const auto& value) { return utility::pair{key, value}; };
           }
         }();
-        utility::array<key_value_type, masks_offsets.second> lookups{};
+        utility::aligned_t<
+          utility::array<key_value_type, masks_offsets.second>,
+          cfg.lookup_table_alignment
+        > lookups{};
         for (auto i = 0u; i < lookup.size(); ++i) {
           if (auto& mo = masks_offsets.first[i]; lookup[i][0].first) {
             for (const auto& [key, value] : lookup[i]) {
@@ -481,6 +504,16 @@ static_assert(([] {
     static_assert('X' == mph::utility::integral_constant<char, 'X'>::value);
   }
 
+    // mph::utility::aligned_t
+  {
+    using mph::utility::array;
+
+    static_assert(16u == alignof(mph::utility::aligned_t<array<int, 42>, 16u>));
+    static_assert(32u == alignof(mph::utility::aligned_t<array<int, 42>, 32u>));
+    static_assert(64u == alignof(mph::utility::aligned_t<array<int, 42>, 64u>));
+    static_assert(alignof(int) == alignof(mph::utility::aligned_t<array<int, 42>, 0u>));
+  }
+
   // mph::detail::pext
   {
     using mph::u32;
@@ -530,14 +563,15 @@ static_assert(([] {
     struct cfg1{ };
     struct cfg2{ int key_in_set_probability{}; };
     struct cfg3{ int key_in_set_probability{}; int group_size{}; };
+    struct cfg4{ int key_in_set_probability{}; int group_size{}; int lookup_table_alignment{}; };
 
     static_assert(not mph::cfg<cfg1{}>);
     static_assert(not mph::cfg<cfg2{}>);
-    static_assert(not mph::cfg<cfg3{.key_in_set_probability = -1, .group_size = {}}>);
-    static_assert(not mph::cfg<cfg3{.key_in_set_probability = 100u, .group_size = {}}>);
-    static_assert(mph::cfg<cfg3{.key_in_set_probability = 0u, .group_size = 1u}>);
-    static_assert(mph::cfg<cfg3{.key_in_set_probability = 50u, .group_size = 4u}>);
-    static_assert(mph::cfg<cfg3{.key_in_set_probability = 100u, .group_size = 8u}>);
+    static_assert(not mph::cfg<cfg4{.key_in_set_probability = -1, .group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(not mph::cfg<cfg4{.key_in_set_probability = 100u, .group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(mph::cfg<cfg4{.key_in_set_probability = 0u, .group_size = 1u, .lookup_table_alignment = {}}>);
+    static_assert(mph::cfg<cfg4{.key_in_set_probability = 50u, .group_size = 4u, .lookup_table_alignment = {}}>);
+    static_assert(mph::cfg<cfg4{.key_in_set_probability = 100u, .group_size = 8u, .lookup_table_alignment = {}}>);
   }
 
   // mph::range
