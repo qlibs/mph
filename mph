@@ -121,6 +121,9 @@ template<class T, u32 N>
     if (vs[i] = v[i].first; vs[i] > max) max = vs[i];
     ++size;
   }
+  if (size <= 1u) {
+    return {};
+  }
   constexpr auto H = (N * vs.size()) << 1u;
   constexpr auto N_ = N - 1u;
   const auto clz = sizeof(max) <= sizeof(u32) ? __builtin_clz(max) : __builtin_clzl(max);
