@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/d8GMTzYvE">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/ej81YP3G9">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/PejPeT5se">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/jhPdvz49E">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -28,12 +28,12 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
-### Hello world (https://godbolt.org/z/1eKbEYrTr)
+### Hello world (https://godbolt.org/z/j3771z51G)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
 
-auto colors = std::array{
+constexpr auto colors = std::array{
   pair("red", color::red),
   pair("green", color::green),
   pair("blue", color::blue),
@@ -55,7 +55,7 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/MhPa6exqc)
+### Performance (https://godbolt.org/z/jhPdvz49E)
 
 ```cpp
 int main(int argc, char**)
@@ -99,7 +99,7 @@ lookup: # size = 2^popcount(mask) of {key, value}
 
 ---
 
-### Performance (https://godbolt.org/z/65YncG4h9)
+### Performance (https://godbolt.org/z/KfchfM8no)
 
 ```cpp
 int main(int, const char** argv) {
@@ -137,7 +137,7 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/9hd49MTcd)
+### Performance (https://godbolt.org/z/3EoMas4MP)
 
 ```cpp
 int main(int, const char** argv) {
@@ -179,7 +179,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/x3Y984MTj)
+### Performance (https://godbolt.org/z/3eK9hTdPK)
 
 ```cpp
 int main(int, const char** argv) {
@@ -222,7 +222,7 @@ lookup:
 
 ### Examples
 
-- [feature] custom `config` - https://godbolt.org/z/h5snavx54
+- [feature] custom `config` - https://godbolt.org/z/GW7MPv5rG
 - [feature] custom `hash` - https://godbolt.org/z/nMKzjM57a
 - [example] `unordered_map` - https://godbolt.org/z/4GsPPr4xz
 - [example] branchless dispatcher - https://godbolt.org/z/1s7fsrjTs
@@ -240,14 +240,14 @@ time $CXX -x c++ -O3 -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS        # 0.
 time $CXX -x c++ -O3 -std=c++20 mph -c                                      # 0.056s
 ```
 
-> [64 integral key/value pairs] (https://godbolt.org/z/96871efPo)
+> [64 integral key/value pairs] (https://godbolt.org/z/c7zaxnxYb)
 
 ```cpp
 time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
 time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.090s
 ```
 
-> [1024 integral key/value pairs] (https://godbolt.org/z/fjEYacE6G)
+> [1024 integral key/value pairs] (https://godbolt.org/z/8sr1z3zbs)
 
 ```cpp
 time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.132s
@@ -416,7 +416,7 @@ struct config {
  * @tparam config configuration
  * @param key input data
  */
-template<auto kv, config cfg = config<kv>{}>
+template<const auto& kv, config cfg = config<kv>{}>
   requires range_c<kv> and config_c<cfg>
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
@@ -442,7 +442,7 @@ template<auto kv, config cfg = config<kv>{}>
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
-    template<auto kv, auto cfg = config<kv>{}>
+    template<const auto& kv, auto cfg = config<kv>{}>
       requires mph::range<kv> and mph::cfg<cfg> and (
         kv.size() > 1'000'000
       )

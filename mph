@@ -257,7 +257,7 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      using key_type = utility::value_type_t<kv>::first_type;
+      using key_type = typename utility::value_type_t<kv>::first_type;
       if (sizeof(key_type) == sizeof(u32)) {
           if (kv.size() <= sizeof(key_type) * (1u << 10u)) {
             return 1u;
@@ -296,8 +296,8 @@ template<const auto& kv, auto cfg = config<kv>{}>
   )
 [[nodiscard]] [[gnu::always_inline]]
 constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
-  using value_type = utility::value_type_t<kv>::second_type;
+  using key_type = typename utility::value_type_t<kv>::first_type;
+  using value_type = typename utility::value_type_t<kv>::second_type;
   if constexpr (cfg.key_in_set_probability == 100u) {
     return kv[0].second;
   } else {
@@ -313,12 +313,12 @@ template<const auto& kv, auto cfg = config<kv>{}>
   )
 [[nodiscard]] [[gnu::always_inline]]
 constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
+  using key_type = typename utility::value_type_t<kv>::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = utility::value_type_t<kv>::second_type;
+      using value_type = typename utility::value_type_t<kv>::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
@@ -373,12 +373,12 @@ template<const auto& kv, auto cfg = config<kv>{}>
   )
 [[nodiscard]] [[gnu::always_inline]]
 constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
+  using key_type = typename utility::value_type_t<kv>::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = utility::value_type_t<kv>::second_type;
+      using value_type = typename utility::value_type_t<kv>::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
