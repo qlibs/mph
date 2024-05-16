@@ -222,9 +222,9 @@ lookup:
 
 ### Examples
 
-- [feature] custom config -
-- [feature] custom hash -
-- [example] unordered_map -
+- [feature] custom `config` - https://godbolt.org/z/h5snavx54
+- [feature] custom `hash` - https://godbolt.org/z/nMKzjM57a
+- [example] `unordered_map` - https://godbolt.org/z/4GsPPr4xz
 - [example] branchless dispatcher - https://godbolt.org/z/1s7fsrjTs
 - [performance] enum name -
 
