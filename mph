@@ -6,13 +6,13 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 2'3'0 // SemVer
+#define MPH 2'4'0 // SemVer
 #pragma GCC system_header
 
 /**
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v2_3_0 {
+namespace mph::inline v2_4_0 {
 using u8  = __UINT8_TYPE__;
 using u16 = __UINT16_TYPE__;
 using u32 = __UINT32_TYPE__;

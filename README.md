@@ -179,7 +179,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/MjMzG9zvE)
+### Performance (https://godbolt.org/z/x3Y984MTj)
 
 ```cpp
 int main(int, const char** argv) {
@@ -254,7 +254,7 @@ time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.
 time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.141s
 ```
 
-> [6548 string key/value pairs] (https://godbolt.org/z/6q44dhq6c)
+> [6548 string key/value pairs] (https://godbolt.org/z/x3Y984MTj)
 
 ```cpp
 time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 2.821s
@@ -424,7 +424,7 @@ template<auto kv, config cfg = config<kv>{}>
 > Configuration
 
 ```cpp
-#define MPH 2'3'0           // Current library version (SemVer)
+#define MPH 2'4'0           // Current library version (SemVer)
 #define MPH_PAGE_SIZE 4096u // If set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
                             // If not __builtin_memcpy(data, size)
 ```
@@ -562,7 +562,7 @@ template<auto kv, config cfg = config<kv>{}>
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v2.3.0
+      GIT_TAG v2.4.0
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
