@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/PejPeT5se">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/s7vKzdMEz">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/jhPdvz49E">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
+- C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
 ### Hello world (https://godbolt.org/z/j3771z51G)
 
