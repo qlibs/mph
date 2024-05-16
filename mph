@@ -67,6 +67,12 @@ struct aligned {
 template<class T> struct aligned<T, 0u> { using type = T; };
 template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
+
+namespace detail {
+template<class T> auto value_type(const T&) -> typename T::value_type;
+} // namespace detail
+template<const auto& kv>
+using value_type_t = decltype(detail::value_type(kv));
 } // namespace utility
 
 namespace detail {
@@ -234,11 +240,11 @@ template<auto c> concept cfg = requires {
   c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
 );
 
-template<auto kv> concept range = requires(u32 n) {
+template<const auto& kv> concept range = requires(u32 n) {
   kv.size(); kv.begin(); kv.end(); kv[n];
 };
 
-template<auto kv>
+template<const auto& kv>
 struct config {
   /// 0         - none of the input key can be found in the kv
   /// (0, 50)   - input key is unlikely to be found in the kv
@@ -251,7 +257,7 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      using key_type = typename decltype(kv)::value_type::first_type;
+      using key_type = utility::value_type_t<kv>::first_type;
       if (sizeof(key_type) == sizeof(u32)) {
           if (kv.size() <= sizeof(key_type) * (1u << 10u)) {
             return 1u;
@@ -273,25 +279,25 @@ struct config {
   u32 lookup_table_alignment{};
 };
 
-template<auto kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 0u or
     cfg.key_in_set_probability == 0u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
+constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
   return {};
 }
 
-template<auto kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
-  using key_type = typename decltype(kv)::value_type::first_type;
-  using value_type = typename decltype(kv)::value_type::second_type;
+constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
+  using key_type = utility::value_type_t<kv>::first_type;
+  using value_type = utility::value_type_t<kv>::second_type;
   if constexpr (cfg.key_in_set_probability == 100u) {
     return kv[0].second;
   } else {
@@ -299,20 +305,20 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   }
 }
 
-template<auto kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
-  using key_type = typename decltype(kv)::value_type::first_type;
+constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
+  using key_type = utility::value_type_t<kv>::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = typename decltype(kv)::value_type::second_type;
+      using value_type = utility::value_type_t<kv>::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
@@ -359,20 +365,20 @@ constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_ty
   return {};
 }
 
-template<auto kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size > 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> typename decltype(kv)::value_type::second_type {
-  using key_type = typename decltype(kv)::value_type::first_type;
+constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
+  using key_type = utility::value_type_t<kv>::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = typename decltype(kv)::value_type::second_type;
+      using value_type = utility::value_type_t<kv>::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
@@ -581,30 +587,32 @@ static_assert(([] {
   // mph::range
   {
     using mph::u32;
+    using mph::utility::constant;
 
     struct range1 { };
     struct range2 { u32 begin() const; u32 end() const; };
     struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
     struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
 
-    static_assert(not mph::range<range1{}>);
-    static_assert(not mph::range<range2{}>);
-    static_assert(not mph::range<range3{}>);
-    static_assert(mph::range<range4{}>);
+    static_assert(not mph::range<constant<range1{}>::value>);
+    static_assert(not mph::range<constant<range2{}>::value>);
+    static_assert(not mph::range<constant<range3{}>::value>);
+    static_assert(mph::range<constant<range4{}>::value>);
   }
 
   // mph::hash
   {
     using mph::u32;
     using mph::utility::compressed_pair;
+    using mph::utility::constant;
     using mph::utility::array;
 
     // integral
     {
       {
-        constexpr array kv{
-          compressed_pair{u32(4), u32(2)},
-        };
+        constexpr const auto& kv = constant<array{
+          compressed_pair{u32(4), u32(2)}
+        }>::value;
 
         static_assert(0 == mph::hash<kv>(u32(0)));
         static_assert(0 == mph::hash<kv>(u32(1)));
@@ -612,11 +620,11 @@ static_assert(([] {
       }
 
       {
-        constexpr array kv{
+        constexpr const auto& kv = constant<array{
           compressed_pair{u32(4), u32(2)},
           compressed_pair{u32(42), u32(87)},
           compressed_pair{u32(100), u32(100)},
-        };
+        }>::value;
 
         static_assert(0 == mph::hash<kv>(u32(0)));
         static_assert(2 == mph::hash<kv>(u32(4)));
@@ -628,11 +636,11 @@ static_assert(([] {
     // string-like
     {
       {
-        constexpr array kv{
+        constexpr const auto& kv = constant<array{
           compressed_pair{mph::to<u32>("BTC"), 1},
           compressed_pair{mph::to<u32>("ETH"), 2},
           compressed_pair{mph::to<u32>("XRP"), 3},
-        };
+        }>::value;
 
         static_assert(0 == mph::hash<kv>(""));
         static_assert(1 == mph::hash<kv>("BTC"));

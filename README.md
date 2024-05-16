@@ -33,7 +33,7 @@
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
 
-constexpr auto colors = std::array{
+auto colors = std::array{
   pair("red", color::red),
   pair("green", color::green),
   pair("blue", color::blue),
@@ -59,7 +59,7 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 
 ```cpp
 int main(int argc, char**)
-  constexpr std::array ids{
+  static constexpr std::array ids{
     pair(54u, 91u),
     pair(324u, 54u),
     pair(64u, 324u),
@@ -103,7 +103,7 @@ lookup: # size = 2^popcount(mask) of {key, value}
 
 ```cpp
 int main(int, const char** argv) {
-  constexpr auto symbols = std::array{
+  static constexpr auto symbols = std::array{
     pair("AMZN",  1),
     pair("AAPL",  2),
     pair("GOOGL", 3),
@@ -141,7 +141,7 @@ lookup:
 
 ```cpp
 int main(int, const char** argv) {
-  constexpr std::array symbols{
+  static constexpr std::array symbols{
     pair("BTC",  1),
     pair("ETH",  2),
     pair("BNB",  3),
@@ -183,7 +183,7 @@ lookup:
 
 ```cpp
 int main(int, const char** argv) {
-  constexpr std::array symbols{
+  static constexpr std::array symbols{
     pair("BTC",  1),
     pair("ETH",  2),
     pair("BNB",  3),
@@ -198,7 +198,7 @@ int main(int, const char** argv) {
     pair("BCH",  12),
   };
 
-  // input keys are always valid aka coming from the predefined set
+  // input keys are always valid - coming from the predefined set
   return mph::hash<symbols, mph::config<symbols>{.key_in_set_probability = 100u}>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
