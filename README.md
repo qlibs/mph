@@ -446,7 +446,7 @@ template<auto kv, config cfg = config<kv>{}>
       requires mph::range<kv> and mph::cfg<cfg> and (
         kv.size() > 1'000'000
       )
-    [[nodiscard]] constexpr auto mph::hash(const auto& key) noexcept;
+    [[nodiscard]] constexpr auto mph::hash(auto&& key) noexcept;
     ```
 
 - How `mph` is working under the hood?
