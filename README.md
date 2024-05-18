@@ -28,15 +28,15 @@
 
 - C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
-### Hello world (https://godbolt.org/z/j3771z51G)
+### Hello world (https://godbolt.org/z/6oYP7n57K)
 
 ```cpp
 enum class color { red = 1, green = 2, blue = 3 };
 
 constexpr auto colors = std::array{
-  pair("red", color::red),
-  pair("green", color::green),
-  pair("blue", color::blue),
+  std::pair("red"sv, color::red),
+  std::pair("green"sv, color::green),
+  std::pair("blue"sv, color::blue),
 };
 
 static_assert(color::green == mph::hash<colors>("green"));
@@ -60,11 +60,11 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ```cpp
 int main(int argc, char**)
   static constexpr std::array ids{
-    pair(54u, 91u),
-    pair(324u, 54u),
-    pair(64u, 324u),
-    pair(234u, 64u),
-    pair(91u, 234u),
+    std::pair{54u, 91u},
+    std::pair{324u, 54u},
+    std::pair{64u, 324u},
+    std::pair{234u, 64u},
+    std::pair{91u, 234u},
   };
 
   return mph::hash<ids>(argc);
@@ -99,18 +99,18 @@ lookup: # size = 2^popcount(mask) of {key, value}
 
 ---
 
-### Performance (https://godbolt.org/z/KfchfM8no)
+### Performance (https://godbolt.org/z/4sM5b3rdx)
 
 ```cpp
 int main(int, const char** argv) {
   static constexpr auto symbols = std::array{
-    pair("AMZN",  1),
-    pair("AAPL",  2),
-    pair("GOOGL", 3),
-    pair("META",  4),
-    pair("MSFT",  5),
-    pair("NVDA",  6),
-    pair("TESLA", 7),
+    std::pair("AMZN    "sv, 1),
+    std::pair("AAPL    "sv, 2),
+    std::pair("GOOGL   "sv, 3),
+    std::pair("META    "sv, 4),
+    std::pair("MSFT    "sv, 5),
+    std::pair("NVDA    "sv, 6),
+    std::pair("TSLA    "sv, 7),
   };
 
   return mph::hash<symbols>(
@@ -137,23 +137,16 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/3EoMas4MP)
+### Performance (https://godbolt.org/z/GYGs8hqK9)
 
 ```cpp
 int main(int, const char** argv) {
+  // values assigned from 1..N
   static constexpr std::array symbols{
-    pair("BTC",  1),
-    pair("ETH",  2),
-    pair("BNB",  3),
-    pair("SOL",  4),
-    pair("XRP",  5),
-    pair("DOGE", 6),
-    pair("TON",  7),
-    pair("ADA",  8),
-    pair("SHIB", 9),
-    pair("AVAX", 10),
-    pair("LINK", 11),
-    pair("BCH",  12),
+    "BTC "sv, "ETH "sv, "BNB "sv,
+    "SOL "sv, "XRP "sv, "DOGE"sv,
+    "TON "sv, "ADA "sv, "SHIB"sv,
+    "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
   return mph::hash<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
@@ -179,23 +172,15 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/3eK9hTdPK)
+### Performance (https://godbolt.org/z/joda6z9W9)
 
 ```cpp
 int main(int, const char** argv) {
   static constexpr std::array symbols{
-    pair("BTC",  1),
-    pair("ETH",  2),
-    pair("BNB",  3),
-    pair("SOL",  4),
-    pair("XRP",  5),
-    pair("DOGE", 6),
-    pair("TON",  7),
-    pair("ADA",  8),
-    pair("SHIB", 9),
-    pair("AVAX", 10),
-    pair("LINK", 11),
-    pair("BCH",  12),
+    "BTC "sv, "ETH "sv, "BNB "sv,
+    "SOL "sv, "XRP "sv, "DOGE"sv,
+    "TON "sv, "ADA "sv, "SHIB"sv,
+    "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
   // input keys are always valid - coming from the predefined set
@@ -222,10 +207,10 @@ lookup:
 
 ### Examples
 
-- [feature] custom `config` - https://godbolt.org/z/GW7MPv5rG
-- [feature] custom `hash` - https://godbolt.org/z/nMKzjM57a
-- [example] `unordered_map` - https://godbolt.org/z/4GsPPr4xz
-- [example] branchless dispatcher - https://godbolt.org/z/1s7fsrjTs
+- [feature] custom `config` - https://godbolt.org/z/joda6z9W9
+- [feature] custom `hash` - https://godbolt.org/z/o9docf6q1
+- [example] `unordered_map` - https://godbolt.org/z/o9docf6q1
+- [example] branchless dispatcher - https://godbolt.org/z/a7arYzP6G
 - [performance] enum name -
 
 ---
