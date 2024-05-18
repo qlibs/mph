@@ -279,25 +279,25 @@ struct config {
   u32 lookup_table_alignment{};
 };
 
-template<const auto& kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 0u or
     cfg.key_in_set_probability == 0u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
+constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> T::second_type {
   return {};
 }
 
-template<const auto& kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() == 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
-  using value_type = utility::value_type_t<kv>::second_type;
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
+  using key_type = T::first_type;
+  using value_type = T::second_type;
   if constexpr (cfg.key_in_set_probability == 100u) {
     return kv[0].second;
   } else {
@@ -305,20 +305,20 @@ constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::seco
   }
 }
 
-template<const auto& kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
+  using key_type = T::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = utility::value_type_t<kv>::second_type;
+      using value_type = T::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
@@ -365,20 +365,20 @@ constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::seco
   return {};
 }
 
-template<const auto& kv, auto cfg = config<kv>{}>
+template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
   requires mph::range<kv> and mph::cfg<cfg> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size > 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto hash(const auto& key) noexcept -> utility::value_type_t<kv>::second_type {
-  using key_type = utility::value_type_t<kv>::first_type;
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
+  using key_type = T::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
   } else {
     return [&] {
-      using value_type = utility::value_type_t<kv>::second_type;
+      using value_type = T::second_type;
       using key_value_type = utility::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
