@@ -13,10 +13,11 @@
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v2_4_0 {
-using u8  = __UINT8_TYPE__;
-using u16 = __UINT16_TYPE__;
-using u32 = __UINT32_TYPE__;
-using u64 = __UINT64_TYPE__;
+using u8   = __UINT8_TYPE__;
+using u16  = __UINT16_TYPE__;
+using u32  = __UINT32_TYPE__;
+using u64  = __UINT64_TYPE__;
+using u128 = unsigned __int128;
 
 namespace utility {
 template<class T1, class T2>
@@ -90,8 +91,8 @@ template<class T>
     return result;
   }
   #if defined(__BMI2__)
-  else if constexpr (requires { u32{a}; u32{mask}; }) { return __builtin_ia32_pext_si(a, mask); }
-  else if constexpr (requires { u64{a}; u64{mask}; }) { return __builtin_ia32_pext_di(a, mask); }
+  else if constexpr (requires { u32{mask}; }) { return __builtin_ia32_pext_si(a, mask); }
+  else if constexpr (requires { u64{mask}; }) { return __builtin_ia32_pext_di(a, mask); }
   #endif
   else if constexpr (requires { mask.value; }) {
     // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
@@ -204,7 +205,7 @@ template<class T>
       }(data);
     } else if constexpr (MPH_PAGE_SIZE) {
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) >= (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
+      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
         return [&data] [[gnu::cold]] { // unlikely path
           T t{};
           __builtin_memcpy(&t, data.data(), data.size());
@@ -219,10 +220,9 @@ template<class T>
         return __builtin_ia32_bzhi_si(t, index);
       } else if constexpr (sizeof(t) <= sizeof(u64)) {
         return __builtin_ia32_bzhi_di(t, index);
-      }
-      #else
-      return t & ((T(1) << index) - T(1));
+      } else
       #endif
+        return t & ((T(1) << index) - T(1));
     } else {
       T t{};
       __builtin_memcpy(&t, data.data(), data.size()); // slow path
@@ -257,19 +257,12 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      using key_type = utility::value_type_t<kv>::first_type;
-      if (sizeof(key_type) == sizeof(u32)) {
-          if (kv.size() <= sizeof(key_type) * (1u << 10u)) {
-            return 1u;
-          } else {
-            return 4u * sizeof(key_type);
-          }
-      } else if (sizeof(key_type) == sizeof(u64)) {
-        if (kv.size() <= sizeof(key_type) * (1u << 7u)) {
-          return 1u;
-        } else {
-          return 2u * sizeof(key_type);
-        }
+      switch (sizeof(typename utility::value_type_t<kv>::first_type)) {
+        case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
+        case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
+        case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
+        case sizeof(u64):  return kv.size() <= sizeof(u64)  * (1u << 7u)  ? 1u : 2u * sizeof(u64);
+        case sizeof(u128): return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
       }
     }()
   };
