@@ -45,21 +45,9 @@ struct array {
   T data_[Size];
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
+} // namespace utility
 
-namespace detail {
-template <bool> struct conditional;
-template <> struct conditional<false> { template <class, class T> using fn = T; };
-template <> struct conditional<true>  { template <class T, class> using fn = T; };
-} // namespace detail
-template <bool B, class T, class F>
-using conditional_t = typename detail::conditional<B>::template fn<T, F>;
-
-template<auto v>
-struct constant {
-  static constexpr auto value = v;
-  constexpr operator auto() const noexcept { return value; }
-};
-
+namespace type_traits {
 template<class T, u32 alignment>
 struct aligned {
   using type = struct alignas(alignment) a  : T { };
@@ -70,11 +58,42 @@ template<class T, u32 alignment>
 using aligned_t = typename aligned<T, alignment>::type;
 
 namespace detail {
+template <bool> struct conditional;
+template <> struct conditional<false> { template <class, class T> using fn = T; };
+template <> struct conditional<true>  { template <class T, class> using fn = T; };
 template<class T> auto value_type(const T&) -> typename T::value_type;
 } // namespace detail
+
+template <bool B, class T, class F>
+using conditional_t = typename detail::conditional<B>::template fn<T, F>;
+
 template<const auto& kv>
 using value_type_t = decltype(detail::value_type(kv));
-} // namespace utility
+
+template<auto v> struct constant {
+  static constexpr auto value = v;
+  constexpr operator auto() const noexcept { return value; }
+};
+template<auto v> inline constexpr constant<v> constant_v{};
+} // namespace type_traits
+
+namespace concepts {
+template<class T> concept integral = requires {
+  reinterpret_cast<T>(T(0)) + T();
+};
+
+template<const auto& kv> concept range = requires(u32 n) {
+  kv.size(); kv.begin(); kv.end(); kv[n];
+};
+
+template<auto c> concept config = requires {
+  c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
+} and (
+  c.key_in_set_probability >= 0u and c.key_in_set_probability <= 100u and
+  c.group_size >= 1u and
+  c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
+);
+} // namespace concepts
 
 namespace detail {
 template<class T>
@@ -172,7 +191,7 @@ template<class T>
         t = (t << __CHAR_BIT__) | data.data()[data.size() - i - 1u];
       }
       return t;
-    } else if constexpr (requires { data[0]; }) {
+    } else if constexpr (requires(u32 n) { data[n]; }) {
       u32 size{};
       auto ptr = data;
       while (*ptr++) size++;
@@ -184,7 +203,7 @@ template<class T>
     } else {
       return data;
     }
-  } else if constexpr (requires { T(data); data + decltype(data){}; }) {
+  } else if constexpr (concepts::integral<decltype(data)>) {
     return data;
   } else if constexpr (requires { data.data(); data.size(); }) {
     #if not defined(MPH_PAGE_SIZE)
@@ -232,19 +251,8 @@ template<class T>
   return {};
 }
 
-template<auto c> concept cfg = requires {
-  c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
-} and (
-  c.key_in_set_probability >= 0u and c.key_in_set_probability <= 100u and
-  c.group_size >= 1u and
-  c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
-);
-
-template<const auto& kv> concept range = requires(u32 n) {
-  kv.size(); kv.begin(); kv.end(); kv[n];
-};
-
 template<const auto& kv>
+  requires requires { typename type_traits::value_type_t<kv>::first_type; }
 struct config {
   /// 0         - none of the input key can be found in the kv
   /// (0, 50)   - input key is unlikely to be found in the kv
@@ -257,7 +265,7 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      switch (sizeof(typename utility::value_type_t<kv>::first_type)) {
+      switch (sizeof(typename type_traits::value_type_t<kv>::first_type)) {
         case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
         case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
         case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
@@ -272,8 +280,8 @@ struct config {
   u32 lookup_table_alignment{};
 };
 
-template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
-  requires mph::range<kv> and mph::cfg<cfg> and (
+template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_type_t<kv>>
+  requires concepts::range<kv> and concepts::config<cfg> and concepts::integral<decltype(kv[0].first)> and (
     kv.size() == 0u or
     cfg.key_in_set_probability == 0u
   )
@@ -282,8 +290,8 @@ constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> T::second_type
   return {};
 }
 
-template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
-  requires mph::range<kv> and mph::cfg<cfg> and (
+template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_type_t<kv>>
+  requires concepts::range<kv> and concepts::config<cfg> and concepts::integral<decltype(kv[0].first)> and (
     kv.size() == 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u
   )
@@ -298,8 +306,8 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
   }
 }
 
-template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
-  requires mph::range<kv> and mph::cfg<cfg> and (
+template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_type_t<kv>>
+  requires concepts::range<kv> and concepts::config<cfg> and concepts::integral<decltype(kv[0].first)> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size == 1u
@@ -312,13 +320,13 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
   } else {
     return [&] {
       using value_type = T::second_type;
-      using key_value_type = utility::conditional_t<
+      using key_value_type = type_traits::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
         utility::compressed_pair<key_type, value_type>
       >;
-      using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::constant<mask_type(detail::mask<key_type, cfg.group_size>(kv))>{};
+      using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+      static constexpr const auto mask = type_traits::constant_v<mask_type(detail::mask<key_type, cfg.group_size>(kv))>;
       static constexpr const auto lookup = [] {
         constexpr auto fill = [] {
           if constexpr (cfg.key_in_set_probability == 100u) {
@@ -327,7 +335,7 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
             return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
           }
         }();
-        utility::aligned_t<
+        type_traits::aligned_t<
           utility::array<key_value_type, mask_type(1) << __builtin_popcountl(mask)>,
           cfg.lookup_table_alignment
         > lookup{};
@@ -358,8 +366,8 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
   return {};
 }
 
-template<const auto& kv, auto cfg = config<kv>{}, class T = utility::value_type_t<kv>>
-  requires mph::range<kv> and mph::cfg<cfg> and (
+template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_type_t<kv>>
+  requires concepts::range<kv> and concepts::config<cfg> and concepts::integral<decltype(kv[0].first)> and (
     kv.size() > 1u and
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u and
     cfg.group_size > 1u
@@ -372,13 +380,13 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
   } else {
     return [&] {
       using value_type = T::second_type;
-      using key_value_type = utility::conditional_t<
+      using key_value_type = type_traits::conditional_t<
         cfg.key_in_set_probability == 100u,
         value_type,
         utility::compressed_pair<key_type, value_type>
       >;
-      using mask_type = utility::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      static constexpr const auto mask = utility::constant<mask_type(detail::mask<key_type, cfg.group_size>(kv))>{};
+      using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+      static constexpr const auto mask = type_traits::constant_v<mask_type(detail::mask<key_type, cfg.group_size>(kv))>;
       static constexpr const auto lookup = [] {
         utility::array<
           utility::array<utility::compressed_pair<key_type, value_type>, cfg.group_size>,
@@ -393,7 +401,7 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
         return lookup;
       }();
       static constexpr const auto masks_offsets = [] {
-        utility::aligned_t<
+        type_traits::aligned_t<
           utility::array<utility::compressed_pair<u32, mask_type>, lookup.size()>,
           cfg.lookup_table_alignment
         > masks_offsets{};
@@ -415,7 +423,7 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
             return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
           }
         }();
-        utility::aligned_t<
+        type_traits::aligned_t<
           utility::array<key_value_type, masks_offsets.second>,
           cfg.lookup_table_alignment
         > lookups{};
@@ -452,6 +460,70 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
     }();
   }
   return {};
+}
+
+namespace detail {
+template<const auto& keys>
+constexpr auto kv() requires requires { keys[0].size(); } {
+  constexpr auto max_len = [] {
+    u32 len{};
+    for (const auto& key : keys) { if (key.size() > len) { len = key.size(); } }
+    return len;
+  }();
+
+  using key_type = decltype([] {
+        if constexpr (max_len <= sizeof(u8)) { return u8{}; }
+   else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+   else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+   else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+   else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+  }());
+
+  using value_type = decltype([] {
+         if constexpr (keys.size() < u8{}-1u) { return u8{}; }
+    else if constexpr (keys.size() < u16{}-1u) { return u16{}; }
+    else if constexpr (keys.size() < u32{}-1u) { return u32{}; }
+    else if constexpr (keys.size() < u64{}-1u) { return u64{}; }
+    else if constexpr (keys.size() < u128{}-1u) { return u128{}; }
+  }());
+
+  utility::array<utility::compressed_pair<key_type, value_type>, keys.size()> kv;
+  for (value_type i{}; i < keys.size(); ++i) {
+    kv[i] = utility::compressed_pair{to<key_type>(keys[i]), value_type{i + 1u}};
+  }
+  return kv;
+}
+template<const auto& keys>
+constexpr auto kv() requires requires(u32 n) { keys[n].first.size(); keys[n].second; } {
+  constexpr auto max_len = [] {
+    u32 len{};
+    for (const auto& key : keys) { if (key.first.size() > len) { len = key.first.size(); } }
+    return len;
+  }();
+
+  using key_type = decltype([] {
+        if constexpr (max_len <= sizeof(u8)) { return u8{}; }
+   else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+   else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+   else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+   else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+  }());
+
+  using value_type = typename type_traits::value_type_t<keys>::second_type;
+
+  utility::array<utility::compressed_pair<key_type, value_type>, keys.size()> kv;
+  for (auto i = 0; i < keys.size(); ++i) {
+    kv[i] = utility::compressed_pair{to<key_type>(keys[i].first), keys[i].second};
+  }
+  return kv;
+}
+} // namespace detail
+
+template<const auto& kv, auto... ts, const auto& kv_ = type_traits::constant_v<detail::kv<kv>()>.value>
+  requires concepts::range<kv_>
+[[nodiscard]] [[gnu::always_inline]]
+constexpr auto hash(const auto& key) noexcept -> decltype(hash<kv_, ts...>(key)) {
+  return hash<kv_, ts...>(key);
 }
 } // namespace mph
 
@@ -499,22 +571,80 @@ static_assert(([] {
     }
   }
 
-  // mph::utility::constant
+  // mph::utility::constant/_v
   {
-    static_assert(0 == mph::utility::constant<0>::value);
-    static_assert(42 == mph::utility::constant<42>{});
-    static_assert(42u == mph::utility::constant<42u>::value);
-    static_assert('X' == mph::utility::constant<'X'>::value);
+    static_assert(0 == mph::type_traits::constant<0>::value);
+    static_assert(0 == mph::type_traits::constant_v<0>);
+    static_assert(42 == mph::type_traits::constant<42>{});
+    static_assert(42 == mph::type_traits::constant_v<42>);
+    static_assert(42u == mph::type_traits::constant<42u>::value);
+    static_assert('X' == mph::type_traits::constant<'X'>::value);
+    static_assert('X' == mph::type_traits::constant_v<'X'>);
   }
 
-    // mph::utility::aligned_t
+  // mph::type_traits::aligned_t
   {
     using mph::utility::array;
 
-    static_assert(16u == alignof(mph::utility::aligned_t<array<int, 42>, 16u>));
-    static_assert(32u == alignof(mph::utility::aligned_t<array<int, 42>, 32u>));
-    static_assert(64u == alignof(mph::utility::aligned_t<array<int, 42>, 64u>));
-    static_assert(alignof(int) == alignof(mph::utility::aligned_t<array<int, 42>, 0u>));
+    static_assert(16u == alignof(mph::type_traits::aligned_t<array<int, 42>, 16u>));
+    static_assert(32u == alignof(mph::type_traits::aligned_t<array<int, 42>, 32u>));
+    static_assert(64u == alignof(mph::type_traits::aligned_t<array<int, 42>, 64u>));
+    static_assert(alignof(int) == alignof(mph::type_traits::aligned_t<array<int, 42>, 0u>));
+  }
+
+  // mph::type_traits::conditional_t
+  {
+    using mph::u32;
+    using mph::u64;
+
+    static_assert(sizeof(u32) == sizeof(mph::type_traits::conditional_t<true, u32, u64>));
+    static_assert(sizeof(u64) == sizeof(mph::type_traits::conditional_t<false, u32, u64>));
+  }
+
+  // mph::concepts::integral
+  {
+    static_assert(mph::concepts::integral<mph::u8>);
+    static_assert(mph::concepts::integral<mph::u16>);
+    static_assert(mph::concepts::integral<mph::u32>);
+    static_assert(mph::concepts::integral<mph::u64>);
+    static_assert(mph::concepts::integral<mph::u128>);
+    static_assert(mph::concepts::integral<int>);
+    static_assert(not mph::concepts::integral<float>);
+    static_assert(not mph::concepts::integral<void>);
+    static_assert(not mph::concepts::integral<const int&>);
+    static_assert(not mph::concepts::integral<const char*>);
+  }
+
+  // mph::concepts::config
+  {
+    struct cfg1{ };
+    struct cfg2{ int key_in_set_probability{}; };
+    struct cfg3{ int key_in_set_probability{}; int group_size{}; };
+    struct cfg4{ int key_in_set_probability{}; int group_size{}; int lookup_table_alignment{}; };
+
+    static_assert(not mph::concepts::config<cfg1{}>);
+    static_assert(not mph::concepts::config<cfg2{}>);
+    static_assert(not mph::concepts::config<cfg4{.key_in_set_probability = -1, .group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(not mph::concepts::config<cfg4{.key_in_set_probability = 100u, .group_size = {}, .lookup_table_alignment = {}}>);
+    static_assert(mph::concepts::config<cfg4{.key_in_set_probability = 0u, .group_size = 1u, .lookup_table_alignment = {}}>);
+    static_assert(mph::concepts::config<cfg4{.key_in_set_probability = 50u, .group_size = 4u, .lookup_table_alignment = {}}>);
+    static_assert(mph::concepts::config<cfg4{.key_in_set_probability = 100u, .group_size = 8u, .lookup_table_alignment = {}}>);
+  }
+
+  // concepts::range
+  {
+    using mph::u32;
+    using mph::type_traits::constant;
+
+    struct range1 { };
+    struct range2 { u32 begin() const; u32 end() const; };
+    struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
+    struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
+
+    static_assert(not mph::concepts::range<constant<range1{}>::value>);
+    static_assert(not mph::concepts::range<constant<range2{}>::value>);
+    static_assert(not mph::concepts::range<constant<range3{}>::value>);
+    static_assert(mph::concepts::range<constant<range4{}>::value>);
   }
 
   // mph::detail::pext
@@ -561,44 +691,12 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
-  // mph::cfg
-  {
-    struct cfg1{ };
-    struct cfg2{ int key_in_set_probability{}; };
-    struct cfg3{ int key_in_set_probability{}; int group_size{}; };
-    struct cfg4{ int key_in_set_probability{}; int group_size{}; int lookup_table_alignment{}; };
-
-    static_assert(not mph::cfg<cfg1{}>);
-    static_assert(not mph::cfg<cfg2{}>);
-    static_assert(not mph::cfg<cfg4{.key_in_set_probability = -1, .group_size = {}, .lookup_table_alignment = {}}>);
-    static_assert(not mph::cfg<cfg4{.key_in_set_probability = 100u, .group_size = {}, .lookup_table_alignment = {}}>);
-    static_assert(mph::cfg<cfg4{.key_in_set_probability = 0u, .group_size = 1u, .lookup_table_alignment = {}}>);
-    static_assert(mph::cfg<cfg4{.key_in_set_probability = 50u, .group_size = 4u, .lookup_table_alignment = {}}>);
-    static_assert(mph::cfg<cfg4{.key_in_set_probability = 100u, .group_size = 8u, .lookup_table_alignment = {}}>);
-  }
-
-  // mph::range
-  {
-    using mph::u32;
-    using mph::utility::constant;
-
-    struct range1 { };
-    struct range2 { u32 begin() const; u32 end() const; };
-    struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
-    struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
-
-    static_assert(not mph::range<constant<range1{}>::value>);
-    static_assert(not mph::range<constant<range2{}>::value>);
-    static_assert(not mph::range<constant<range3{}>::value>);
-    static_assert(mph::range<constant<range4{}>::value>);
-  }
-
   // mph::hash
   {
     using mph::u32;
     using mph::utility::compressed_pair;
-    using mph::utility::constant;
     using mph::utility::array;
+    using mph::type_traits::constant;
 
     // integral
     {
