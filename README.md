@@ -409,7 +409,7 @@ template<const auto& kv, config cfg = config<kv>{}>
 > Configuration
 
 ```cpp
-#define MPH 2'4'0           // Current library version (SemVer)
+#define MPH 2'5'0           // Current library version (SemVer)
 #define MPH_PAGE_SIZE 4096u // If set __builtin_memcpy(data, sizeof(T)) & bzhi(size)
                             // If not __builtin_memcpy(data, size)
 ```
@@ -547,7 +547,7 @@ template<const auto& kv, config cfg = config<kv>{}>
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v2.4.0
+      GIT_TAG v2.5.0
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
