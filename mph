@@ -252,7 +252,6 @@ template<class T>
 }
 
 template<const auto& kv>
-  requires requires { typename type_traits::value_type_t<kv>::first_type; }
 struct config {
   /// 0         - none of the input key can be found in the kv
   /// (0, 50)   - input key is unlikely to be found in the kv
@@ -265,7 +264,14 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      switch (sizeof(typename type_traits::value_type_t<kv>::first_type)) {
+      constexpr auto size_of = [] {
+        if constexpr (requires(u32 n) { kv[n].first; }) {
+          return sizeof(kv[0].first);
+        } else {
+          return sizeof(kv[0]);
+        }
+      }();
+      switch (size_of) {
         case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
         case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
         case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
