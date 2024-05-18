@@ -371,11 +371,16 @@ struct config {
   u32 group_size{
     []() -> u32 {
       switch (sizeof(value_type_t<kv>::first_type)) {
-        case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
-        case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
-        case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
-        case sizeof(u64):  return kv.size() <= sizeof(u64)  * (1u << 7u)  ? 1u : 2u * sizeof(u64);
-        case sizeof(u128): return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
+        case sizeof(u8):
+          return kv.size() <= sizeof(u8) * (1u << 10u) ? 1u : 4u * sizeof(u8);
+        case sizeof(u16):
+          return kv.size() <= sizeof(u16) * (1u << 10u) ? 1u : 4u * sizeof(u16);
+        case sizeof(u32):
+          return kv.size() <= sizeof(u32) * (1u << 10u) ? 1u : 4u * sizeof(u32);
+        case sizeof(u64):
+          return kv.size() <= sizeof(u64) * (1u << 7u)  ? 1u : 2u * sizeof(u64);
+        case sizeof(u128):
+          return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
       }
     }()
   };
