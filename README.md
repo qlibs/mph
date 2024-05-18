@@ -370,19 +370,12 @@ struct config {
   /// N - n elements per group  (slower but smaller memory footprint)
   u32 group_size{
     []() -> u32 {
-      using key_type = typename decltype(kv)::value_type::first_type;
-      if (sizeof(key_type) == sizeof(u32)) {
-          if (kv.size() <= sizeof(key_type) * (1u << 10u)) {
-            return 1u;
-          } else {
-            return 4u * sizeof(key_type);
-          }
-      } else if (sizeof(key_type) == sizeof(u64)) {
-        if (kv.size() <= sizeof(key_type) * (1u << 7u)) {
-          return 1u;
-        } else {
-          return 2u * sizeof(key_type);
-        }
+      switch (sizeof(value_type_t<kv>::first_type)) {
+        case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
+        case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
+        case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
+        case sizeof(u64):  return kv.size() <= sizeof(u64)  * (1u << 7u)  ? 1u : 2u * sizeof(u64);
+        case sizeof(u128): return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
       }
     }()
   };
@@ -402,7 +395,7 @@ struct config {
  * @param key input data
  */
 template<const auto& kv, config cfg = config<kv>{}>
-  requires range_c<kv> and config_c<cfg>
+  requires concepts::range<kv> and concepts::config<cfg>
 [[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
@@ -422,7 +415,7 @@ template<const auto& kv, config cfg = config<kv>{}>
 
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
 
-  - All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<u32/u64>` call.
+  - All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<T>` call.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
@@ -461,7 +454,7 @@ template<const auto& kv, config cfg = config<kv>{}>
       for k, v in kv:
         lookup[pext(k, mask)] = (k, v)
 
-      # 1. lookup [run-time] / if key is a string convert to u32 or u64 first (memcpy)
+      # 1. lookup [run-time] / if key is a string convert to integral first (memcpy)
         # word: 00101011
         # mask: 11100001
         #    &: 000____1
