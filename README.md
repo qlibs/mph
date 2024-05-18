@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/h5WrsYWeP">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/jhPdvz49E">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/46bq3PPfW">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/b79PaPax1">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -55,7 +55,7 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/jhPdvz49E)
+### Performance (https://godbolt.org/z/b79PaPax1)
 
 ```cpp
 int main(int argc, char**)
