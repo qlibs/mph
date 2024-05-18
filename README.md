@@ -420,7 +420,7 @@ template<const auto& kv, config cfg = config<kv>{}>
 
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
 
-  - All keys have to fit into `std::uint64_t`, that includes strings which are converted to integral types with `mph::to<T>` call.
+  - All keys have to fit into `std::uint128_t`, that includes strings.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
