@@ -426,7 +426,7 @@ template<const auto& kv, config cfg = config<kv>{}>
 
     ```cpp
     template<const auto& kv, auto cfg = config<kv>{}>
-      requires mph::range<kv> and mph::cfg<cfg> and (
+      requires mph::concepts::range<kv> and mph::concepts::config<cfg> and (
         kv.size() > 1'000'000
       )
     [[nodiscard]] constexpr auto mph::hash(auto&& key) noexcept;
