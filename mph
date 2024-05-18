@@ -203,7 +203,7 @@ template<class T>
     } else {
       return data;
     }
-  } else if constexpr (concepts::integral<decltype(data)>) {
+  } else if constexpr (requires { T(data); data + decltype(data){}; }) {
     return data;
   } else if constexpr (requires { data.data(); data.size(); }) {
     #if not defined(MPH_PAGE_SIZE)
