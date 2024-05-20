@@ -352,22 +352,15 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
       auto&& lhs = to<key_type>(key);
       auto&& rhs = lookup[detail::pext(lhs, mask)];
       if constexpr (requires { rhs.first; rhs.second; }) {
-        #if __has_builtin(__builtin_unpredictable)
         if constexpr (cfg.key_in_set_probability == 50u) {
-          if (__builtin_unpredictable(lhs == rhs.first)) {
-            return rhs.second;
-          }
-        }
-        else
-        #endif
-        if (__builtin_expect_with_probability(lhs == rhs.first, 1,
-          [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
-          return rhs.second;
+          return value_type((lhs == rhs.first) * rhs.second); // cmov
+        } else {
+          return __builtin_expect_with_probability(lhs == rhs.first, 1,
+            [] { return float(cfg.key_in_set_probability) / float(100u); }()) ? rhs.second : value_type{};
         }
       } else {
         return rhs;
       }
-      return value_type{};
     }();
   }
   return {};
@@ -448,22 +441,15 @@ constexpr auto hash(const auto& key) noexcept -> T::second_type {
       auto&& mdx = masks_offsets.first[detail::pext(lhs, mask)];
       auto&& rhs = *static_cast<const key_value_type*>(&lookups[mdx.first + detail::pext(lhs, mdx.second)]);
       if constexpr (requires { rhs.first; rhs.second; }) {
-        #if __has_builtin(__builtin_unpredictable)
-          if constexpr (cfg.key_in_set_probability == 50u) {
-            if (__builtin_unpredictable(lhs == rhs.first)) {
-              return rhs.second;
-            }
-          }
-        else
-        #endif
-        if (__builtin_expect_with_probability(lhs == rhs.first, 1,
-          [] { return float(cfg.key_in_set_probability) / float(100u); }())) {
-          return rhs.second;
+        if constexpr (cfg.key_in_set_probability == 50u) {
+          return value_type((lhs == rhs.first) * rhs.second); // cmov
+        } else {
+          return __builtin_expect_with_probability(lhs == rhs.first, 1,
+            [] { return float(cfg.key_in_set_probability) / float(100u); }()) ? rhs.second : value_type{};
         }
       } else {
         return rhs;
       }
-      return value_type{};
     }();
   }
   return {};
@@ -496,7 +482,7 @@ constexpr auto kv() requires requires { keys[0].size(); } {
 
   utility::array<utility::compressed_pair<key_type, value_type>, keys.size()> kv;
   for (value_type i{}; i < keys.size(); ++i) {
-    kv[i] = utility::compressed_pair{to<key_type>(keys[i]), value_type{i + 1u}};
+    kv[i] = utility::compressed_pair{to<key_type>(keys[i]), value_type(i + 1u)};
   }
   return kv;
 }
