@@ -293,7 +293,7 @@ template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_t
     cfg.key_in_set_probability == 0u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto lookup([[maybe_unused]] const auto& key) noexcept -> T::second_type {
+constexpr auto hash([[maybe_unused]] const auto& key) noexcept -> T::second_type {
   return {};
 }
 
@@ -303,7 +303,7 @@ template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_t
     cfg.key_in_set_probability > 0u and cfg.key_in_set_probability <= 100u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto lookup(const auto& key) noexcept -> T::second_type {
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
   using key_type = T::first_type;
   using value_type = T::second_type;
   if constexpr (cfg.key_in_set_probability == 100u) {
@@ -320,7 +320,7 @@ template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_t
     cfg.group_size == 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto lookup(const auto& key) noexcept -> T::second_type {
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
   using key_type = T::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
@@ -380,7 +380,7 @@ template<const auto& kv, auto cfg = config<kv>{}, class T = type_traits::value_t
     cfg.group_size > 1u
   )
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto lookup(const auto& key) noexcept -> T::second_type {
+constexpr auto hash(const auto& key) noexcept -> T::second_type {
   using key_type = T::first_type;
   if (__builtin_is_constant_evaluated()) {
     for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
@@ -529,8 +529,8 @@ constexpr auto kv() requires requires(u32 n) { keys[n].first.size(); keys[n].sec
 template<const auto& kv, auto... ts, const auto& kv_ = type_traits::constant_v<detail::kv<kv>()>.value>
   requires concepts::range<kv_>
 [[nodiscard]] [[gnu::always_inline]]
-constexpr auto lookup(const auto& key) noexcept -> decltype(lookup<kv_, ts...>(key)) {
-  return lookup<kv_, ts...>(key);
+constexpr auto hash(const auto& key) noexcept -> decltype(hash<kv_, ts...>(key)) {
+  return hash<kv_, ts...>(key);
 }
 } // namespace mph
 
@@ -698,7 +698,7 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
-  // mph::lookup
+  // mph::hash
   {
     using mph::u32;
     using mph::utility::compressed_pair;
@@ -712,9 +712,9 @@ static_assert(([] {
           compressed_pair{u32(4), u32(2)}
         }>::value;
 
-        static_assert(0 == mph::lookup<kv>(u32(0)));
-        static_assert(0 == mph::lookup<kv>(u32(1)));
-        static_assert(2 == mph::lookup<kv>(u32(4)));
+        static_assert(0 == mph::hash<kv>(u32(0)));
+        static_assert(0 == mph::hash<kv>(u32(1)));
+        static_assert(2 == mph::hash<kv>(u32(4)));
       }
 
       {
@@ -724,10 +724,10 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(0 == mph::lookup<kv>(u32(0)));
-        static_assert(2 == mph::lookup<kv>(u32(4)));
-        static_assert(87 == mph::lookup<kv>(u32(42)));
-        static_assert(100 == mph::lookup<kv>(u32(100)));
+        static_assert(0 == mph::hash<kv>(u32(0)));
+        static_assert(2 == mph::hash<kv>(u32(4)));
+        static_assert(87 == mph::hash<kv>(u32(42)));
+        static_assert(100 == mph::hash<kv>(u32(100)));
       }
     }
 
@@ -740,10 +740,10 @@ static_assert(([] {
           compressed_pair{mph::to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(0 == mph::lookup<kv>(""));
-        static_assert(1 == mph::lookup<kv>("BTC"));
-        static_assert(2 == mph::lookup<kv>("ETH"));
-        static_assert(3 == mph::lookup<kv>("XRP"));
+        static_assert(0 == mph::hash<kv>(""));
+        static_assert(1 == mph::hash<kv>("BTC"));
+        static_assert(2 == mph::hash<kv>("ETH"));
+        static_assert(3 == mph::hash<kv>("XRP"));
       }
     }
   }

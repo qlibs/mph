@@ -39,11 +39,11 @@ constexpr auto colors = std::array{
   std::pair("blue"sv, color::blue),
 };
 
-static_assert(color::green == mph::lookup<colors>("green"));
-static_assert(color::red   == mph::lookup<colors>("red"));
-static_assert(color::blue  == mph::lookup<colors>("blue"));
+static_assert(color::green == mph::hash<colors>("green"));
+static_assert(color::red   == mph::hash<colors>("red"));
+static_assert(color::blue  == mph::hash<colors>("blue"));
 
-std::print("{}", mph::lookup<colors>("green"sv));
+std::print("{}", mph::hash<colors>("green"sv));
 ```
 
 ```
@@ -67,7 +67,7 @@ int main(int argc, char**)
     std::pair{91u, 234u},
   };
 
-  return mph::lookup<ids>(argc);
+  return mph::hash<ids>(argc);
 }
 ```
 
@@ -113,7 +113,7 @@ int main(int, const char** argv) {
     std::pair("TSLA    "sv, 7),
   };
 
-  return mph::lookup<symbols>(
+  return mph::hash<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -149,7 +149,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return mph::lookup<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
+  return mph::hash<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
 
@@ -184,7 +184,7 @@ int main(int, const char** argv) {
   };
 
   // input keys are always valid - coming from the predefined set
-  return mph::lookup<symbols, mph::config<symbols>{.key_in_set_probability = 100u}>(
+  return mph::hash<symbols, mph::config<symbols>{.key_in_set_probability = 100u}>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
@@ -208,7 +208,7 @@ lookup:
 ### Examples
 
 - [feature] custom `config` - https://godbolt.org/z/joda6z9W9
-- [feature] custom `lookup` - https://godbolt.org/z/o9docf6q1
+- [feature] custom `hash` - https://godbolt.org/z/o9docf6q1
 - [example] `unordered_map` - https://godbolt.org/z/o9docf6q1
 - [example] branchless dispatcher - https://godbolt.org/z/a7arYzP6G
 - [performance] enum name -
@@ -393,7 +393,7 @@ struct config {
 
 ```cpp
 /**
- * Perfect hash lookup function
+ * Perfect hash function
  *
  * @tparam kv constexpr array of key/value pairs
  * @tparam config configuration
@@ -401,7 +401,7 @@ struct config {
  */
 template<const auto& kv, config cfg = config<kv>{}>
   requires concepts::range<kv> and concepts::config<cfg>
-[[nodiscard]] constexpr auto lookup(const auto& key) noexcept;
+[[nodiscard]] constexpr auto hash(const auto& key) noexcept;
 ```
 
 > Configuration
@@ -420,15 +420,15 @@ template<const auto& kv, config cfg = config<kv>{}>
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
 
   - All keys have to fit into `std::uint128_t`, that includes strings.
-  - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `lookup` function.
-  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined lookup implementations), for example:
+  - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
+  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
     template<const auto& kv, auto cfg = config<kv>{}>
       requires mph::concepts::range<kv> and mph::concepts::config<cfg> and (
         kv.size() > 1'000'000
       )
-    [[nodiscard]] constexpr auto mph::lookup(auto&& key) noexcept;
+    [[nodiscard]] constexpr auto mph::hash(auto&& key) noexcept;
     ```
 
 - How `mph` is working under the hood?
@@ -437,7 +437,7 @@ template<const auto& kv, config cfg = config<kv>{}>
       The following is a pseudo code of the algorithm.
 
     ```python
-    def lookup[kv: array, unknown: typeof(kv[0][0])](key : any):
+    def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
       # 0. find mask which uniquely identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
@@ -484,7 +484,7 @@ template<const auto& kv, config cfg = config<kv>{}>
 
     Additional resources can be found in the `Acknowledgments` section.
 
-- How to tweak `lookup` performance for my data/use case?
+- How to tweak `hash` performance for my data/use case?
 
     > Always measure!
 
@@ -495,7 +495,7 @@ template<const auto& kv, config cfg = config<kv>{}>
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
   - Consider using minimial required size for values. That will make the lookup table smaller.
   - Experiment with different `config.key_in_set_probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
-  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
+  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
