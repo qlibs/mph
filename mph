@@ -116,6 +116,7 @@ template<class T>
       return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
     }();
   }
+  return {};
 }
 
 template<class T, u32 N>
@@ -222,6 +223,7 @@ template<class T>
         return t & ((T(1) << index) - T(1));
     }
   }
+  return {};
 }
 
 [[nodiscard]] constexpr auto bucket_size(const auto& kv) {
