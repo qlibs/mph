@@ -120,13 +120,13 @@ template<class T>
 }
 
 template<class T, u32 N>
-[[nodiscard]] constexpr auto mask(const auto& v) noexcept -> T {
-  utility::array<T, decltype(v){}.size()> vs;
+[[nodiscard]] constexpr auto mask(const auto& kv) noexcept -> T {
+  utility::array<T, decltype(kv){}.size()> vs;
   T max{};
   u32 size{};
   for (auto i = 0u; i < vs.size(); ++i) {
-    if (not v[i].first) break;
-    if (vs[i] = v[i].first; vs[i] > max) max = vs[i];
+    if (not kv[i].first) break;
+    if (vs[i] = kv[i].first; vs[i] > max) max = vs[i];
     ++size;
   }
   if (size <= 1u) {
