@@ -358,7 +358,7 @@ template<
 
   template<auto...>
   [[nodiscard]] [[gnu::always_inline]]
-  static constexpr auto find(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
+  static constexpr auto find([[maybe_unused]] const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
     return {};
   }
 
@@ -378,7 +378,7 @@ class static_hash_map<keys, operations, bucket_size, alignment> {
   using mapped_type = type_traits::value_type_t<kv_>::second_type;
 
   [[nodiscard]] [[gnu::always_inline]]
-  static constexpr auto lookup(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
+  static constexpr auto lookup([[maybe_unused]] const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
     return kv_[0].second;
   }
 
