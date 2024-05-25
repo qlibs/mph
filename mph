@@ -116,7 +116,6 @@ template<class T>
       return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
     }();
   }
-  return {};
 }
 
 template<class T, u32 N>
@@ -223,7 +222,6 @@ template<class T>
         return t & ((T(1) << index) - T(1));
     }
   }
-  return {};
 }
 
 [[nodiscard]] constexpr auto bucket_size(const auto& kv) {
@@ -415,8 +413,7 @@ class static_hash_map<keys, operations, bucket_size, alignment> {
 
   [[nodiscard]] [[gnu::always_inline]]
   static constexpr auto lookup(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
-    auto& lhs = lookup_[detail::pext(detail::to<key_type>(key), mask_)];
-    if constexpr (requires { lhs.second; }) {
+    if constexpr (auto& lhs = lookup_[detail::pext(detail::to<key_type>(key), mask_)]; requires { lhs.second; }) {
       return lhs.second;
     } else {
       return lhs;
@@ -445,13 +442,10 @@ class static_hash_map<keys, operations, bucket_size, alignment> {
 
  private:
   using mask_type = type_traits::conditional_t<
-    sizeof(key_type) <= sizeof(u32),
-    u32,
-    u64
+    sizeof(key_type) <= sizeof(u32), u32, u64
   >;
 
-  static constexpr const auto mask_ =
-    type_traits::constant_v<mask_type(detail::mask<key_type, bucket_size>(kv_))>;
+  static constexpr const auto mask_ = type_traits::constant_v<detail::mask<mask_type, bucket_size>(kv_)>;
 
   static constexpr const auto lookup_ = [] {
     using key_mapped_type = type_traits::conditional_t<
@@ -518,9 +512,7 @@ class static_hash_map<kv, operations, bucket_size, alignment> {
 
  private:
   using mask_type = type_traits::conditional_t<
-    sizeof(key_type) <= sizeof(u32),
-    u32,
-    u64
+    sizeof(key_type) <= sizeof(u32), u32, u64
   >;
 
   using key_mapped_type = type_traits::conditional_t<
@@ -529,8 +521,7 @@ class static_hash_map<kv, operations, bucket_size, alignment> {
     mapped_type
   >;
 
-  static constexpr const auto mask_ =
-    type_traits::constant_v<mask_type(detail::mask<key_type, bucket_size>(kv))>;
+  static constexpr const auto mask_ = type_traits::constant_v<detail::mask<mask_type, bucket_size>(kv_)>;
 
   static constexpr const auto lookup_ = [] {
     utility::array<
