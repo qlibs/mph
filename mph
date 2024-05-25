@@ -7,6 +7,7 @@
 //
 #ifndef MPH
 #define MPH 3'0'0 // SemVer
+#pragma GCC system_header
 
 /**
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
