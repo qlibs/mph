@@ -6,8 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 2'5'0 // SemVer
-#pragma GCC system_header
+#define MPH 3'0'0 // SemVer
 
 /**
  * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
@@ -77,24 +76,6 @@ template<auto v> struct constant {
 template<auto v> inline constexpr constant<v> constant_v{};
 } // namespace type_traits
 
-namespace concepts {
-template<class T> concept integral = requires {
-  reinterpret_cast<T>(T(0)) + T();
-};
-
-template<const auto& kv> concept range = requires(u32 n) {
-  kv.size(); kv.begin(); kv.end(); kv[n];
-};
-
-template<auto c> concept config = requires {
-  c.probability; c.size; c.alignment;
-} and (
-  c.probability >= 0u and c.probability <= 100u and
-  c.size >= 1u and
-  c.alignment >= 0u and not (c.alignment % 2)
-);
-} // namespace concepts
-
 namespace detail {
 template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
@@ -114,7 +95,7 @@ template<class T>
   else if constexpr (requires { u64{mask}; }) { return __builtin_ia32_pext_di(a, mask); }
   #endif
   else if constexpr (requires { mask.value; }) {
-    // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
+    // https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
     return [&] {
       static constexpr auto nbits = __builtin_popcountl(mask);
       static constexpr auto cbits = size - nbits -
@@ -205,9 +186,6 @@ template<class T>
   } else if constexpr (requires { T(data); data + decltype(data){}; }) {
     return data;
   } else if constexpr (requires { data.data(); data.size(); }) {
-    #if not defined(MPH_PAGE_SIZE)
-    #define MPH_PAGE_SIZE 4096u
-    #endif
     if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
       return [&]<template<class, auto> class T_, class _, auto size>(T_<_, size>) {
         if constexpr (not size) {
@@ -220,19 +198,19 @@ template<class T>
           return t;
         }
       }(data);
-    } else if constexpr (MPH_PAGE_SIZE) {
-      if constexpr (MPH_PAGE_SIZE > 0u) {
-        // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-        if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] { // page boundry
-          return [&data] [[gnu::cold]] { // unlikely path
-            T t{};
-            __builtin_memcpy(&t, data.data(), data.size());
-            return t;
-          }();
-        }
+    } else {
+      #if defined(MPH_PAGE_SIZE)
+      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
+        return [&data] [[gnu::cold]] { // unlikely path
+          T t{};
+          __builtin_memcpy(&t, data.data(), data.size());
+          return t;
+        }();
       }
+      #endif
       T t;
-      __builtin_memcpy(&t, data.data(), sizeof(t)); // not at page boundry
+      __builtin_memcpy(&t, data.data(), sizeof(t));
       const auto index = T(data.size() * __CHAR_BIT__);
       #if defined(__BMI2__)
       if constexpr (sizeof(t) <= sizeof(u32)) {
@@ -242,305 +220,374 @@ template<class T>
       } else
       #endif
         return t & ((T(1) << index) - T(1));
-    } else {
-      T t{};
-      __builtin_memcpy(&t, data.data(), data.size()); // slow path
-      return t;
     }
   }
   return {};
 }
-} // namespace detail
+
+[[nodiscard]] constexpr auto bucket_size(const auto& kv) {
+  if (kv.size() == 0u) return 0u;
+  if (kv.size() <= 1024u) return 1u;
+  if (kv.size() <= 2048u) return 4u;
+  if (kv.size() <= 4096u) return 8u;
+  return 16u;
+};
 
 template<const auto& kv>
-struct config {
-  /// 0         - none of the input key can be found in the kv
-  /// (0, 50)   - input key is unlikely to be found in the kv
-  /// 50        - unpredictable (default)
-  /// (50, 100) - input key is likely to be found in the kv
-  /// 100       - all input key can be found in the kv
-  u8 probability{50};
+[[nodiscard]] constexpr decltype(auto) key_values() {
+  if constexpr (requires { kv[0].size(); }) { // array{"a"sv, "b"sv, ...}
+    constexpr auto max_len = [] {
+      u32 len{};
+      for (const auto& key : kv) { if (key.size() > len) { len = key.size(); } }
+      return len;
+    }();
 
-  /// 1 - one element per group (faster but larger memory footprint)
-  /// N - n elements per group  (slower but smaller memory footprint)
-  u32 size{
-    []() -> u32 {
-      constexpr auto size_of = [] {
-        if constexpr (requires(u32 n) { kv[n].first; }) {
-          return sizeof(kv[0].first);
-        } else {
-          return sizeof(kv[0]);
-        }
-      }();
-      switch (size_of) {
-        case sizeof(u8):   return kv.size() <= sizeof(u8)   * (1u << 10u) ? 1u : 4u * sizeof(u8);
-        case sizeof(u16):  return kv.size() <= sizeof(u16)  * (1u << 10u) ? 1u : 4u * sizeof(u16);
-        case sizeof(u32):  return kv.size() <= sizeof(u32)  * (1u << 10u) ? 1u : 4u * sizeof(u32);
-        case sizeof(u64):  return kv.size() <= sizeof(u64)  * (1u << 7u)  ? 1u : 2u * sizeof(u64);
-        case sizeof(u128): return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
-      }
-    }()
-  };
+    using key_type = decltype([] {
+          if constexpr (max_len <= sizeof(u8)) { return u8{}; }
+     else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+     else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+     else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+     else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+    }());
 
-  /// 0 - no alignment
-  /// N - alignas(N) lookup_table
-  u32 alignment{};
-};
+    using mapped_type = decltype([] {
+           if constexpr (kv.size() < u8{}-1u) { return u8{}; }
+      else if constexpr (kv.size() < u16{}-1u) { return u16{}; }
+      else if constexpr (kv.size() < u32{}-1u) { return u32{}; }
+      else if constexpr (kv.size() < u64{}-1u) { return u64{}; }
+      else if constexpr (kv.size() < u128{}-1u) { return u128{}; }
+    }());
 
-namespace detail {
-template<const auto& keys>
-constexpr auto kv() requires requires { keys[0].size(); } {
-  constexpr auto max_len = [] {
-    u32 len{};
-    for (const auto& key : keys) { if (key.size() > len) { len = key.size(); } }
-    return len;
-  }();
+    utility::array<utility::compressed_pair<key_type, mapped_type>, kv.size()> kv_;
+    for (mapped_type i{}; i < kv.size(); ++i) {
+      kv_[i] = utility::compressed_pair{to<key_type>(kv[i]), mapped_type(i + 1u)};
+    }
+    return kv_;
+  } else if constexpr (requires (u32 n) { kv[n].first.size(); kv[n].second; }) { // array{pair{"a"sv, 1}, ...}
+    constexpr auto max_len = [] {
+      u32 len{};
+      for (const auto& key : kv) { if (key.first.size() > len) { len = key.first.size(); } }
+      return len;
+    }();
 
-  using key_type = decltype([] {
-        if constexpr (max_len <= sizeof(u8)) { return u8{}; }
-   else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
-   else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
-   else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
-   else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
-  }());
+    using key_type = decltype([] {
+          if constexpr (max_len <= sizeof(u8)) { return u8{}; }
+     else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+     else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+     else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+     else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+    }());
 
-  using value_type = decltype([] {
-         if constexpr (keys.size() < u8{}-1u) { return u8{}; }
-    else if constexpr (keys.size() < u16{}-1u) { return u16{}; }
-    else if constexpr (keys.size() < u32{}-1u) { return u32{}; }
-    else if constexpr (keys.size() < u64{}-1u) { return u64{}; }
-    else if constexpr (keys.size() < u128{}-1u) { return u128{}; }
-  }());
+    using mapped_type = typename type_traits::value_type_t<kv>::second_type;
 
-  utility::array<utility::compressed_pair<key_type, value_type>, keys.size()> kv;
-  for (value_type i{}; i < keys.size(); ++i) {
-    kv[i] = utility::compressed_pair{to<key_type>(keys[i]), value_type(i + 1u)};
+    utility::array<utility::compressed_pair<key_type, mapped_type>, kv.size()> kv_;
+    for (auto i = 0; i < kv.size(); ++i) {
+      kv_[i] = utility::compressed_pair{to<key_type>(kv[i].first), kv[i].second};
+    }
+    return kv_;
+  } else if constexpr (not requires (u32 n) { kv[n].first; kv[n].second; }) { // array{1, 2, 3, ...}
+    using key_type = type_traits::value_type_t<kv>;
+    using mapped_type = decltype([] {
+           if constexpr (kv.size() < u8{}-1u) { return u8{}; }
+      else if constexpr (kv.size() < u16{}-1u) { return u16{}; }
+      else if constexpr (kv.size() < u32{}-1u) { return u32{}; }
+      else if constexpr (kv.size() < u64{}-1u) { return u64{}; }
+      else if constexpr (kv.size() < u128{}-1u) { return u128{}; }
+    }());
+
+    utility::array<utility::compressed_pair<key_type, mapped_type>, kv.size()> kv_;
+    for (auto i = 0u; i < kv.size(); ++i) {
+      kv_[i] = utility::compressed_pair{kv[i], mapped_type(i + 1u)};
+    }
+    return kv_;
+  } else { // array{pair{1, 2}, ...}
+    return kv;
   }
-  return kv;
 }
-template<const auto& keys>
-constexpr auto kv() requires requires(u32 n) { keys[n].first.size(); keys[n].second; } {
-  constexpr auto max_len = [] {
-    u32 len{};
-    for (const auto& key : keys) { if (key.first.size() > len) { len = key.first.size(); } }
-    return len;
-  }();
-
-  using key_type = decltype([] {
-        if constexpr (max_len <= sizeof(u8)) { return u8{}; }
-   else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
-   else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
-   else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
-   else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
-  }());
-
-  using value_type = typename type_traits::value_type_t<keys>::second_type;
-
-  utility::array<utility::compressed_pair<key_type, value_type>, keys.size()> kv;
-  for (auto i = 0; i < keys.size(); ++i) {
-    kv[i] = utility::compressed_pair{to<key_type>(keys[i].first), keys[i].second};
-  }
-  return kv;
-}
-template<const auto& keys>
-constexpr auto kv() -> decltype(auto) { return keys; }
 } // namespace detail
 
-namespace detail {
-template<const auto& kv, auto cfg> struct hash {
-  using T = type_traits::value_type_t<kv>;
-  using key_type = T::first_type;
-  using value_type = T::second_type;
+enum : u8 {
+  contains = 0b0001,
+  lookup   = 0b0010,
+  find     = 0b0100,
+  iterate  = 0b1000,
+};
+
+template<u8 Probability = 50u>
+  requires (Probability >= 0u and Probability <= 100u)
+inline constexpr auto conditional =
+  []<class T>(const bool cond, const T lhs, const T rhs) {
+    if (__builtin_is_constant_evaluated()) {
+      return cond ? lhs : rhs;
+    } else
+    #if __has_builtin(__builtin_unpredictable)
+    if constexpr (Probability == 50u) {
+     return __builtin_unpredictable(cond) ? lhs : rhs;
+    }
+    else
+    #endif
+    if constexpr (Probability == 50u) {
+      return T(cond * lhs);
+    } else {
+      constexpr auto probability = [] { return float(Probability) / float(100u); }();
+      return __builtin_expect_with_probability(cond, 1, probability) ? lhs : rhs;
+    }
+  };
+
+template<
+  const auto& kv,
+  auto operations = lookup | contains | find | iterate,
+  u32 bucket_size = detail::bucket_size(kv),
+  u32 alignment = u32{}
+> class static_hash_map {
+  static constexpr auto kv_ = detail::key_values<kv>();
+
+ public:
+  using key_type = type_traits::value_type_t<kv_>::first_type;
+  using mapped_type = type_traits::value_type_t<kv_>::second_type;
 
   [[nodiscard]] [[gnu::always_inline]]
-  constexpr auto operator()(const auto& key) const noexcept -> value_type {
+  static constexpr auto lookup([[maybe_unused]] const auto& key) noexcept -> bool requires (bool(operations & mph::lookup)) {
     return {};
   }
-};
-
-template<const auto& kv, auto cfg>
-  requires concepts::range<kv> and concepts::config<cfg> and (
-    kv.size() == 1u and
-    cfg.probability > 0u and cfg.probability <= 100u
-  )
-struct hash<kv, cfg> {
-  using T = type_traits::value_type_t<kv>;
-  using key_type = T::first_type;
-  using value_type = T::second_type;
 
   [[nodiscard]] [[gnu::always_inline]]
-  constexpr auto operator()(const auto& key) const noexcept -> value_type {
-    if constexpr (cfg.probability == 100u) {
-      return kv[0].second;
-    } else {
-      return detail::to<key_type>(key) == kv[0].first ? kv[0].second : value_type{};
-    }
+  static constexpr auto contains([[maybe_unused]] const auto& key) noexcept -> bool requires (bool(operations & mph::contains)) {
+    return {};
   }
+
+  template<auto...>
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto find(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
+    return {};
+  }
+
+  static constexpr auto begin() noexcept requires (bool(operations & iterate)) { return kv_.begin(); }
+  static constexpr auto end() noexcept requires (bool(operations & iterate)) { return kv_.end(); }
+  static constexpr auto cbegin() noexcept requires (bool(operations & iterate)) { return kv_.begin(); }
+  static constexpr auto cend() noexcept requires (bool(operations & iterate)) { return kv_.end(); }
 };
 
-template<const auto& kv_, auto cfg>
-  requires concepts::range<kv_> and concepts::config<cfg> and (
-    kv_.size() > 1u and
-    cfg.probability > 0u and cfg.probability <= 100u and
-    cfg.size == 1u
-  )
-struct hash<kv_, cfg> {
-  static constexpr auto kv = detail::kv<kv_>();
-  using T = type_traits::value_type_t<kv>;
-  using key_type = T::first_type;
-  using value_type = T::second_type;
-  using key_value_type = type_traits::conditional_t<
-    cfg.probability == 100u,
-    value_type,
-    utility::compressed_pair<key_type, value_type>
-  >;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+template<const auto& keys, auto operations, u32 bucket_size, u32 alignment>
+  requires (keys.size() == 1u)
+class static_hash_map<keys, operations, bucket_size, alignment> {
+  static constexpr auto kv_ = detail::key_values<keys>();
 
-  static constexpr const auto mask = type_traits::constant_v<mask_type(detail::mask<key_type, cfg.size>(kv))>;
-  static constexpr const auto lookup = [] {
-    constexpr auto fill = [] {
-      if constexpr (cfg.probability == 100u) {
-        return []([[maybe_unused]] const auto& key, const auto& value) { return value; };
-      } else {
-        return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
-      }
-    }();
+ public:
+  using key_type = type_traits::value_type_t<kv_>::first_type;
+  using mapped_type = type_traits::value_type_t<kv_>::second_type;
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto lookup(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
+    return kv_[0].second;
+  }
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto contains(const auto& key) noexcept -> bool requires (bool(operations & mph::contains)) {
+    return detail::to<key_type>(key) == kv_[0].first;
+  }
+
+  template<auto conditional = conditional<>>
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto find(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
+    return conditional(
+      detail::to<key_type>(key) == kv_[0].first,
+      mapped_type(kv_[0].second),
+      mapped_type{}
+    );
+  }
+
+  static constexpr auto begin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto end() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+  static constexpr auto cbegin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto cend() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+};
+
+template<const auto& keys, auto operations, u32 bucket_size, u32 alignment>
+  requires (keys.size() > 1u and bucket_size == 1u)
+class static_hash_map<keys, operations, bucket_size, alignment> {
+  static constexpr auto kv_ = detail::key_values<keys>();
+
+ public:
+  using key_type = type_traits::value_type_t<kv_>::first_type;
+  using mapped_type = type_traits::value_type_t<kv_>::second_type;
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto lookup(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
+    auto& lhs = lookup_[detail::pext(detail::to<key_type>(key), mask_)];
+    if constexpr (requires { lhs.second; }) {
+      return lhs.second;
+    } else {
+      return lhs;
+    }
+  }
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto contains(const auto& key) noexcept -> bool requires (bool(operations & mph::contains)) {
+    auto&& lhs = detail::to<key_type>(key);
+    auto&& rhs = lookup_[detail::pext(lhs, mask_)];
+    return lhs == rhs.first;
+  }
+
+  template<auto conditional = conditional<>>
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto find(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
+    auto&& lhs = detail::to<key_type>(key);
+    auto&& rhs = lookup_[detail::pext(lhs, mask_)];
+    return conditional(lhs == rhs.first, mapped_type(rhs.second), mapped_type{});
+  }
+
+  static constexpr auto begin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto end() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+  static constexpr auto cbegin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto cend() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+
+ private:
+  using mask_type = type_traits::conditional_t<
+    sizeof(key_type) <= sizeof(u32),
+    u32,
+    u64
+  >;
+
+  static constexpr const auto mask_ =
+    type_traits::constant_v<mask_type(detail::mask<key_type, bucket_size>(kv_))>;
+
+  static constexpr const auto lookup_ = [] {
+    using key_mapped_type = type_traits::conditional_t<
+      bool(operations & mph::contains) or bool(operations & mph::find),
+      utility::compressed_pair<key_type, mapped_type>,
+      key_type
+    >;
+
     type_traits::aligned_t<
-      utility::array<key_value_type, mask_type(1) << __builtin_popcountl(mask)>,
-      cfg.alignment
+      utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask_)>,
+      alignment
     > lookup{};
-    for (const auto& [key, value] : kv) { lookup[detail::pext(key, mask)] = fill(key, value); }
+
+    for (const auto& [key, value] : kv_) {
+      auto& lhs = lookup[detail::pext(key, mask_)];
+      if constexpr (requires { lhs.first; lhs.second; }) {
+        lhs = utility::compressed_pair{key, value};
+      } else {
+        lhs = value;
+      }
+    }
+
     return lookup;
   }();
-
-  template<auto Probability = 50u>
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> value_type {
-    if (__builtin_is_constant_evaluated()) {
-      for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
-    } else {
-      auto&& lhs = detail::to<key_type>(key);
-      auto&& rhs = lookup[detail::pext(lhs, mask)];
-      if constexpr (requires { rhs.first; rhs.second; }) {
-        #if __has_builtin(__builtin_unpredictable)
-        if constexpr (Probability == 50u) {
-         return __builtin_unpredictable(lhs == rhs.first) ? rhs.second : value_type{};
-        }
-        else
-        #endif
-        if constexpr (Probability == 50u) {
-          return (lhs == rhs.first) * value_type(rhs.second);
-        } else {
-          return __builtin_expect_with_probability(lhs == rhs.first, 1,
-            [] { return float(Probability) / float(100u); }()) ? rhs.second : value_type{};
-        }
-      } else {
-        return rhs;
-      }
-    }
-    return {};
-  }
 };
 
-template<const auto& kv, auto cfg>
-  requires concepts::range<kv> and concepts::config<cfg> and (
-    kv.size() > 1u and
-    cfg.probability > 0u and cfg.probability <= 100u and
-    cfg.size > 1u
-  )
-struct hash<kv, cfg> {
-  using T = type_traits::value_type_t<kv>;
-  using key_type = T::first_type;
-  using value_type = T::second_type;
-  using key_value_type = type_traits::conditional_t<
-    cfg.probability == 100u,
-    value_type,
-    utility::compressed_pair<key_type, value_type>
+template<const auto& kv, auto operations, u32 bucket_size, u32 alignment>
+  requires (kv.size() > 1u and bucket_size > 1u)
+class static_hash_map<kv, operations, bucket_size, alignment> {
+  static constexpr auto kv_ = detail::key_values<kv>();
+
+ public:
+  using key_type = type_traits::value_type_t<kv_>::first_type;
+  using mapped_type = type_traits::value_type_t<kv_>::second_type;
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto lookup(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::lookup)) {
+    auto&& lhs = detail::to<key_type>(key);
+    auto&& lut = masks_offsets_.first[detail::pext(lhs, mask_)];
+    return *static_cast<const key_mapped_type*>(&lookups_[lut.first + detail::pext(lhs, lut.second)]);
+  }
+
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto contains(const auto& key) noexcept -> bool requires (bool(operations & mph::contains)) {
+    auto&& lhs = detail::to<key_type>(key);
+    auto&& lut = masks_offsets_.first[detail::pext(lhs, mask_)];
+    auto&& rhs = *static_cast<const key_mapped_type*>(&lookups_[lut.first + detail::pext(lhs, lut.second)]);
+    return lhs == rhs.first;
+  }
+
+  template<auto conditional = conditional<>>
+  [[nodiscard]] [[gnu::always_inline]]
+  static constexpr auto find(const auto& key) noexcept -> mapped_type requires (bool(operations & mph::find)) {
+    auto&& lhs = detail::to<key_type>(key);
+    auto&& lut = masks_offsets_.first[detail::pext(lhs, mask_)];
+    auto&& rhs = *static_cast<const key_mapped_type*>(&lookups_[lut.first + detail::pext(lhs, lut.second)]);
+    return conditional(lhs == rhs.first, mapped_type(rhs.second), mapped_type{});
+  }
+
+  static constexpr auto begin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto end() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+  static constexpr auto cbegin() noexcept requires (bool(operations & mph::iterate)) { return kv_.begin(); }
+  static constexpr auto cend() noexcept requires (bool(operations & mph::iterate)) { return kv_.end(); }
+
+ private:
+  using mask_type = type_traits::conditional_t<
+    sizeof(key_type) <= sizeof(u32),
+    u32,
+    u64
   >;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-  static constexpr const auto mask = type_traits::constant_v<mask_type(detail::mask<key_type, cfg.size>(kv))>;
-  static constexpr const auto lookup = [] {
+
+  using key_mapped_type = type_traits::conditional_t<
+    bool(operations & mph::contains) or bool(operations & mph::find),
+    utility::compressed_pair<key_type, mapped_type>,
+    mapped_type
+  >;
+
+  static constexpr const auto mask_ =
+    type_traits::constant_v<mask_type(detail::mask<key_type, bucket_size>(kv))>;
+
+  static constexpr const auto lookup_ = [] {
     utility::array<
-      utility::array<utility::compressed_pair<key_type, value_type>, cfg.size>,
-      mask_type(1) << __builtin_popcountl(mask)
+      utility::array<utility::compressed_pair<key_type, mapped_type>, bucket_size>,
+      mask_type(1) << __builtin_popcountl(mask_)
     > lookup{};
+
     for (const auto& [key, value] : kv) {
-      auto& slot = lookup[detail::pext(key, mask)];
+      auto& slot = lookup[detail::pext(key, mask_)];
       auto n = 0u;
       while (slot[n].first) n++;
       slot[n] = utility::compressed_pair{key, value};
     }
+
     return lookup;
   }();
-  static constexpr const auto masks_offsets = [] {
+
+  static constexpr const auto masks_offsets_ = [] {
     type_traits::aligned_t<
-      utility::array<utility::compressed_pair<u32, mask_type>, lookup.size()>,
-      cfg.alignment
+      utility::array<utility::compressed_pair<u32, mask_type>, lookup_.size()>,
+      alignment
     > masks_offsets{};
     u32 offset{};
-    for (auto i = 0u; i < lookup.size(); ++i) {
-      if (const auto& slot = lookup[i]; slot[0].first) {
+
+    for (auto i = 0u; i < lookup_.size(); ++i) {
+      if (const auto& slot = lookup_[i]; slot[0].first) {
         const auto mask = detail::mask<key_type, 1u>(slot);
         masks_offsets[i] = utility::compressed_pair{offset, mask};
         offset += (mask_type(1) << __builtin_popcountl(mask));
       }
     }
+
     return utility::compressed_pair{masks_offsets, offset};
   }();
-  static constexpr const auto lookups = [] {
-    constexpr auto fill = [] {
-      if constexpr (cfg.probability == 100u) {
-        return []([[maybe_unused]] const auto& key, const auto& value) { return value; };
-      } else {
-        return [](const auto& key, const auto& value) { return utility::compressed_pair{key, value}; };
-      }
-    }();
+
+  static constexpr const auto lookups_ = [] {
     type_traits::aligned_t<
-      utility::array<key_value_type, masks_offsets.second>,
-      cfg.alignment
+      utility::array<key_mapped_type, masks_offsets_.second>,
+      alignment
     > lookups{};
-    for (auto i = 0u; i < lookup.size(); ++i) {
-      if (auto& mo = masks_offsets.first[i]; lookup[i][0].first) {
-        for (const auto& [key, value] : lookup[i]) {
+
+    for (auto i = 0u; i < lookup_.size(); ++i) {
+      if (auto& lut = masks_offsets_.first[i]; lookup_[i][0].first) {
+        for (const auto& [key, value] : lookup_[i]) {
           if (not key) break;
-          lookups[mo.first + detail::pext(key, mo.second)] = fill(key, value);
+          auto& lhs = lookups[lut.first + detail::pext(key, lut.second)];
+          if constexpr (requires { lhs.first; lhs.second; }) {
+            lhs = utility::compressed_pair{key, value};
+          } else {
+            lhs = value;
+          }
         }
       }
     }
+
     return lookups;
   }();
-
-  template<auto Probability = 50u>
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> value_type {
-    if (__builtin_is_constant_evaluated()) {
-      for (auto&& lhs = to<key_type>(key); const auto& [key, value] : kv) { if (lhs == key) { return value; } }
-    } else {
-      auto&& lhs = detail::to<key_type>(key);
-      auto&& mdx = masks_offsets.first[detail::pext(lhs, mask)];
-      auto&& rhs = *static_cast<const key_value_type*>(&lookups[mdx.first + detail::pext(lhs, mdx.second)]);
-      if constexpr (requires { rhs.first; rhs.second; }) {
-        #if __has_builtin(__builtin_unpredictable)
-        if constexpr (Probability == 50u) {
-         return __builtin_unpredictable(lhs == rhs.first) ? rhs.second : value_type{};
-        }
-        else
-        #endif
-        if constexpr (Probability == 50u) {
-          return (lhs == rhs.first) * value_type(rhs.second);
-        } else {
-          return __builtin_expect_with_probability(lhs == rhs.first, 1,
-            [] { return float(Probability) / float(100u); }()) ? rhs.second : value_type{};
-        }
-      } else {
-        return rhs;
-      }
-    }
-    return {};
-  }
 };
-} // namespace detail
-
-template<const auto& kv, auto cfg = config<kv>{}>
-inline constexpr detail::hash<kv, cfg> hash{};
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
@@ -617,52 +664,6 @@ static_assert(([] {
     static_assert(sizeof(u64) == sizeof(mph::type_traits::conditional_t<false, u32, u64>));
   }
 
-  // mph::concepts::integral
-  {
-    static_assert(mph::concepts::integral<mph::u8>);
-    static_assert(mph::concepts::integral<mph::u16>);
-    static_assert(mph::concepts::integral<mph::u32>);
-    static_assert(mph::concepts::integral<mph::u64>);
-    static_assert(mph::concepts::integral<mph::u128>);
-    static_assert(mph::concepts::integral<int>);
-    static_assert(not mph::concepts::integral<float>);
-    static_assert(not mph::concepts::integral<void>);
-    static_assert(not mph::concepts::integral<const int&>);
-    static_assert(not mph::concepts::integral<const char*>);
-  }
-
-  // mph::concepts::config
-  {
-    struct cfg1{ };
-    struct cfg2{ int probability{}; };
-    struct cfg3{ int probability{}; int size{}; };
-    struct cfg4{ int probability{}; int size{}; int alignment{}; };
-
-    static_assert(not mph::concepts::config<cfg1{}>);
-    static_assert(not mph::concepts::config<cfg2{}>);
-    static_assert(not mph::concepts::config<cfg4{.probability = -1, .size = {}, .alignment = {}}>);
-    static_assert(not mph::concepts::config<cfg4{.probability = 100u, .size = {}, .alignment = {}}>);
-    static_assert(mph::concepts::config<cfg4{.probability = 0u, .size = 1u, .alignment = {}}>);
-    static_assert(mph::concepts::config<cfg4{.probability = 50u, .size = 4u, .alignment = {}}>);
-    static_assert(mph::concepts::config<cfg4{.probability = 100u, .size = 8u, .alignment = {}}>);
-  }
-
-  // concepts::range
-  {
-    using mph::u32;
-    using mph::type_traits::constant;
-
-    struct range1 { };
-    struct range2 { u32 begin() const; u32 end() const; };
-    struct range3 { u32 begin() const; u32 end() const; u32 operator[](u32) const; };
-    struct range4 { u32 begin() const; u32 end() const; u32 size() const; u32 operator[](u32) const; };
-
-    static_assert(not mph::concepts::range<constant<range1{}>::value>);
-    static_assert(not mph::concepts::range<constant<range2{}>::value>);
-    static_assert(not mph::concepts::range<constant<range3{}>::value>);
-    static_assert(mph::concepts::range<constant<range4{}>::value>);
-  }
-
   // mph::detail::pext
   {
     using mph::u32;
@@ -707,7 +708,39 @@ static_assert(([] {
     static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::detail::to<u32>(array{'A','B','C'}));
   }
 
-  // mph::hash
+  // mph::datail::key_values
+  {
+    using mph::u8;
+    using mph::u32;
+    using mph::utility::compressed_pair;
+    using mph::utility::array;
+    using mph::type_traits::constant;
+
+    {
+      constexpr const auto& kv = constant<array{compressed_pair{u32(4), u32(2)}}>::value;
+      static_assert(&kv == &mph::detail::key_values<kv>());
+    }
+
+    {
+      constexpr const auto& kv = constant<array{u32(4)}>::value;
+      constexpr const auto v = mph::detail::key_values<kv>();
+      static_assert(1u == v.size());
+      static_assert(u32(4) == v[0].first);
+      static_assert(u8(1) == v[0].second);
+    }
+
+    {
+      constexpr const auto& kv = constant<array{u32(4), u32(2)}>::value;
+      constexpr const auto v = mph::detail::key_values<kv>();
+      static_assert(2u == v.size());
+      static_assert(u32(4) == v[0].first);
+      static_assert(u32(2) == v[1].first);
+      static_assert(u8(1) == v[0].second);
+      static_assert(u8(2) == v[1].second);
+    }
+  }
+
+  // mph::static_hash_map
   {
     using mph::u32;
     using mph::utility::compressed_pair;
@@ -721,9 +754,15 @@ static_assert(([] {
           compressed_pair{u32(4), u32(2)}
         }>::value;
 
-        static_assert(0 == mph::hash<kv>(u32(0)));
-        static_assert(0 == mph::hash<kv>(u32(1)));
-        static_assert(2 == mph::hash<kv>(u32(4)));
+        static_assert(not mph::static_hash_map<kv>::contains(u32(0)));
+        static_assert(not mph::static_hash_map<kv>::contains(u32(1)));
+        static_assert(mph::static_hash_map<kv>::contains(u32(4)));
+
+        static_assert(2 == mph::static_hash_map<kv>::lookup(u32(4)));
+
+        static_assert(0 == mph::static_hash_map<kv>::find(u32(0)));
+        static_assert(0 == mph::static_hash_map<kv>::find(u32(1)));
+        static_assert(2 == mph::static_hash_map<kv>::find(u32(4)));
       }
 
       {
@@ -733,10 +772,42 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(0 == mph::hash<kv>(u32(0)));
-        static_assert(2 == mph::hash<kv>(u32(4)));
-        static_assert(87 == mph::hash<kv>(u32(42)));
-        static_assert(100 == mph::hash<kv>(u32(100)));
+        static_assert(not mph::static_hash_map<kv>::contains(u32(0)));
+        static_assert(not mph::static_hash_map<kv>::contains(u32(1)));
+        static_assert(mph::static_hash_map<kv>::contains(u32(4)));
+        static_assert(mph::static_hash_map<kv>::contains(u32(42)));
+        static_assert(mph::static_hash_map<kv>::contains(u32(100)));
+
+        static_assert(2 == mph::static_hash_map<kv>::lookup(u32(4)));
+        static_assert(87 == mph::static_hash_map<kv>::lookup(u32(42)));
+        static_assert(100 == mph::static_hash_map<kv>::lookup(u32(100)));
+
+        static_assert(0 == mph::static_hash_map<kv>::find(u32(0)));
+        static_assert(2 == mph::static_hash_map<kv>::find(u32(4)));
+        static_assert(87 == mph::static_hash_map<kv>::find(u32(42)));
+        static_assert(100 == mph::static_hash_map<kv>::find(u32(100)));
+      }
+{
+        constexpr const auto& kv = constant<array{
+          compressed_pair{u32(4), u32(2)},
+          compressed_pair{u32(42), u32(87)},
+          compressed_pair{u32(100), u32(100)},
+        }>::value;
+
+        static_assert(not mph::static_hash_map<kv, mph::contains>::contains(u32(0)));
+        static_assert(not mph::static_hash_map<kv, mph::contains>::contains(u32(1)));
+        static_assert(mph::static_hash_map<kv, mph::contains>::contains(u32(4)));
+        static_assert(mph::static_hash_map<kv, mph::contains>::contains(u32(42)));
+        static_assert(mph::static_hash_map<kv, mph::contains>::contains(u32(100)));
+
+        static_assert(2 == mph::static_hash_map<kv, mph::lookup>::lookup(u32(4)));
+        static_assert(87 == mph::static_hash_map<kv, mph::lookup>::lookup(u32(42)));
+        static_assert(100 == mph::static_hash_map<kv, mph::lookup>::lookup(u32(100)));
+
+        static_assert(0 == mph::static_hash_map<kv, mph::find>::find(u32(0)));
+        static_assert(2 == mph::static_hash_map<kv, mph::find>::find(u32(4)));
+        static_assert(87 == mph::static_hash_map<kv, mph::find>::find(u32(42)));
+        static_assert(100 == mph::static_hash_map<kv, mph::find>::find(u32(100)));
       }
     }
 
@@ -751,10 +822,19 @@ static_assert(([] {
           compressed_pair{to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(0 == mph::hash<kv>(""));
-        static_assert(1 == mph::hash<kv>("BTC"));
-        static_assert(2 == mph::hash<kv>("ETH"));
-        static_assert(3 == mph::hash<kv>("XRP"));
+        static_assert(not mph::static_hash_map<kv>::contains(""));
+        static_assert(mph::static_hash_map<kv>::contains("BTC"));
+        static_assert(mph::static_hash_map<kv>::contains("ETH"));
+        static_assert(mph::static_hash_map<kv>::contains("XRP"));
+
+        static_assert(1 == mph::static_hash_map<kv>::lookup("BTC"));
+        static_assert(2 == mph::static_hash_map<kv>::lookup("ETH"));
+        static_assert(3 == mph::static_hash_map<kv>::lookup("XRP"));
+
+        static_assert(0 == mph::static_hash_map<kv>::find(""));
+        static_assert(1 == mph::static_hash_map<kv>::find("BTC"));
+        static_assert(2 == mph::static_hash_map<kv>::find("ETH"));
+        static_assert(3 == mph::static_hash_map<kv>::find("XRP"));
       }
     }
   }
