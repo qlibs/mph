@@ -787,7 +787,8 @@ static_assert(([] {
         static_assert(87 == mph::static_hash_map<kv>::find(u32(42)));
         static_assert(100 == mph::static_hash_map<kv>::find(u32(100)));
       }
-{
+
+      {
         constexpr const auto& kv = constant<array{
           compressed_pair{u32(4), u32(2)},
           compressed_pair{u32(42), u32(87)},
