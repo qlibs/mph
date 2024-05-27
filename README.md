@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+, clang-16+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
+- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
 ### Hello world (https://godbolt.org/z/6oYP7n57K)
 
@@ -39,11 +39,11 @@ constexpr auto colors = std::array{
   std::pair("blue"sv, color::blue),
 };
 
-static_assert(color::green == mph::hash<colors>("green"));
-static_assert(color::red   == mph::hash<colors>("red"));
-static_assert(color::blue  == mph::hash<colors>("blue"));
+static_assert(color::green == mph::lookup<colors>("green"));
+static_assert(color::red   == mph::lookup<colors>("red"));
+static_assert(color::blue  == mph::lookup<colors>("blue"));
 
-std::print("{}", mph::hash<colors>("green"sv));
+std::print("{}", mph::lookup<colors>("green"sv));
 ```
 
 ```
@@ -67,7 +67,7 @@ int main(int argc, char**)
     std::pair{91u, 234u},
   };
 
-  return mph::hash<ids>(argc);
+  return mph::lookup<ids>(argc);
 }
 ```
 
@@ -113,7 +113,7 @@ int main(int, const char** argv) {
     std::pair("TSLA    "sv, 7),
   };
 
-  return mph::hash<symbols>(
+  return mph::lookup<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -149,7 +149,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return mph::hash<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
+  return mph::lookup<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
 
@@ -184,7 +184,7 @@ int main(int, const char** argv) {
   };
 
   // input keys are always valid - coming from the predefined set
-  return mph::hash<symbols, mph::config<symbols>{.key_in_set_probability = 100u}>(
+  return mph::lookup<symbols>.operator()<100/*probability*/>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
@@ -331,84 +331,30 @@ time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 2.
 
 ```cpp
 /**
- * Converts data to T
+ * Perfect hash lookup function
  *
- * @tparam T type
- * @param data input
- * @return data as T
+ * @tparam entries constexpr array of keys or key/value pairs
+ * @param bucket_size how many buckets (default: deduce based on entries size)
+ * @param alignment lookup table alignment (default: no alignment specified)
  */
-template<class T>
-[[nodiscard]] constexpr auto to(const auto& data) noexcept -> T;
-```
-
-```cpp
-template<auto c> concept cfg = requires {
-  c.key_in_set_probability; c.group_size; c.lookup_table_alignment;
-} and (
-  c.key_in_set_probability >= 0u and
-  c.key_in_set_probability <= 100u and
-  c.group_size >= 1u and
-  c.lookup_table_alignment >= 0u and not (c.lookup_table_alignment % 2)
-);
-
-template<auto kv> concept range = requires(u32 n) {
-  kv.size(); kv.begin(); kv.end(); kv[n];
-};
-```
-
-```cpp
-template<auto kv>
-struct config {
-  /// 0         - none of the input key can be found in the kv
-  /// (0, 50)   - input key is unlikely to be found in the kv
-  /// 50        - unpredictable (default)
-  /// (50, 100) - input key is likely to be found in the kv
-  /// 100       - all input key can be found in the kv
-  u8 key_in_set_probability{50};
-
-  /// 1 - one element per group (faster but larger memory footprint)
-  /// N - n elements per group  (slower but smaller memory footprint)
-  u32 group_size{
-    []() -> u32 {
-      switch (sizeof(value_type_t<kv>::first_type)) {
-        case sizeof(u8):
-          return kv.size() <= sizeof(u8) * (1u << 10u) ? 1u : 4u * sizeof(u8);
-        case sizeof(u16):
-          return kv.size() <= sizeof(u16) * (1u << 10u) ? 1u : 4u * sizeof(u16);
-        case sizeof(u32):
-          return kv.size() <= sizeof(u32) * (1u << 10u) ? 1u : 4u * sizeof(u32);
-        case sizeof(u64):
-          return kv.size() <= sizeof(u64) * (1u << 7u)  ? 1u : 2u * sizeof(u64);
-        case sizeof(u128):
-          return kv.size() <= sizeof(u128) * (1u << 7u)  ? 1u : 2u * sizeof(u128);
-      }
-    }()
-  };
-
-  /// 0 - no alignment
-  /// N - alignas(N) lookup_table
-  u32 lookup_table_alignment{};
-};
-```
-
-```cpp
-/**
- * Perfect hash function
- *
- * @tparam kv constexpr array of key/value pairs
- * @tparam config configuration
- * @param key input data
- */
-template<const auto& kv, config cfg = config<kv>{}>
-  requires concepts::range<kv> and concepts::config<cfg>
-[[nodiscard]] constexpr auto hash(const auto& key) noexcept;
+template<
+  const auto& entries,
+  u32 bucket_size = [] {
+    if (entries.size() == 0u) return 0u;
+    if (entries.size() <= 1024u) return 1u;
+    if (entries.size() <= 2048u) return 4u;
+    if (entries.size() <= 4096u) return 8u;
+    return 16u;
+  }(),
+  u32 alignment = u32{}
+> inline constexpr detail::lookup<entries, bucket_size, alignment> lookup{};
 ```
 
 > Configuration
 
 ```cpp
-#define MPH 2'5'0           // Current library version (SemVer)
-#define MPH_PAGE_SIZE 4096u // Page size
+#define MPH 3'0'0       // Current library version (SemVer)
+#define MPH_PAGE_SIZE 0 // If > 0 safe memcpy will be used for string-like keys
 ```
 
 ---
