@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
 <a href="https://godbolt.org/z/h5WrsYWeP">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/jhPdvz49E">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/Wq6bxf656">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -55,10 +55,10 @@ $CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/jhPdvz49E)
+### Performance (https://godbolt.org/z/Wq6bxf656)
 
 ```cpp
-int main(int argc, char**)
+int main(int argc, const char**)
   static constexpr std::array ids{
     std::pair{54u, 91u},
     std::pair{324u, 54u},
@@ -102,6 +102,34 @@ lookup: # size = 2^popcount(mask) of {key, value}
   .long   54
   .long   91
   .zero   8
+```
+
+#### llvm-mca (https://godbolt.org/z/PK58PEv46)
+
+```cpp
+Iterations:        100
+Instructions:      600
+Total Cycles:      154
+Total uOps:        800
+
+Dispatch Width:    6
+uOps Per Cycle:    5.19
+IPC:               3.90
+Block RThroughput: 1.3
+
+Instruction Info:
+[1]: #uOps
+[2]: Latency
+[3]: RThroughput
+[4]: MayLoad
+
+[1]    [2]    [3]    [4] Instructions:
+ 1      1     0.25       mov   edx, 7
+ 1      0     0.17       xor   eax, eax
+ 1      3     1.00       pext  edx, edi, edx
+ 1      1     0.25       mov   edx, edx
+ 2      6     0.50    *  cmp   dword ptr [8*rdx + lookup<ids, 1u, 0u>], edi
+ 2      6     0.50    *  cmove eax, dword ptr [8*rdx + lookup<ids, 1u, 0u>+4]
 ```
 
 ---
