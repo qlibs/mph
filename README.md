@@ -47,9 +47,9 @@ std::print("{}", *mph::lookup<colors>("green"sv));
 ```
 
 ```
-$CXX -std=c++20                -DNDEBUG -O3 && ./a.out # prints 2
-$CXX -std=c++20 -mbmi2         -DNDEBUG -O3 && ./a.out # prints 2
-$CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 2
+$CXX -std=c++20                -DNDEBUG -O3 && ./a.out # prints 1
+$CXX -std=c++20 -mbmi2         -DNDEBUG -O3 && ./a.out # prints 1
+$CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 1
 ```
 
 ---
