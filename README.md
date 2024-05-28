@@ -5,13 +5,13 @@
 
 ---------------------------------------
 
-## [Minimal] Perfect hash library
+## [Minimal] Static perfect hash library
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function
 
 ### Use case
 
-> Given a list of N keys (known at compile-time) find a perfect hash (map keys to values).
+> A static perfect hash function maps a set of keys known in advance to a set of values with no collisions.
 
 ### Features
 
@@ -264,11 +264,11 @@ lookup:
 
 ```cpp
 /**
- * Perfect hash lookup function
+ * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @param bucket_size how many buckets (default: deduce based on entries size)
- * @param alignment lookup table alignment (default: no alignment specified)
+ * @tparam bucket_size how many buckets (default: deduce based on entries size)
+ * @tparam alignment lookup table alignment (default: no alignment specified)
  */
 template<
   const auto& entries,
