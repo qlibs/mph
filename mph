@@ -341,7 +341,7 @@ template<class T>
 struct optional {
   using value_type = T;
   constexpr optional() = default;
-  constexpr optional(const auto value, const bool flag = true) : value(value), flag{flag} {}
+  constexpr optional(const auto value, const bool flag = true) : value{static_cast<T>(value)}, flag{flag} {}
   [[nodiscard]] constexpr operator bool() const { return flag; }
   [[nodiscard]] constexpr auto operator*() const { return value; }
   T value{};
