@@ -121,13 +121,13 @@ template<class T>
 }
 
 template<class T, u32 N>
-[[nodiscard]] constexpr auto mask(const auto& kv) noexcept -> T {
-  utility::array<T, decltype(kv){}.size()> vs;
+[[nodiscard]] constexpr auto mask(const auto& entries) noexcept -> T {
+  utility::array<T, decltype(entries){}.size()> vs;
   T max{};
   u32 size{};
   for (auto i = 0u; i < vs.size(); ++i) {
-    if (not kv[i].first) break;
-    if (vs[i] = kv[i].first; vs[i] > max) max = vs[i];
+    if (not entries[i].first) break;
+    if (vs[i] = entries[i].first; vs[i] > max) max = vs[i];
     ++size;
   }
   if (size <= 1u) {
@@ -340,10 +340,12 @@ inline constexpr auto conditional =
 template<class T>
 struct optional {
   using value_type = T;
-  constexpr optional() = default;
-  constexpr optional(const auto value, const bool flag = true) : value{static_cast<T>(value)}, flag{flag} {}
-  [[nodiscard]] constexpr operator bool() const { return flag; }
-  [[nodiscard]] constexpr auto operator*() const { return value; }
+  constexpr optional() noexcept = default;
+  constexpr optional(const auto value, const bool flag = true) noexcept
+    : value{static_cast<T>(value)}, flag{flag}
+  { }
+  [[nodiscard]] constexpr operator bool() const noexcept { return flag; }
+  [[nodiscard]] constexpr auto operator*() const noexcept { return value; }
   T value{};
   bool flag{};
 };
@@ -476,12 +478,12 @@ struct lookup<entries, bucket_size, alignment> {
  */
 template<
   const auto& entries,
-  u32 bucket_size = [] {
-    if (entries.size() <= 1024u) return 1u;
-    if (entries.size() <= 2048u) return 4u;
-    if (entries.size() <= 4096u) return 8u;
+  u32 bucket_size = [](u32 size) {
+    if (size <= 1024u) return 1u;
+    if (size <= 2048u) return 4u;
+    if (size <= 4096u) return 8u;
     return 16u;
-  }(),
+  }(entries.size()),
   u32 alignment = u32{}
 > inline constexpr detail::lookup<entries, bucket_size, alignment> lookup{};
 } // namespace mph
@@ -613,21 +615,21 @@ static_assert(([] {
     using mph::type_traits::constant;
 
     {
-      constexpr const auto& kv = constant<array{compressed_pair{u32(4), u32(2)}}>::value;
-      static_assert(&kv == &mph::detail::mappings<kv>());
+      constexpr const auto& entries = constant<array{compressed_pair{u32(4), u32(2)}}>::value;
+      static_assert(&entries == &mph::detail::mappings<entries>());
     }
 
     {
-      constexpr const auto& kv = constant<array{u32(4)}>::value;
-      constexpr const auto v = mph::detail::mappings<kv>();
+      constexpr const auto& entries = constant<array{u32(4)}>::value;
+      constexpr const auto v = mph::detail::mappings<entries>();
       static_assert(1u == v.size());
       static_assert(u32(4) == v[0].first);
       static_assert(u8(0) == v[0].second);
     }
 
     {
-      constexpr const auto& kv = constant<array{u32(4), u32(2)}>::value;
-      constexpr const auto v = mph::detail::mappings<kv>();
+      constexpr const auto& entries = constant<array{u32(4), u32(2)}>::value;
+      constexpr const auto v = mph::detail::mappings<entries>();
       static_assert(2u == v.size());
       static_assert(u32(4) == v[0].first);
       static_assert(u32(2) == v[1].first);
@@ -670,11 +672,11 @@ static_assert(([] {
     // integral
     {
       {
-        constexpr const auto& kv = constant<array{
+        constexpr const auto& entries = constant<array{
           compressed_pair{u32(4), u32(2)}
         }>::value;
 
-        auto lookup = mph::lookup<kv>;
+        auto lookup = mph::lookup<entries>;
 
         static_assert(not lookup(u32(0)));
         static_assert(not lookup(u32(1)));
@@ -686,32 +688,32 @@ static_assert(([] {
       }
 
       {
-        constexpr const auto& kv = constant<array{
+        constexpr const auto& entries = constant<array{
           compressed_pair{u32(4), u32(2)},
           compressed_pair{u32(42), u32(87)},
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(not mph::lookup<kv>(u32(0)));
-        static_assert(mph::lookup<kv>(u32(4)));
-        static_assert(mph::lookup<kv>(u32(42)));
-        static_assert(mph::lookup<kv>(u32(100)));
+        static_assert(not mph::lookup<entries>(u32(0)));
+        static_assert(mph::lookup<entries>(u32(4)));
+        static_assert(mph::lookup<entries>(u32(42)));
+        static_assert(mph::lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::lookup<kv>(u32(0)));
-        static_assert(2 == *mph::lookup<kv>(u32(4)));
-        static_assert(87 == *mph::lookup<kv>(u32(42)));
-        static_assert(100 == *mph::lookup<kv>(u32(100)));
+        static_assert(0 == *mph::lookup<entries>(u32(0)));
+        static_assert(2 == *mph::lookup<entries>(u32(4)));
+        static_assert(87 == *mph::lookup<entries>(u32(42)));
+        static_assert(100 == *mph::lookup<entries>(u32(100)));
 
         #if defined(__BMI2__)
-          static_assert(not mph::lookup<kv, 2u>(u32(0)));
-          static_assert(mph::lookup<kv, 2u>(u32(4)));
-          static_assert(mph::lookup<kv, 2u>(u32(42)));
-          static_assert(mph::lookup<kv, 2u>(u32(100)));
+          static_assert(not mph::lookup<entries, 2u>(u32(0)));
+          static_assert(mph::lookup<entries, 2u>(u32(4)));
+          static_assert(mph::lookup<entries, 2u>(u32(42)));
+          static_assert(mph::lookup<entries, 2u>(u32(100)));
 
-          static_assert(0 == *mph::lookup<kv, 2u>(u32(0)));
-          static_assert(2 == *mph::lookup<kv, 2u>(u32(4)));
-          static_assert(87 == *mph::lookup<kv, 2u>(u32(42)));
-          static_assert(100 == *mph::lookup<kv, 2u>(u32(100)));
+          static_assert(0 == *mph::lookup<entries, 2u>(u32(0)));
+          static_assert(2 == *mph::lookup<entries, 2u>(u32(4)));
+          static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
+          static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
         #endif
       }
     }
@@ -721,24 +723,24 @@ static_assert(([] {
       using mph::detail::to;
 
       {
-        constexpr const auto& kv = constant<array{
+        constexpr const auto& entries = constant<array{
           compressed_pair{to<u32>("BTC"), 1},
           compressed_pair{to<u32>("ETH"), 2},
           compressed_pair{to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(not mph::lookup<kv>(""));
-        static_assert(mph::lookup<kv>("BTC"));
-        static_assert(mph::lookup<kv>("ETH"));
-        static_assert(mph::lookup<kv>("XRP"));
+        static_assert(not mph::lookup<entries>(""));
+        static_assert(mph::lookup<entries>("BTC"));
+        static_assert(mph::lookup<entries>("ETH"));
+        static_assert(mph::lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::lookup<kv>(""));
-        static_assert(1 == *mph::lookup<kv>("BTC"));
-        static_assert(2 == *mph::lookup<kv>("ETH"));
-        static_assert(3 == *mph::lookup<kv>("XRP"));
+        static_assert(0 == *mph::lookup<entries>(""));
+        static_assert(1 == *mph::lookup<entries>("BTC"));
+        static_assert(2 == *mph::lookup<entries>("ETH"));
+        static_assert(3 == *mph::lookup<entries>("XRP"));
 
         #if defined(__BMI2__)
-          constexpr auto lookup = mph::lookup<kv, 2u>;
+          constexpr auto lookup = mph::lookup<entries, 2u>;
           static_assert(not lookup(""));
           static_assert(lookup("BTC"));
           static_assert(lookup("ETH"));

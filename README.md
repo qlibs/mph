@@ -246,9 +246,9 @@ lookup:
 
 ### Examples
 
-- [feature] custom `lookup` - https://godbolt.org/z/K3Yoa7c7W
+- [feature] `lookup` customization point - https://godbolt.org/z/K3Yoa7c7W
 - [example] branchless dispatcher - https://godbolt.org/z/Yn911sfax
-- [performance] enum name -
+- [performance] `enum_to_string` (https://wg21.link/P2996) -
 
 ---
 
@@ -269,17 +269,16 @@ lookup:
  */
 template<
   const auto& entries,
-  u32 bucket_size = [] {
-    if (entries.size() == 0u) return 0u;
-    if (entries.size() <= 1024u) return 1u;
-    if (entries.size() <= 2048u) return 4u;
-    if (entries.size() <= 4096u) return 8u;
+  u32 bucket_size = [](u32 size) {
+    if (size <= 1024u) return 1u;
+    if (size <= 2048u) return 4u;
+    if (size <= 4096u) return 8u;
     return 16u;
-  }(),
+  }(entries.size()),
   u32 alignment = u32{}
 > inline constexpr auto lookup {
   template<u8 probability = 50u>
-  requires (probability >= 0u and probability <= 100u)
+    requires (probability >= 0u and probability <= 100u)
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> optional;
 };
 ```
