@@ -299,7 +299,7 @@ template<
 
 - Limitations?
 
-    > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [compilation-times](#compilation)).
+    > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [benchmarks](#benchmarks)).
 
   - All keys have to fit into `std::uint128_t`, that includes strings.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
@@ -369,9 +369,9 @@ template<
   - [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. (AMD Zen2 pext takes 18 cycles, is worth disabling hardware accelerated version)
   - For integral keys, use u32 or u64.
   - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
-  - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
-  - Experiment with different `probability` values to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
-  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the lookup. That will align the underlying lookup table.
+  - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 and 16. That will make the lookup table smaller and getting the value will have one instruction less.
+  - Experiment with different `probability` values to optimize lookups. Especially benefitial if it's known that input keys are always coming from predefined `entries` (probability = 100) as it will avoid the comparison.
+  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the `lookup`. That will align the underlying lookup table.
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
@@ -394,7 +394,7 @@ template<
 
 - How to disable `cmov` generation?
 
-    > Set `probability` value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
+    > Set `probability` value to something else than `50u` (default) - it means that the input data is predictable in some way and `jmp` will be generated instead. Additionaly the following compiler options can be used.
 
     ```
     clang: -mllvm -x86-cmov-converter=false
