@@ -28,22 +28,22 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
-### Hello world (https://godbolt.org/z/6oYP7n57K)
+### Hello world (https://godbolt.org/z/8Mn5h1jrc)
 
 ```cpp
-enum class color { red = 1, green = 2, blue = 3 };
+enum class color { red, green, blue };
 
 constexpr auto colors = std::array{
-  std::pair("red"sv, color::red),
-  std::pair("green"sv, color::green),
-  std::pair("blue"sv, color::blue),
+  std::pair{"red"sv, color::red},
+  std::pair{"green"sv, color::green},
+  std::pair{"blue"sv, color::blue},
 };
 
-static_assert(color::green == mph::lookup<colors>("green"));
-static_assert(color::red   == mph::lookup<colors>("red"));
-static_assert(color::blue  == mph::lookup<colors>("blue"));
+static_assert(color::green == *mph::lookup<colors>("green"));
+static_assert(color::red   == *mph::lookup<colors>("red"));
+static_assert(color::blue  == *mph::lookup<colors>("blue"));
 
-std::print("{}", mph::lookup<colors>("green"sv));
+std::print("{}", *mph::lookup<colors>("green"sv));
 ```
 
 ```
@@ -67,7 +67,14 @@ int main(int argc, char**)
     std::pair{91u, 234u},
   };
 
-  return mph::lookup<ids>(argc);
+  static_assert(not mph::lookup<ids>(0)u);
+  static_assert(mph::lookup<ids>(54u));
+  static_assert(mph::lookup<ids>(32u));
+  static_assert(mph::lookup<ids>(64u));
+  static_assert(mph::lookup<ids>(234u));
+  static_assert(mph::lookup<ids>(91u));
+
+  return *mph::lookup<ids>(argc);
 }
 ```
 
@@ -104,16 +111,16 @@ lookup: # size = 2^popcount(mask) of {key, value}
 ```cpp
 int main(int, const char** argv) {
   static constexpr auto symbols = std::array{
-    std::pair("AMZN    "sv, 1),
-    std::pair("AAPL    "sv, 2),
-    std::pair("GOOGL   "sv, 3),
-    std::pair("META    "sv, 4),
-    std::pair("MSFT    "sv, 5),
-    std::pair("NVDA    "sv, 6),
-    std::pair("TSLA    "sv, 7),
+    std::pair{"AMZN    "sv, 1},
+    std::pair{"AAPL    "sv, 2},
+    std::pair{"GOOGL   "sv, 3},
+    std::pair{"META    "sv, 4},
+    std::pair{"MSFT    "sv, 5},
+    std::pair{"NVDA    "sv, 6},
+    std::pair{"TSLA    "sv, 7},
   };
 
-  return mph::lookup<symbols>(
+  return *mph::lookup<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -141,7 +148,7 @@ lookup:
 
 ```cpp
 int main(int, const char** argv) {
-  // values assigned from 1..N
+  // values assigned from 0..N-1
   static constexpr std::array symbols{
     "BTC "sv, "ETH "sv, "BNB "sv,
     "SOL "sv, "XRP "sv, "DOGE"sv,
@@ -149,7 +156,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return mph::lookup<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
+  return *mph::lookup<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
 
@@ -183,8 +190,11 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  // input keys are always valid - coming from the predefined set
-  return mph::lookup<symbols>.operator()<100/*probability*/>(
+  constexpr auto lookup = mph::lookup<symbols>;
+  constexpr auto probability = 100; // input keys are always valid
+                                    //  coming from the predefined set
+
+  return lookup.operator()<probability>(
     std::span<const char, 4>(argv[1], argv[1]+4));
 }
 ```
@@ -207,9 +217,7 @@ lookup:
 
 ### Examples
 
-- [feature] custom `config` - https://godbolt.org/z/joda6z9W9
-- [feature] custom `hash` - https://godbolt.org/z/o9docf6q1
-- [example] `unordered_map` - https://godbolt.org/z/o9docf6q1
+- [feature] custom `lookup` - https://godbolt.org/z/o9docf6q1
 - [example] branchless dispatcher - https://godbolt.org/z/a7arYzP6G
 - [performance] enum name -
 
@@ -347,14 +355,20 @@ template<
     return 16u;
   }(),
   u32 alignment = u32{}
-> inline constexpr detail::lookup<entries, bucket_size, alignment> lookup{};
+> inline constexpr auto lookup {
+  template<u8 probability = 50u>
+  requires (probability >= 0u and probability <= 100u)
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> optional;
+};
 ```
 
 > Configuration
 
 ```cpp
 #define MPH 3'0'0       // Current library version (SemVer)
-#define MPH_PAGE_SIZE 0 // If > 0 safe memcpy will be used for string-like keys
+#define MPH_PAGE_SIZE   // [default: not defined]
+                        // If defined safe memcpy will be used for string-like
+                        // keys if the read is close to the page boundry (usually >= 4096)
 ```
 
 ---
@@ -370,11 +384,8 @@ template<
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
-    template<const auto& kv, auto cfg = config<kv>{}>
-      requires mph::concepts::range<kv> and mph::concepts::config<cfg> and (
-        kv.size() > 1'000'000
-      )
-    [[nodiscard]] constexpr auto mph::hash(auto&& key) noexcept;
+    template<const auto& entries> requires (entries.size() > 10'000)
+    inline constexpr auto mph::lookup = [](const auto& key) -> optional { ... }
     ```
 
 - How `mph` is working under the hood?
@@ -383,7 +394,7 @@ template<
       The following is a pseudo code of the algorithm.
 
     ```python
-    def hash[kv: array, unknown: typeof(kv[0][0])](key : any):
+    def lookup[kv: array](key : any):
       # 0. find mask which uniquely identifies all keys [compile-time]
       mask = ~typeof(kv[0][0]) # 0b111111...
 
@@ -425,7 +436,7 @@ template<
       if k == key: # policies (conditional, branchless, ...)
         return v
       else:
-        return unknown
+        return 0
     ```
 
     Additional resources can be found in the `Acknowledgments` section.
@@ -437,15 +448,13 @@ template<
   - [[bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) ([Intel Haswell](Intel)+, [AMD Zen3](https://en.wikipedia.org/wiki/Zen_3)+)] hardware instruction acceleration is faster than software emulation. (AMD Zen2 pext takes 18 cycles, is worth disabling hardware accelerated version)
   - For integral keys, use u32 or u64.
   - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
-  - Passing `string_view` will be slower and requires to set `MPH_PAGE_SIZE` properly when passing dynamically sized input. By default `MPH_PAGE_SIZE` is set to `4096u`. That's required as, by default, `mph` will try to optimize `memcpy` of input bytes.
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 (max available). That will make the lookup table smaller and it will avoid `shl` for getting the value.
-  - Consider using minimial required size for values. That will make the lookup table smaller.
-  - Experiment with different `config.key_in_set_probability` to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
-  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the hash config. That will align the underlying lookup table. That's done automatically if simd acceleration is used.
+  - Experiment with different `probability` values to optimize lookups. Especially benefitial if it's known that input keys are always valid (probability = 100) as it will avoid final `cmp` instruction.
+  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the lookup. That will align the underlying lookup table.
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
-    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated in software with a bit slower execution.
+    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated* with some limitations in software with a bit slower execution.
 
     ```cpp
     // bmi2
@@ -460,11 +469,11 @@ template<
     and     ecx, 248
     ```
 
-    `simd` instructions are only used if available and aren't required for `mph` to function properly.
+    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication.
 
 - How to disable `cmov` generation?
 
-    > Set `config.key_in_set_probability` to value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
+    > Set `probability` value different than `50` - meaning that input data is predictable in some way. Additionaly the following compiler options can be used.
 
     ```
     clang: -mllvm -x86-cmov-converter=false

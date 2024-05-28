@@ -307,6 +307,13 @@ inline constexpr auto conditional =
     } else if constexpr (probability == 100u) {
       return lhs;
     } else if constexpr (probability == 50u) {
+      constexpr auto underlying = [](const auto value) {
+        if constexpr (__is_enum(decltype(value))) {
+          return static_cast<__underlying_type(decltype(value))>(value);
+        } else {
+          return value;
+        }
+      };
       #if __has_builtin(__builtin_unpredictable)
         if (__builtin_is_constant_evaluated()) {
           return cond ? lhs : rhs;
@@ -314,13 +321,13 @@ inline constexpr auto conditional =
           return lhs;
         } else {
           return rhs;
-        }
+        } else
       #else
-      if constexpr (requires { lhs.value; }) {
-        return T(cond * lhs.value, cond);
-      } else {
-        return T(cond * lhs);
-      }
+        if constexpr (requires { lhs.value; }) {
+          return T(cond * underlying(lhs.value), cond);
+        } else {
+          return T(cond * underlying(lhs));
+        }
       #endif
     } else {
       return __builtin_expect_with_probability(cond, 1,
