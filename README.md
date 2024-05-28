@@ -251,7 +251,7 @@ lookup:
 
 - [feature] `lookup` customization point - https://godbolt.org/z/K3Yoa7c7W
 - [example] branchless dispatcher - https://godbolt.org/z/Yn911sfax
-- [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/bGa36GdMd
+- [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/r1x7jj16W
 
 ---
 
