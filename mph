@@ -474,7 +474,6 @@ struct lookup<entries, bucket_size, alignment> {
 template<
   const auto& entries,
   u32 bucket_size = [] {
-    if (entries.size() == 0u) return 0u;
     if (entries.size() <= 1024u) return 1u;
     if (entries.size() <= 2048u) return 4u;
     if (entries.size() <= 4096u) return 8u;

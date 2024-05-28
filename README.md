@@ -21,7 +21,7 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-- Fast* compilation times (see [compilation-times](#compilation))
+- Fast* compilation times (see [benchmarks](#benchmarks))
 - Limitations (see [FAQ](#faq))
 
 ### Requirements
@@ -104,8 +104,6 @@ lookup: # size = 2^popcount(mask) of {key, value}
   .zero   8
 ```
 
-#### llvm-mca (https://godbolt.org/z/PK58PEv46)
-
 ```cpp
 Iterations:        100
 Instructions:      600
@@ -123,18 +121,18 @@ Instruction Info:
 [3]: RThroughput
 [4]: MayLoad
 
-[1]    [2]    [3]    [4] Instructions:
- 1      1     0.25       mov   edx, 7
- 1      0     0.17       xor   eax, eax
- 1      3     1.00       pext  edx, edi, edx
- 1      1     0.25       mov   edx, edx
- 2      6     0.50    *  cmp   dword ptr [8*rdx + lookup<ids, 1u, 0u>], edi
- 2      6     0.50    *  cmove eax, dword ptr [8*rdx + lookup<ids, 1u, 0u>+4]
+[1]    [2]    [3]    [4]    Instructions:
+ 1      1     0.25          mov   edx, 7
+ 1      0     0.17          xor   eax, eax
+ 1      3     1.00          pext  edx, edi, edx
+ 1      1     0.25          mov   edx, edx
+ 2      6     0.50    *     cmp   dword ptr [8*rdx + lookup<ids, 1u, 0u>], edi
+ 2      6     0.50    *     cmove eax, dword ptr [8*rdx + lookup<ids, 1u, 0u>+4]
 ```
 
 ---
 
-### Performance (https://godbolt.org/z/4sM5b3rdx)
+### Performance (https://godbolt.org/z/cMbhdPoWd)
 
 ```cpp
 int main(int, const char** argv) {
@@ -172,7 +170,7 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/GYGs8hqK9)
+### Performance (https://godbolt.org/z/c361MvTMa)
 
 ```cpp
 int main(int, const char** argv) {
@@ -184,7 +182,9 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return *mph::lookup<symbols>(std::span<const char, 4>(argv[1], argv[1]+4));
+  return *mph::lookup<symbols>(
+    std::span<const char, 4>(argv[1], argv[1]+4)
+  );
 }
 ```
 
@@ -207,7 +207,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/joda6z9W9)
+### Performance (https://godbolt.org/z/j3ohjE5dP)
 
 ```cpp
 int main(int, const char** argv) {
@@ -218,12 +218,13 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  constexpr auto lookup = mph::lookup<symbols>;
-  constexpr auto probability = 100; // input keys are always valid
-                                    //  coming from the predefined set
+  static constexpr auto lookup = mph::lookup<symbols>;
+  static constexpr auto probability = 100; // input keys are always valid
 
-  return lookup.operator()<probability>(
-    std::span<const char, 4>(argv[1], argv[1]+4));
+  assert(symbols.find(std::string_view(argv[1])) != symbols.cend());
+  return *lookup.operator()<probability>(
+    std::span<const char, 4>(argv[1], argv[1]+4)
+  );
 }
 ```
 
@@ -245,121 +246,14 @@ lookup:
 
 ### Examples
 
-- [feature] custom `lookup` - https://godbolt.org/z/o9docf6q1
-- [example] branchless dispatcher - https://godbolt.org/z/a7arYzP6G
+- [feature] custom `lookup` - https://godbolt.org/z/K3Yoa7c7W
+- [example] branchless dispatcher - https://godbolt.org/z/Yn911sfax
 - [performance] enum name -
 
 ---
 
-<a name="compilation"></a>
-### Compilation-times
-
-> [include] (https://godbolt.org/z/zKPP8xPfG)
-
-```cpp
-time $CXX -x c++ -O3 -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS        # 0.017s
-time $CXX -x c++ -O3 -std=c++20 mph -c                                      # 0.056s
-```
-
-> [64 integral key/value pairs] (https://godbolt.org/z/c7zaxnxYb)
-
-```cpp
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.090s
-```
-
-> [1024 integral key/value pairs] (https://godbolt.org/z/8sr1z3zbs)
-
-```cpp
-time $CXX -std=c++20 -O3 mph_int_1024.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 0.132s
-time $CXX -std=c++20 -O3 mph_int_1024.cpp -c                                # 0.141s
-```
-
-> [6548 string key/value pairs] (https://godbolt.org/z/x3Y984MTj)
-
-```cpp
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c -DDISABLE_STATIC_ASSERT_TESTS  # 2.821s
-time $CXX -std=c++20 -O3 mph_str_6548.cpp -c                                # 2.912s
-```
-
 <a name="benchmarks"></a>
-### Benchmarks (https://github.com/boost-ext/mph/tree/benchmark)
-
-> `clang++ -std=c++20 -O3 -DNDEBUG -mbmi2 benchmark.cpp`
-
-```
-| ns/op |           op/s | err% |total | benchmark
-|------:|---------------:|-----:|-----:|:----------
-| 12.25 |  81,602,449.70 | 0.3% | 0.15 | `random_strings_5_len_4.std.map`
-|  5.56 | 179,750,906.50 | 0.2% | 0.07 | `random_strings_5_len_4.std.unordered_map`
-|  9.17 | 109,096,850.98 | 0.2% | 0.11 | `random_strings_5_len_4.boost.unordered_map`
-| 13.48 |  74,210,250.54 | 0.3% | 0.16 | `random_strings_5_len_4.boost.flat_map`
-|  7.70 | 129,942,965.18 | 0.3% | 0.09 | `random_strings_5_len_4.gperf`
-|  1.61 | 621,532,188.81 | 0.1% | 0.02 | `random_strings_5_len_4.mph`
-| 14.66 |  68,218,086.71 | 0.8% | 0.18 | `random_strings_5_len_8.std.map`
-| 13.45 |  74,365,239.56 | 0.2% | 0.16 | `random_strings_5_len_8.std.unordered_map`
-|  9.68 | 103,355,605.09 | 0.2% | 0.12 | `random_strings_5_len_8.boost.unordered_map`
-| 16.00 |  62,517,180.19 | 0.4% | 0.19 | `random_strings_5_len_8.boost.flat_map`
-|  7.70 | 129,809,356.36 | 0.3% | 0.09 | `random_strings_5_len_8.gperf`
-|  1.58 | 633,084,194.24 | 0.1% | 0.02 | `random_strings_5_len_8.mph`
-| 17.21 |  58,109,576.87 | 0.3% | 0.21 | `random_strings_6_len_2_5.std.map`
-| 15.28 |  65,461,167.99 | 0.2% | 0.18 | `random_strings_6_len_2_5.std.unordered_map`
-| 12.21 |  81,931,391.20 | 0.4% | 0.15 | `random_strings_6_len_2_5.boost.unordered_map`
-| 17.15 |  58,323,741.08 | 0.5% | 0.21 | `random_strings_6_len_2_5.boost.flat_map`
-|  7.94 | 125,883,197.55 | 0.5% | 0.09 | `random_strings_6_len_2_5.gperf`
-|  6.05 | 165,239,616.00 | 0.5% | 0.07 | `random_strings_6_len_2_5.mph`
-| 31.61 |  31,631,402.94 | 0.2% | 0.38 | `random_strings_100_len_8.std.map`
-| 15.32 |  65,280,594.09 | 0.2% | 0.18 | `random_strings_100_len_8.std.unordered_map`
-| 17.13 |  58,383,850.20 | 0.3% | 0.20 | `random_strings_100_len_8.boost.unordered_map`
-| 31.42 |  31,822,519.67 | 0.2% | 0.38 | `random_strings_100_len_8.boost.flat_map`
-|  8.04 | 124,397,773.85 | 0.2% | 0.10 | `random_strings_100_len_8.gperf`
-|  1.58 | 632,813,481.73 | 0.1% | 0.02 | `random_strings_100_len_8.mph`
-| 32.62 |  30,656,015.03 | 0.3% | 0.39 | `random_strings_100_len_1_8.std.map`
-| 19.34 |  51,697,107.73 | 0.5% | 0.23 | `random_strings_100_len_1_8.std.unordered_map`
-| 19.51 |  51,254,525.17 | 0.3% | 0.23 | `random_strings_100_len_1_8.boost.unordered_map`
-| 33.58 |  29,780,574.17 | 0.6% | 0.40 | `random_strings_100_len_1_8.boost.flat_map`
-| 13.06 |  76,577,037.07 | 0.7% | 0.16 | `random_strings_100_len_1_8.gperf`
-|  6.02 | 166,100,665.07 | 0.2% | 0.07 | `random_strings_100_len_1_8.mph`
-|  1.28 | 778,723,795.75 | 0.1% | 0.02 | `random_uints_5.mph`
-```
-
-> `g++ -std=c++20 -O3 -DNDEBUG -mbmi2 benchmark.cpp`
-
-```cpp
-| ns/op |           op/s | err% |total | benchmark
-|------:|---------------:|-----:|-----:|:----------
-| 12.28 |  81,460,330.38 | 0.9% | 0.15 | `random_strings_5_len_4.std.map`
-|  5.29 | 188,967,241.90 | 0.3% | 0.06 | `random_strings_5_len_4.std.unordered_map`
-|  9.69 | 103,163,192.67 | 0.2% | 0.12 | `random_strings_5_len_4.boost.unordered_map`
-| 13.56 |  73,756,333.08 | 0.4% | 0.16 | `random_strings_5_len_4.boost.flat_map`
-|  7.69 | 130,055,662.66 | 0.6% | 0.09 | `random_strings_5_len_4.gperf`
-|  1.39 | 718,910,252.82 | 0.1% | 0.02 | `random_strings_5_len_4.mph`
-| 14.26 |  70,103,007.82 | 2.4% | 0.17 | `random_strings_5_len_8.std.map`
-| 13.36 |  74,871,047.51 | 0.4% | 0.16 | `random_strings_5_len_8.std.unordered_map`
-|  9.82 | 101,802,074.00 | 0.3% | 0.12 | `random_strings_5_len_8.boost.unordered_map`
-| 15.97 |  62,621,571.95 | 0.3% | 0.19 | `random_strings_5_len_8.boost.flat_map`
-|  7.92 | 126,265,206.30 | 0.3% | 0.09 | `random_strings_5_len_8.gperf`
-|  1.40 | 713,596,376.62 | 0.4% | 0.02 | `random_strings_5_len_8.mph`
-| 15.98 |  62,576,142.34 | 0.5% | 0.19 | `random_strings_6_len_2_5.std.map`
-| 17.56 |  56,957,868.12 | 0.5% | 0.21 | `random_strings_6_len_2_5.std.unordered_map`
-| 11.68 |  85,637,378.45 | 0.3% | 0.14 | `random_strings_6_len_2_5.boost.unordered_map`
-| 17.25 |  57,965,732.68 | 0.6% | 0.21 | `random_strings_6_len_2_5.boost.flat_map`
-|  9.13 | 109,580,632.48 | 0.7% | 0.11 | `random_strings_6_len_2_5.gperf`
-|  7.17 | 139,563,745.72 | 0.4% | 0.09 | `random_strings_6_len_2_5.mph`
-| 30.20 |  33,117,522.76 | 0.7% | 0.36 | `random_strings_100_len_8.std.map`
-| 15.01 |  66,627,962.89 | 0.4% | 0.18 | `random_strings_100_len_8.std.unordered_map`
-| 16.79 |  59,559,414.60 | 0.6% | 0.20 | `random_strings_100_len_8.boost.unordered_map`
-| 31.36 |  31,884,629.57 | 0.8% | 0.38 | `random_strings_100_len_8.boost.flat_map`
-|  7.75 | 128,973,947.61 | 0.7% | 0.09 | `random_strings_100_len_8.gperf`
-|  1.50 | 667,041,673.54 | 0.1% | 0.02 | `random_strings_100_len_8.mph`
-| 30.92 |  32,340,612.08 | 0.4% | 0.37 | `random_strings_100_len_1_8.std.map`
-| 25.35 |  39,450,222.09 | 0.4% | 0.30 | `random_strings_100_len_1_8.std.unordered_map`
-| 19.76 |  50,609,820.90 | 0.2% | 0.24 | `random_strings_100_len_1_8.boost.unordered_map`
-| 32.39 |  30,878,018.77 | 0.6% | 0.39 | `random_strings_100_len_1_8.boost.flat_map`
-| 11.20 |  89,270,687.92 | 0.2% | 0.13 | `random_strings_100_len_1_8.gperf`
-|  7.17 | 139,471,159.67 | 0.5% | 0.09 | `random_strings_100_len_1_8.mph`
-|  1.93 | 519,047,110.39 | 0.3% | 0.02 | `random_uints_5.mph`
-```
+### Benchmarks (...)
 
 ---
 
@@ -396,7 +290,7 @@ template<
 #define MPH 3'0'0       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
-                        // keys if the read is close to the page boundry (usually >= 4096)
+                        // keys if the read is close to the page boundry (4096u)
 ```
 
 ---
@@ -412,7 +306,8 @@ template<
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
 
     ```cpp
-    template<const auto& entries> requires (entries.size() > 10'000)
+    template<const auto& entries>
+      requires (entries.size() > 10'000)
     inline constexpr auto mph::lookup = [](const auto& key) -> optional { ... }
     ```
 
@@ -461,13 +356,11 @@ template<
 
       k, v = lookup[pext(key, mask)]
 
-      if k == key: # policies (conditional, branchless, ...)
+      if k == key:
         return v
       else:
         return 0
     ```
-
-    Additional resources can be found in the `Acknowledgments` section.
 
 - How to tweak `hash` performance for my data/use case?
 
