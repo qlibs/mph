@@ -304,8 +304,8 @@ template<
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [benchmarks](#benchmarks)).
 
   - All keys have to fit into `std::uint128_t`, that includes strings.
-  - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `hash` function.
-  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined hash implementations), for example:
+  - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `lookup` function.
+  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined `lookup` implementations), for example:
 
     ```cpp
     template<const auto& entries>
@@ -364,7 +364,7 @@ template<
         return 0
     ```
 
-- How to tweak `hash` performance for my data/use case?
+- How to tweak `lookup` performance for my data/use case?
 
     > Always measure!
 
