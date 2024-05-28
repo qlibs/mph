@@ -18,7 +18,7 @@
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
 - Self verification upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
-- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/3zh43YTMd))
+- Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
 - Fast* compilation times (see [benchmarks](#benchmarks))
