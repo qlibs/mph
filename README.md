@@ -67,7 +67,7 @@ int main(int argc, const char**)
     std::pair{91u, 234u},
   };
 
-  static_assert(not mph::lookup<ids>(0)u);
+  static_assert(not mph::lookup<ids>(0u));
   static_assert(mph::lookup<ids>(54u));
   static_assert(mph::lookup<ids>(32u));
   static_assert(mph::lookup<ids>(64u));
