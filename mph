@@ -185,7 +185,7 @@ template<class T>
     } else {
       return static_cast<T>(data);
     }
-  } else if constexpr (requires { static_cast<T>(data); T(data); data + decltype(data){}; }) {
+  } else if constexpr (requires { static_cast<T>(data); } ) {
     return static_cast<T>(data);
   } else if constexpr (requires { data.data(); data.size(); }) {
     if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
