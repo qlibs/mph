@@ -10,7 +10,7 @@
 #pragma GCC system_header
 
 /**
- * [Minimal] Perfect hash library (https://github.com/boost-ext/mph)
+ * [Minimal] Static perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v3_0_0 {
 using u8   = __UINT8_TYPE__;
@@ -120,13 +120,13 @@ template<class T>
   __builtin_unreachable();
 }
 
-template<class T, u32 N>
+template<class T, u32 N, auto unknown = false>
 [[nodiscard]] constexpr auto mask(const auto& entries) noexcept -> T {
   utility::array<T, decltype(entries){}.size()> vs;
   T max{};
   u32 size{};
   for (auto i = 0u; i < vs.size(); ++i) {
-    if (not entries[i].first) break;
+    if (unknown and not entries[i].first) break;
     if (vs[i] = entries[i].first; vs[i] > max) max = vs[i];
     ++size;
   }
@@ -183,10 +183,10 @@ template<class T>
       }
       return t;
     } else {
-      return data;
+      return static_cast<T>(data);
     }
-  } else if constexpr (requires { T(data); data + decltype(data){}; }) {
-    return data;
+  } else if constexpr (requires { static_cast<T>(data); T(data); data + decltype(data){}; }) {
+    return static_cast<T>(data);
   } else if constexpr (requires { data.data(); data.size(); }) {
     if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
       return [&]<template<class, auto> class T_, class _, auto size>(T_<_, size>) {
@@ -254,7 +254,7 @@ template<const auto& entries>
 
     utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
     for (mapped_type i{}; i < entries.size(); ++i) {
-      entries_[i] = utility::compressed_pair{to<key_type>(entries[i]), mapped_type(i)};
+      entries_[i] = {to<key_type>(entries[i]), mapped_type(i)};
     }
     return entries_;
   } else if constexpr (requires (u32 n) { entries[n].first.size(); entries[n].second; }) { // array{pair{"a"sv, 1}, ...}
@@ -271,12 +271,11 @@ template<const auto& entries>
      else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
      else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
     }());
-
     using mapped_type = typename type_traits::value_type_t<entries>::second_type;
 
     utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
     for (auto i = 0; i < entries.size(); ++i) {
-      entries_[i] = utility::compressed_pair{to<key_type>(entries[i].first), entries[i].second};
+      entries_[i] = {to<key_type>(entries[i].first), entries[i].second};
     }
     return entries_;
   } else if constexpr (not requires (u32 n) { entries[n].first; entries[n].second; }) { // array{1, 2, 3, ...}
@@ -291,7 +290,16 @@ template<const auto& entries>
 
     utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
     for (auto i = 0u; i < entries.size(); ++i) {
-      entries_[i] = utility::compressed_pair{entries[i], mapped_type(i)};
+      entries_[i] = {entries[i], mapped_type(i)};
+    }
+    return entries_;
+  } else if constexpr (__is_enum(typename type_traits::value_type_t<entries>::first_type)) {
+    using key_type = __underlying_type(typename type_traits::value_type_t<entries>::first_type);
+    using mapped_type = typename type_traits::value_type_t<entries>::second_type;
+
+    utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
+    for (auto i = 0u; i < entries.size(); ++i) {
+      entries_[i] = {static_cast<key_type>(entries[i].first), entries[i].second};
     }
     return entries_;
   } else { // array{pair{1, 2}, ...}
@@ -456,7 +464,7 @@ struct lookup<entries, bucket_size, alignment> {
     typename metadata_type::second_type offset{};
     for (auto i = 0u; i < buckets.size(); ++i) {
       if (const auto& bucket = buckets[i]; bucket[0].first) {
-        const mask_type mask = detail::mask<key_type, 1u>(bucket);
+        const mask_type mask = detail::mask<key_type, 1u, true>(bucket);
         metadata[i] = {mask, offset};
         offset += (mask_type(1) << __builtin_popcountl(mask));
       }
@@ -470,11 +478,11 @@ struct lookup<entries, bucket_size, alignment> {
 } // namespace detail
 
 /**
- * Perfect hash lookup function
+ * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @param bucket_size how many buckets (default: deduce based on entries size)
- * @param alignment lookup table alignment (default: no alignment specified)
+ * @tparam bucket_size how many buckets (default: deduce based on entries size)
+ * @tparam alignment lookup table alignment (default: no alignment specified)
  */
 template<
   const auto& entries,
@@ -715,6 +723,24 @@ static_assert(([] {
           static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
           static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
         #endif
+      }
+
+      {
+        enum class color { red, green, blue };
+
+        constexpr const auto& entries = constant<array{
+          compressed_pair{color::red, 0},
+          compressed_pair{color::green, 1},
+          compressed_pair{color::blue, 2},
+        }>::value;
+
+        static_assert(mph::lookup<entries>(color::red));
+        static_assert(mph::lookup<entries>(color::green));
+        static_assert(mph::lookup<entries>(color::blue));
+
+        static_assert(0 == *mph::lookup<entries>(color::red));
+        static_assert(1 == *mph::lookup<entries>(color::green));
+        static_assert(2 == *mph::lookup<entries>(color::blue));
       }
     }
 
