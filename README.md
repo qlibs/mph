@@ -207,7 +207,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/j3ohjE5dP)
+### Performance (https://godbolt.org/z/cPMsMf9E8)
 
 ```cpp
 int main(int, const char** argv) {
@@ -221,7 +221,9 @@ int main(int, const char** argv) {
   static constexpr auto lookup = mph::lookup<symbols>;
   static constexpr auto probability = 100; // input keys are always valid
 
-  [[assume(symbols.find(std::string_view(argv[1])) != symbols.cend())]];
+  [[assume(std::find(symbols.cbegin(),
+                     symbols.cend(),
+                     std::string_view(argv[1])) != symbols.cend())]];
 
   return *lookup.operator()<probability>(
     std::span<const char, 4>(argv[1], argv[1]+4)
