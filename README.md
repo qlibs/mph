@@ -422,7 +422,7 @@ template<
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v2.5.0
+      GIT_TAG v3.0.0
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
