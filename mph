@@ -323,10 +323,12 @@ inline constexpr auto conditional =
             return value;
           }
         };
-        if constexpr (requires { lhs.value; }) {
+        if constexpr (requires { T(cond * underlying(lhs.value), cond); }) {
           return T(cond * underlying(lhs.value), cond);
-        } else {
+        } else if constexpr (requires { T(cond * underlying(lhs)); }) {
           return T(cond * underlying(lhs));
+        } else {
+          return __builtin_expect_with_probability(cond, 1, .5f) ? lhs : rhs;
         }
       #endif
     } else {
@@ -337,8 +339,9 @@ inline constexpr auto conditional =
 
 template<class T>
 struct optional {
+  using value_type = T;
   constexpr optional() = default;
-  constexpr optional(const T value, const bool flag = true) : value{value}, flag{flag} {}
+  constexpr optional(const auto value, const bool flag = true) : value(value), flag{flag} {}
   [[nodiscard]] constexpr operator bool() const { return flag; }
   [[nodiscard]] constexpr auto operator*() const { return value; }
   T value{};
@@ -648,13 +651,13 @@ static_assert(([] {
     using mph::u32;
 
     static_assert(not mph::detail::optional<u32>{});
-    static_assert(not mph::detail::optional<u32>{{}, false});
-    static_assert(mph::detail::optional{42});
-    static_assert(42 == *mph::detail::optional{42});
-    static_assert(mph::detail::optional{true});
-    static_assert(*mph::detail::optional{true});
-    static_assert(mph::detail::optional{false});
-    static_assert(not *mph::detail::optional{false});
+    static_assert(not mph::detail::optional<u32>{u32{}, false});
+    static_assert(mph::detail::optional<u32>{42});
+    static_assert(42 == *mph::detail::optional<u32>{42});
+    static_assert(mph::detail::optional<bool>{true});
+    static_assert(*mph::detail::optional<bool>{true});
+    static_assert(mph::detail::optional<bool>{false});
+    static_assert(not *mph::detail::optional<bool>{false});
   }
 
   // mph::lookup
