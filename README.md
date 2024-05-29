@@ -21,7 +21,7 @@
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
-- Fast* compilation times (see [benchmarks](#benchmarks))
+- Fast compilation times (see [compilation](#compilation))
 - Limitations (see [FAQ](#faq))
 
 ### Requirements
@@ -332,6 +332,23 @@ lookup:
 | 11.20 |  89,270,687.92 | 0.2% | 0.13 | `random_strings_100_len_1_8.gperf`
 |  7.17 | 139,471,159.67 | 0.5% | 0.09 | `random_strings_100_len_1_8.mph`
 |  1.93 | 519,047,110.39 | 0.3% | 0.02 | `random_uints_5.mph`
+```
+
+<a name="compilation"></a>
+### Compilation-times
+
+> [include] (https://godbolt.org/z/zKPP8xPfG)
+
+```cpp
+time $CXX -x c++ -O3 -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS        # 0.017s
+time $CXX -x c++ -O3 -std=c++20 mph -c                                      # 0.056s
+```
+
+> [64 integral keys] (https://godbolt.org/z/j8zWof5no)
+
+```cpp
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.090s
 ```
 
 ---
