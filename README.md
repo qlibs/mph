@@ -483,7 +483,7 @@ template<
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
-    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated* with some limitations in software with a bit slower execution.
+    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated* with some limitations with a bit slower execution.
 
     ```cpp
     // bmi2
