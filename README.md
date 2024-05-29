@@ -483,14 +483,18 @@ template<
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
-    > No, `mph` works on platforms without them. `bmi2` instructions can be emulated* with some limitations with a bit slower execution.
-
+    > `mph` works on platforms without `bmi2` instructions which can be emulated with some limitations* with a bit slower execution.
 
     ```cpp
     // bmi2
     mov     ecx, 789
     pext    ecx, eax, ecx
+    ```
 
+    - [intel.com/pext](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext)
+    - [uops.info/pext](https://uops.info/table.html?search=PEXT%20(R64%2C%20R64%2C%20R64)&cb_lat=on&cb_HSW=on&cb_BDW=on&cb_SKL=on&cb_CFL=on&cb_CLX=on&cb_ICL=on&cb_TGL=on&cb_RKL=on&cb_ZEN2=on&cb_ZEN3=on&cb_ZEN4=on&cb_measurements=on&cb_bmi=on)
+
+    ```cpp
     // no bmi2
     mov     ecx, eax
     and     ecx, 789
@@ -499,12 +503,7 @@ template<
     and     ecx, 248
     ```
 
-    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
-
-    > PEXT
-
-    - https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-    - https://uops.info/table.html?search=PEXT%20(R64%2C%20R64%2C%20R64)&cb_lat=on&cb_HSW=on&cb_BDW=on&cb_SKL=on&cb_CFL=on&cb_CLX=on&cb_ICL=on&cb_TGL=on&cb_RKL=on&cb_ZEN2=on&cb_ZEN3=on&cb_ZEN4=on&cb_measurements=on&cb_bmi=on
+    - (*) https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
 
 - How to disable `cmov` generation?
 
