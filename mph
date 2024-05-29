@@ -511,8 +511,14 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam n_buckets how many buckets (default: deduce based on entries size)
- * @tparam alignment lookup table alignment (default: no alignment specified)
+ * @tparam n_lookups how many lookups
+ *         (less lookups equals more speed but larger size)
+ *         [default: 1u <1u, 2u>]
+ * @tparam n_buckets how many buckets
+ *         (less buckets equals more speed but larger size)
+ *         [default: deduced based on entries size <1u,)]
+ * @tparam alignment lookup table alignment
+ *         [default: no alignment specified]
  */
 template<
   const auto& entries,
