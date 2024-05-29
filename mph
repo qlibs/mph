@@ -349,9 +349,9 @@ struct optional {
   bool flag{};
 };
 
-template<const auto& entries, u32 n_buckets, u32 n_lookups> struct lookup;
-template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() == 0u)
-struct lookup<entries, n_buckets, n_lookups> {
+template<const auto& entries, u32 bucket_size, u32 n_lookups> struct lookup;
+template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() == 0u)
+struct lookup<entries, bucket_size, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -364,8 +364,8 @@ struct lookup<entries, n_buckets, n_lookups> {
   }
 };
 
-template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() == 1u)
-struct lookup<entries, n_buckets, n_lookups> {
+template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() == 1u)
+struct lookup<entries, bucket_size, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -380,8 +380,8 @@ struct lookup<entries, n_buckets, n_lookups> {
   }
 };
 
-template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 1u)
-struct lookup<entries, n_buckets, n_lookups> {
+template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size == 1u and n_lookups == 1u)
+struct lookup<entries, bucket_size, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -402,12 +402,12 @@ struct lookup<entries, n_buckets, n_lookups> {
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
   utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
 
-template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 2u)
-struct lookup<entries, n_buckets, n_lookups> {
+template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size == 1u and n_lookups == 2u)
+struct lookup<entries, bucket_size, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -433,13 +433,13 @@ struct lookup<entries, n_buckets, n_lookups> {
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
   utility::array<lookup_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
 
 #if defined(__BMI2__)
-template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets > 1u and n_lookups == 2u)
-struct lookup<entries, n_buckets, n_lookups> {
+template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size > 1u and n_lookups == 2u)
+struct lookup<entries, bucket_size, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -467,9 +467,9 @@ struct lookup<entries, n_buckets, n_lookups> {
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
   static constexpr const auto buckets = [] {
-    utility::array<utility::array<key_mapped_type, n_buckets>, mask_type(1) << __builtin_popcountl(mask)> buckets{};
+    utility::array<utility::array<key_mapped_type, bucket_size>, mask_type(1) << __builtin_popcountl(mask)> buckets{};
     for (const auto& [key, value] : mappings) {
       auto& bucket = buckets[pext(key, mask)];
       auto n = 0u;
@@ -502,23 +502,23 @@ struct lookup<entries, n_buckets, n_lookups> {
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam n_buckets how many buckets
- *         (less buckets equals more speed but larger size)
+ * @tparam bucket_size size of the bucket
+ *         (smaller bucket size equals less lookups but larger size)
  *         [default: deduced based on entries size <1u,)]
  * @tparam n_lookups how many lookups
- *         (less lookups equals more speed but larger size)
- *         [default: deduced based on n_buckets <1u, 2u>]
+ *         (less lookups equals less memory access but larger size)
+ *         [default: deduced based on bucket_size <1u, 2u>]
  */
 template<
   const auto& entries,
-  u32 n_buckets = [](u32 size) {
+  u32 bucket_size = [](u32 size) {
     if (size <= 1024u) return 1u;
     if (size <= 2048u) return 4u;
     if (size <= 4096u) return 8u;
     return 16u;
   }(entries.size()),
-  u32 n_lookups = (n_buckets > 1u ? 2u : 1u)
-> inline constexpr detail::lookup<entries, n_buckets, n_lookups> lookup{};
+  u32 n_lookups = (bucket_size > 1u ? 2u : 1u)
+> inline constexpr detail::lookup<entries, bucket_size, n_lookups> lookup{};
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)

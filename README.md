@@ -249,7 +249,7 @@ lookup:
 
 ### Examples
 
-- [feature] `lookup` customization point - https://godbolt.org/z/K3Yoa7c7W
+- [feature] `lookup` customization point - https://godbolt.org/z/K9bdWGMdW
 - [example] branchless dispatcher - https://godbolt.org/z/Yn911sfax
 - [performance] `enum_to_string`/`string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/r1x7jj16W, https://godbolt.org/z/Kfff75x18
 
@@ -343,22 +343,22 @@ lookup:
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam n_buckets how many buckets
- *         (less buckets equals more speed but larger size)
+ * @tparam bucket_size size of the bucket
+ *         (smaller bucket size equals less lookups but larger size)
  *         [default: deduced based on entries size <1u,)]
  * @tparam n_lookups how many lookups
- *         (less lookups equals more speed but larger size)
- *         [default: deduced based on n_buckets <1u, 2u>]
+ *         (less lookups equals less memory access but larger size)
+ *         [default: deduced based on bucket_size <1u, 2u>]
  */
 template<
   const auto& entries,
-  u32 n_buckets = [](u32 size) {
+  u32 bucket_size = [](u32 size) {
     if (size <= 1024u) return 1u;
     if (size <= 2048u) return 4u;
     if (size <= 4096u) return 8u;
     return 16u;
   }(entries.size()),
-  u32 n_lookups = (n_buckets > 1u ? 2u : 1u)
+  u32 n_lookups = (bucket_size > 1u ? 2u : 1u)
 > inline constexpr auto lookup {
   template<u8 probability = 50u>
     requires (probability >= 0u and probability <= 100u)
@@ -385,7 +385,7 @@ template<
 
   - All keys have to fit into `std::uint128_t`, that includes strings.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `lookup` function.
-  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined `lookup` implementations), for example:
+  - In such case different backup policy should be used instead (which can be also used as customization point for user-defined `lookup` implementation), for example:
 
     ```cpp
     template<const auto& entries>
