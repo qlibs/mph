@@ -483,7 +483,7 @@ template<
 
 - Is support for [bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set) instructions required?
 
-    > `mph` works on platforms without `bmi2` instructions which can be emulated with some limitations* with a bit slower execution.
+    > `mph` works on platforms without `bmi2` instructions which can be emulated with some limitations(*) with a bit slower execution.
 
     ```cpp
     // bmi2
@@ -502,7 +502,7 @@ template<
     and     ecx, 248
     ```
 
-    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication\*
+    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication (*)
 
 - How to disable `cmov` generation?
 
