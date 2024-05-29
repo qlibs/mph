@@ -369,7 +369,7 @@ template<
 > Configuration
 
 ```cpp
-#define MPH 3'0'0       // Current library version (SemVer)
+#define MPH 3'0'1       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
                         // keys if the read is close to the page boundry (4096u)
@@ -502,7 +502,7 @@ template<
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY boost-ext/mph
-      GIT_TAG v3.0.0
+      GIT_TAG v3.0.1
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
