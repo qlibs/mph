@@ -358,9 +358,9 @@ struct optional {
   bool flag{};
 };
 
-template<const auto& entries, u32 bucket_size, u32 alignment> struct lookup;
-template<const auto& entries, u32 bucket_size, u32 alignment> requires (entries.size() == 0u)
-struct lookup<entries, bucket_size, alignment> {
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> struct lookup;
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() == 0u)
+struct lookup<entries, n_lookups, n_buckets, alignment> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -373,8 +373,8 @@ struct lookup<entries, bucket_size, alignment> {
   }
 };
 
-template<const auto& entries, u32 bucket_size, u32 alignment> requires (entries.size() == 1u)
-struct lookup<entries, bucket_size, alignment> {
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() == 1u)
+struct lookup<entries, n_lookups, n_buckets, alignment> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -389,8 +389,8 @@ struct lookup<entries, bucket_size, alignment> {
   }
 };
 
-template<const auto& entries, u32 bucket_size, u32 alignment> requires (entries.size() > 1u and bucket_size == 1u)
-struct lookup<entries, bucket_size, alignment> {
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 1u)
+struct lookup<entries, n_lookups, n_buckets, alignment> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -406,17 +406,49 @@ struct lookup<entries, bucket_size, alignment> {
   template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
     auto&& lhs = to<key_type>(key);
+    auto&& idx = lut[pext(lhs, mask)];
     auto&& [rhs, value] = lut[pext(lhs, mask)];
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
   type_traits::aligned_t<utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)>, alignment> lut{};
 };
 
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 2u)
+struct lookup<entries, n_lookups, n_buckets, alignment> {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using lookup_type = decltype([] {
+         if constexpr (entries.size() < u8{}-1u) { return u8{}; }
+    else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
+    else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
+    else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
+    else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
+  }());
+  using result_type = optional<mapped_type>;
+  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+
+  constexpr lookup() {
+    for (auto i = 0u; const auto& [key, value] : mappings) lut[pext(key, mask)] = i++;
+  }
+
+  template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    auto&& lhs = to<key_type>(key);
+    auto&& [rhs, value] = mappings[lut[pext(lhs, mask)]];
+    return conditional<probability>(lhs == rhs, result_type(value), result_type());
+  }
+
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
+  type_traits::aligned_t<utility::array<lookup_type, mask_type(1) << __builtin_popcountl(mask)>, alignment> lut{};
+};
+
 #if defined(__BMI2__)
-template<const auto& entries, u32 bucket_size, u32 alignment> requires (entries.size() > 1u and bucket_size > 1u)
-struct lookup<entries, bucket_size, alignment> {
+template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets > 1u)
+struct lookup<entries, n_lookups, n_buckets, alignment> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -444,9 +476,9 @@ struct lookup<entries, bucket_size, alignment> {
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
+  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
   static constexpr const auto buckets = [] {
-    utility::array<utility::array<key_mapped_type, bucket_size>, mask_type(1) << __builtin_popcountl(mask)> buckets{};
+    utility::array<utility::array<key_mapped_type, n_buckets>, mask_type(1) << __builtin_popcountl(mask)> buckets{};
     for (const auto& [key, value] : mappings) {
       auto& bucket = buckets[pext(key, mask)];
       auto n = 0u;
@@ -479,19 +511,20 @@ struct lookup<entries, bucket_size, alignment> {
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam bucket_size how many buckets (default: deduce based on entries size)
+ * @tparam n_buckets how many buckets (default: deduce based on entries size)
  * @tparam alignment lookup table alignment (default: no alignment specified)
  */
 template<
   const auto& entries,
-  u32 bucket_size = [](u32 size) {
+  u32 n_lookups = 1u,
+  u32 n_buckets = [](u32 size) {
     if (size <= 1024u) return 1u;
     if (size <= 2048u) return 4u;
     if (size <= 4096u) return 8u;
     return 16u;
   }(entries.size()),
   u32 alignment = u32{}
-> inline constexpr detail::lookup<entries, bucket_size, alignment> lookup{};
+> inline constexpr detail::lookup<entries, n_lookups, n_buckets, alignment> lookup{};
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
@@ -710,6 +743,11 @@ static_assert(([] {
         static_assert(87 == *mph::lookup<entries>(u32(42)));
         static_assert(100 == *mph::lookup<entries>(u32(100)));
 
+        static_assert(0 == *mph::lookup<entries, 1u, 2u>(u32(0)));
+        static_assert(2 == *mph::lookup<entries, 1u, 2u>(u32(4)));
+        static_assert(87 == *mph::lookup<entries, 1u, 2u>(u32(42)));
+        static_assert(100 == *mph::lookup<entries, 1u, 2u>(u32(100)));
+
         #if defined(__BMI2__)
         static_assert(not mph::lookup<entries, 2u>(u32(0)));
         static_assert(mph::lookup<entries, 2u>(u32(4)));
@@ -762,6 +800,11 @@ static_assert(([] {
         static_assert(1 == *mph::lookup<entries>("BTC"));
         static_assert(2 == *mph::lookup<entries>("ETH"));
         static_assert(3 == *mph::lookup<entries>("XRP"));
+
+        static_assert(0 == *mph::lookup<entries, 1u, 2u>(""));
+        static_assert(1 == *mph::lookup<entries, 1u, 2u>("BTC"));
+        static_assert(2 == *mph::lookup<entries, 1u, 2u>("ETH"));
+        static_assert(3 == *mph::lookup<entries, 1u, 2u>("XRP"));
 
         #if defined(__BMI2__)
         constexpr auto lookup = mph::lookup<entries, 2u>;

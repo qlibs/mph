@@ -343,12 +343,14 @@ lookup:
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam bucket_size how many buckets (default: deduce based on entries size)
+ * @tparam n_lookups how many lookups (less lookups = more speed but larger lookup table size) [default: 1u <1u, 2u>]
+ * @tparam n_buckets how many buckets [default: deduce based on entries size]
  * @tparam alignment lookup table alignment (default: no alignment specified)
  */
 template<
   const auto& entries,
-  u32 bucket_size = [](u32 size) {
+  u32 n_lookups = 1u,
+  u32 n_buckets = [](u32 size) {
     if (size <= 1024u) return 1u;
     if (size <= 2048u) return 4u;
     if (size <= 4096u) return 8u;
