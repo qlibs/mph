@@ -749,21 +749,21 @@ static_assert(([] {
         static_assert(87 == *mph::lookup<entries>(u32(42)));
         static_assert(100 == *mph::lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::lookup<entries, 1u, 2u>(u32(0)));
-        static_assert(2 == *mph::lookup<entries, 1u, 2u>(u32(4)));
-        static_assert(87 == *mph::lookup<entries, 1u, 2u>(u32(42)));
-        static_assert(100 == *mph::lookup<entries, 1u, 2u>(u32(100)));
-
-        #if defined(__BMI2__)
-        static_assert(not mph::lookup<entries, 2u>(u32(0)));
-        static_assert(mph::lookup<entries, 2u>(u32(4)));
-        static_assert(mph::lookup<entries, 2u>(u32(42)));
-        static_assert(mph::lookup<entries, 2u>(u32(100)));
-
         static_assert(0 == *mph::lookup<entries, 2u>(u32(0)));
         static_assert(2 == *mph::lookup<entries, 2u>(u32(4)));
         static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
         static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
+
+        #if defined(__BMI2__)
+        static_assert(not mph::lookup<entries, 2u>(u32(0)));
+        static_assert(mph::lookup<entries, 1u, 2u>(u32(4)));
+        static_assert(mph::lookup<entries, 1u, 2u>(u32(42)));
+        static_assert(mph::lookup<entries, 1u, 2u>(u32(100)));
+
+        static_assert(0 == *mph::lookup<entries, 1u, 2u>(u32(0)));
+        static_assert(2 == *mph::lookup<entries, 1u, 2u>(u32(4)));
+        static_assert(87 == *mph::lookup<entries, 1u, 2u>(u32(42)));
+        static_assert(100 == *mph::lookup<entries, 1u, 2u>(u32(100)));
         #endif
       }
 
@@ -807,10 +807,10 @@ static_assert(([] {
         static_assert(2 == *mph::lookup<entries>("ETH"));
         static_assert(3 == *mph::lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::lookup<entries, 1u, 2u>(""));
-        static_assert(1 == *mph::lookup<entries, 1u, 2u>("BTC"));
-        static_assert(2 == *mph::lookup<entries, 1u, 2u>("ETH"));
-        static_assert(3 == *mph::lookup<entries, 1u, 2u>("XRP"));
+        static_assert(0 == *mph::lookup<entries, 2u>(""));
+        static_assert(1 == *mph::lookup<entries, 2u>("BTC"));
+        static_assert(2 == *mph::lookup<entries, 2u>("ETH"));
+        static_assert(3 == *mph::lookup<entries, 2u>("XRP"));
 
         #if defined(__BMI2__)
         constexpr auto lookup = mph::lookup<entries, 2u>;
