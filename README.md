@@ -502,7 +502,7 @@ template<
     and     ecx, 248
     ```
 
-    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication (*)
+    > https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication\*
 
 - How to disable `cmov` generation?
 
