@@ -48,15 +48,6 @@ template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
 } // namespace utility
 
 namespace type_traits {
-template<class T, u32 alignment>
-struct aligned {
-  using type = struct alignas(alignment) a  : T { };
-  static_assert(alignment == alignof(type));
-};
-template<class T> struct aligned<T, 0u> { using type = T; };
-template<class T, u32 alignment>
-using aligned_t = typename aligned<T, alignment>::type;
-
 namespace detail {
 template <bool> struct conditional;
 template <> struct conditional<false> { template <class, class T> using fn = T; };
@@ -358,9 +349,9 @@ struct optional {
   bool flag{};
 };
 
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> struct lookup;
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() == 0u)
-struct lookup<entries, n_lookups, n_buckets, alignment> {
+template<const auto& entries, u32 n_buckets, u32 n_lookups> struct lookup;
+template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() == 0u)
+struct lookup<entries, n_buckets, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -373,8 +364,8 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
   }
 };
 
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() == 1u)
-struct lookup<entries, n_lookups, n_buckets, alignment> {
+template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() == 1u)
+struct lookup<entries, n_buckets, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -389,8 +380,8 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
   }
 };
 
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 1u)
-struct lookup<entries, n_lookups, n_buckets, alignment> {
+template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 1u)
+struct lookup<entries, n_buckets, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -412,11 +403,11 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
   }
 
   static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
-  type_traits::aligned_t<utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)>, alignment> lut{};
+  utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
 
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 2u)
-struct lookup<entries, n_lookups, n_buckets, alignment> {
+template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets == 1u and n_lookups == 2u)
+struct lookup<entries, n_buckets, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -443,12 +434,12 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
   }
 
   static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, n_buckets>(mappings)>;
-  type_traits::aligned_t<utility::array<lookup_type, mask_type(1) << __builtin_popcountl(mask)>, alignment> lut{};
+  utility::array<lookup_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
 
 #if defined(__BMI2__)
-template<const auto& entries, u32 n_lookups, u32 n_buckets, u32 alignment> requires (entries.size() > 1u and n_buckets > 1u)
-struct lookup<entries, n_lookups, n_buckets, alignment> {
+template<const auto& entries, u32 n_buckets, u32 n_lookups> requires (entries.size() > 1u and n_buckets > 1u and n_lookups == 2u)
+struct lookup<entries, n_buckets, n_lookups> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -490,7 +481,7 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
   }();
   static constexpr const auto metadata = [] {
     using metadata_type = utility::compressed_pair<mask_type, u32>;
-    type_traits::aligned_t<utility::array<metadata_type, buckets.size()>, alignment> metadata{};
+    utility::array<metadata_type, buckets.size()> metadata{};
     typename metadata_type::second_type offset{};
     for (auto i = 0u; i < buckets.size(); ++i) {
       if (const auto& bucket = buckets[i]; bucket[0].first) {
@@ -502,7 +493,7 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
     return utility::compressed_pair{metadata, offset};
   }();
 
-  type_traits::aligned_t<utility::array<key_mapped_type, metadata.second>, alignment> lut{};
+  utility::array<key_mapped_type, metadata.second> lut{};
 };
 #endif
 } // namespace detail
@@ -511,26 +502,23 @@ struct lookup<entries, n_lookups, n_buckets, alignment> {
  * Static perfect hash lookup function
  *
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam n_lookups how many lookups
- *         (less lookups equals more speed but larger size)
- *         [default: 1u <1u, 2u>]
  * @tparam n_buckets how many buckets
  *         (less buckets equals more speed but larger size)
  *         [default: deduced based on entries size <1u,)]
- * @tparam alignment lookup table alignment
- *         [default: no alignment specified]
+ * @tparam n_lookups how many lookups
+ *         (less lookups equals more speed but larger size)
+ *         [default: deduced based on n_buckets <1u, 2u>]
  */
 template<
   const auto& entries,
-  u32 n_lookups = 1u,
   u32 n_buckets = [](u32 size) {
     if (size <= 1024u) return 1u;
     if (size <= 2048u) return 4u;
     if (size <= 4096u) return 8u;
     return 16u;
   }(entries.size()),
-  u32 alignment = u32{}
-> inline constexpr detail::lookup<entries, n_lookups, n_buckets, alignment> lookup{};
+  u32 n_lookups = (n_buckets > 1u ? 2u : 1u)
+> inline constexpr detail::lookup<entries, n_buckets, n_lookups> lookup{};
 } // namespace mph
 
 #if not defined(DISABLE_STATIC_ASSERT_TESTS)
@@ -586,16 +574,6 @@ static_assert(([] {
     static_assert(42u == mph::type_traits::constant<42u>::value);
     static_assert('X' == mph::type_traits::constant<'X'>::value);
     static_assert('X' == mph::type_traits::constant_v<'X'>);
-  }
-
-  // mph::type_traits::aligned_t
-  {
-    using mph::utility::array;
-
-    static_assert(16u == alignof(mph::type_traits::aligned_t<array<int, 42>, 16u>));
-    static_assert(32u == alignof(mph::type_traits::aligned_t<array<int, 42>, 32u>));
-    static_assert(64u == alignof(mph::type_traits::aligned_t<array<int, 42>, 64u>));
-    static_assert(alignof(int) == alignof(mph::type_traits::aligned_t<array<int, 42>, 0u>));
   }
 
   // mph::type_traits::conditional_t
@@ -749,21 +727,21 @@ static_assert(([] {
         static_assert(87 == *mph::lookup<entries>(u32(42)));
         static_assert(100 == *mph::lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::lookup<entries, 2u>(u32(0)));
-        static_assert(2 == *mph::lookup<entries, 2u>(u32(4)));
-        static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
-        static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
-
-        #if defined(__BMI2__)
-        static_assert(not mph::lookup<entries, 2u>(u32(0)));
-        static_assert(mph::lookup<entries, 1u, 2u>(u32(4)));
-        static_assert(mph::lookup<entries, 1u, 2u>(u32(42)));
-        static_assert(mph::lookup<entries, 1u, 2u>(u32(100)));
-
         static_assert(0 == *mph::lookup<entries, 1u, 2u>(u32(0)));
         static_assert(2 == *mph::lookup<entries, 1u, 2u>(u32(4)));
         static_assert(87 == *mph::lookup<entries, 1u, 2u>(u32(42)));
         static_assert(100 == *mph::lookup<entries, 1u, 2u>(u32(100)));
+
+        #if defined(__BMI2__)
+        static_assert(not mph::lookup<entries, 2u>(u32(0)));
+        static_assert(mph::lookup<entries, 2u>(u32(4)));
+        static_assert(mph::lookup<entries, 2u>(u32(42)));
+        static_assert(mph::lookup<entries, 2u>(u32(100)));
+
+        static_assert(0 == *mph::lookup<entries, 2u>(u32(0)));
+        static_assert(2 == *mph::lookup<entries, 2u>(u32(4)));
+        static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
+        static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
         #endif
       }
 
@@ -807,10 +785,10 @@ static_assert(([] {
         static_assert(2 == *mph::lookup<entries>("ETH"));
         static_assert(3 == *mph::lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::lookup<entries, 2u>(""));
-        static_assert(1 == *mph::lookup<entries, 2u>("BTC"));
-        static_assert(2 == *mph::lookup<entries, 2u>("ETH"));
-        static_assert(3 == *mph::lookup<entries, 2u>("XRP"));
+        static_assert(0 == *mph::lookup<entries, 1u, 2u>(""));
+        static_assert(1 == *mph::lookup<entries, 1u, 2u>("BTC"));
+        static_assert(2 == *mph::lookup<entries, 1u, 2u>("ETH"));
+        static_assert(3 == *mph::lookup<entries, 1u, 2u>("XRP"));
 
         #if defined(__BMI2__)
         constexpr auto lookup = mph::lookup<entries, 2u>;
