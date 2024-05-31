@@ -68,6 +68,71 @@ template<auto v> struct constant {
 template<auto v> inline constexpr constant<v> constant_v{};
 } // namespace type_traits
 
+template<class T>
+[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
+  if (__builtin_is_constant_evaluated()) {
+    if constexpr (requires { data.data(); data.size(); }) {
+      T t{};
+      for (auto i = 0u; i < data.size(); ++i) {
+        t = (t << __CHAR_BIT__) | data.data()[data.size() - i - 1u];
+      }
+      return t;
+    } else if constexpr (requires(u32 n) { data[n]; }) {
+      u32 size{};
+      auto ptr = data;
+      while (*ptr++) size++;
+      T t{};
+      for (auto i = 0u; i < size; ++i) {
+        t = (t << __CHAR_BIT__) | data[size - i - 1u];
+      }
+      return t;
+    } else {
+      return static_cast<T>(data);
+    }
+  } else if constexpr (requires { static_cast<T>(data); } ) {
+    return static_cast<T>(data);
+  } else if constexpr (requires { data.data(); data.size(); }) {
+    if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
+      return [&]<template<class, auto> class T_, class _, auto size>(T_<_, size>) {
+        if constexpr (not size) {
+          return T{};
+        } else if constexpr (size == sizeof(T)) {
+          return *__builtin_bit_cast(const T*, data.data());
+        } else if constexpr (size <= sizeof(T)) {
+          T t{};
+          __builtin_memcpy(&t, data.data(), size);
+          return t;
+        }
+      }(data);
+    } else {
+      #if defined(MPH_PAGE_SIZE)
+      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
+        return [&data] [[gnu::cold]] { // unlikely path
+          T t{};
+          __builtin_memcpy(&t, data.data(), data.size());
+          return t;
+        }();
+      }
+      #endif
+      T t;
+      __builtin_memcpy(&t, data.data(), sizeof(t));
+      const auto index = T(data.size() * __CHAR_BIT__);
+      #if defined(__BMI2__)
+      if constexpr (sizeof(t) <= sizeof(u32)) {
+        return __builtin_ia32_bzhi_si(t, index);
+      } else if constexpr (sizeof(t) <= sizeof(u64)) {
+        return __builtin_ia32_bzhi_di(t, index);
+      } else
+      #endif
+        return t & ((T(1) << index) - T(1));
+    }
+  } else { // unsafe
+    return *reinterpret_cast<const T*>(data);
+  }
+  __builtin_unreachable();
+}
+
 namespace detail {
 template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
@@ -153,69 +218,6 @@ template<class T, u32 N, auto unknown = false>
     }
   }
   return mask;
-}
-
-template<class T>
-[[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
-  if (__builtin_is_constant_evaluated()) {
-    if constexpr (requires { data.data(); data.size(); }) {
-      T t{};
-      for (auto i = 0u; i < data.size(); ++i) {
-        t = (t << __CHAR_BIT__) | data.data()[data.size() - i - 1u];
-      }
-      return t;
-    } else if constexpr (requires(u32 n) { data[n]; }) {
-      u32 size{};
-      auto ptr = data;
-      while (*ptr++) size++;
-      T t{};
-      for (auto i = 0u; i < size; ++i) {
-        t = (t << __CHAR_BIT__) | data[size - i - 1u];
-      }
-      return t;
-    } else {
-      return static_cast<T>(data);
-    }
-  } else if constexpr (requires { static_cast<T>(data); } ) {
-    return static_cast<T>(data);
-  } else if constexpr (requires { data.data(); data.size(); }) {
-    if constexpr (requires { []<template<class, auto> class T_, class _, auto size>(T_<_, size>){}(data); }) {
-      return [&]<template<class, auto> class T_, class _, auto size>(T_<_, size>) {
-        if constexpr (not size) {
-          return T{};
-        } else if constexpr (size == sizeof(T)) {
-          return *__builtin_bit_cast(const T*, data.data());
-        } else if constexpr (size <= sizeof(T)) {
-          T t{};
-          __builtin_memcpy(&t, data.data(), size);
-          return t;
-        }
-      }(data);
-    } else {
-      #if defined(MPH_PAGE_SIZE)
-      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
-        return [&data] [[gnu::cold]] { // unlikely path
-          T t{};
-          __builtin_memcpy(&t, data.data(), data.size());
-          return t;
-        }();
-      }
-      #endif
-      T t;
-      __builtin_memcpy(&t, data.data(), sizeof(t));
-      const auto index = T(data.size() * __CHAR_BIT__);
-      #if defined(__BMI2__)
-      if constexpr (sizeof(t) <= sizeof(u32)) {
-        return __builtin_ia32_bzhi_si(t, index);
-      } else if constexpr (sizeof(t) <= sizeof(u64)) {
-        return __builtin_ia32_bzhi_di(t, index);
-      } else
-      #endif
-        return t & ((T(1) << index) - T(1));
-    }
-  }
-  __builtin_unreachable();
 }
 
 template<const auto& entries>
@@ -614,21 +616,6 @@ static_assert(([] {
     static_assert(0b11 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b11, 0}}));
   }
 
-  // mph::datail::to
-  {
-    using mph::u32;
-    using mph::utility::array;
-
-    static_assert(0 == mph::detail::to<u32>(0));
-    static_assert(42 == mph::detail::to<u32>(42));
-    static_assert(42u == mph::detail::to<u32>(42u));
-    static_assert(0 == mph::detail::to<u32>(""));
-    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::detail::to<u32>("AB"));
-    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::detail::to<u32>("ABC"));
-    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::detail::to<u32>(array{'A','B'}));
-    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::detail::to<u32>(array{'A','B','C'}));
-  }
-
   // mph::datail::mappings
   {
     using mph::u8;
@@ -686,6 +673,21 @@ static_assert(([] {
     static_assert(*mph::detail::optional<bool>{true});
     static_assert(mph::detail::optional<bool>{false});
     static_assert(not *mph::detail::optional<bool>{false});
+  }
+
+  // mph::to
+  {
+    using mph::u32;
+    using mph::utility::array;
+
+    static_assert(0 == mph::to<u32>(0));
+    static_assert(42 == mph::to<u32>(42));
+    static_assert(42u == mph::to<u32>(42u));
+    static_assert(0 == mph::to<u32>(""));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::to<u32>("AB"));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>("ABC"));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) == mph::to<u32>(array{'A','B'}));
+    static_assert((u32('A') << 0) + (u32('B') << __CHAR_BIT__) + (u32('C') << __CHAR_BIT__*2) == mph::to<u32>(array{'A','B','C'}));
   }
 
   // mph::lookup
@@ -769,7 +771,7 @@ static_assert(([] {
 
     // string-like
     {
-      using mph::detail::to;
+      using mph::to;
 
       {
         constexpr const auto& entries = constant<array{
