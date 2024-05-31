@@ -340,8 +340,8 @@ template<class T>
 struct optional {
   using value_type = T;
   constexpr optional() noexcept = default;
-  constexpr optional(const auto value, const bool flag = true) noexcept
-    : value{static_cast<T>(value)}, flag{flag}
+  constexpr optional(const value_type value, const bool flag = true) noexcept
+    : value(value), flag(flag)
   { }
   [[nodiscard]] constexpr operator bool() const noexcept { return flag; }
   [[nodiscard]] constexpr auto operator*() const noexcept { return value; }
@@ -674,6 +674,9 @@ static_assert(([] {
   // mph::detail::optional
   {
     using mph::u32;
+
+    static_assert(not [](auto value) { return requires { mph::detail::optional<u32>(value); }; }(""));
+    static_assert([](auto value) { return requires { mph::detail::optional<u32>(value); }; }(u32{}));
 
     static_assert(not mph::detail::optional<u32>{});
     static_assert(not mph::detail::optional<u32>{u32{}, false});
