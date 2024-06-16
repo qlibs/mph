@@ -17,7 +17,7 @@
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
-- Self verification upon include (can be disabled by `DISABLE_STATIC_ASSERT_TESTS` - see [FAQ](#faq))
+- Self verification upon include (can be disabled by `NTEST` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
@@ -342,15 +342,15 @@ lookup:
 > [include] (https://godbolt.org/z/zKPP8xPfG)
 
 ```cpp
-time $CXX -x c++ -O3 -std=c++20 mph -c -DDISABLE_STATIC_ASSERT_TESTS        # 0.017s
-time $CXX -x c++ -O3 -std=c++20 mph -c                                      # 0.056s
+time $CXX -x c++ -O3 -std=c++20 mph -c -DNTEST        # 0.017s
+time $CXX -x c++ -O3 -std=c++20 mph -c                # 0.056s
 ```
 
 > [64 integral keys] (https://godbolt.org/z/j8zWof5no)
 
 ```cpp
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DDISABLE_STATIC_ASSERT_TESTS    # 0.043s
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c                                  # 0.090s
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DNTEST    # 0.043s
+time $CXX -std=c++20 -O3 mph_int_64.cpp -c            # 0.090s
 ```
 
 ---
@@ -516,7 +516,7 @@ template<
 
 - How to disable running tests at compile-time?
 
-    > When `DISABLE_STATIC_ASSERT_TESTS` is defined static_asserts tests won't be executed upon inclusion.
+    > When `NTEST` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
 - How to integrate with CMake/CPM?

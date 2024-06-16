@@ -523,7 +523,7 @@ template<
 > inline constexpr detail::lookup<entries, bucket_size, n_lookups> lookup{};
 } // namespace mph
 
-#if not defined(DISABLE_STATIC_ASSERT_TESTS)
+#if not defined(NTEST)
 static_assert(([] {
   constexpr auto expect = [](bool cond) { if (not cond) { void failed(); failed(); } };
 
