@@ -267,7 +267,7 @@ template<const auto& entries>
     using mapped_type = typename type_traits::value_type_t<entries>::second_type;
 
     utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
-    for (auto i = 0; i < entries.size(); ++i) {
+    for (auto i = 0u; i < entries.size(); ++i) {
       entries_[i] = {to<key_type>(entries[i].first), entries[i].second};
     }
     return entries_;
@@ -399,7 +399,6 @@ struct lookup<entries, bucket_size, n_lookups> {
   template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
     auto&& lhs = to<key_type>(key);
-    auto&& idx = lut[pext(lhs, mask)];
     auto&& [rhs, value] = lut[pext(lhs, mask)];
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
