@@ -185,12 +185,12 @@ template<class T>
     // https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
     // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
     return [&] {
-      constexpr auto clz = sizeof(mask.value) <= sizeof(u32) ? __builtin_clz(mask) : __builtin_clzl(mask);
-      constexpr auto nbits = __builtin_popcountl(mask);
-      constexpr auto cbits = size - nbits - clz;
+      constexpr auto mbits = __builtin_popcountl(mask);
+      constexpr auto lz = sizeof(mask.value) <= sizeof(u32) ? __builtin_clz(mask) : __builtin_clzl(mask);
+      constexpr auto nbits = size - mbits - lz;
       constexpr auto coefficient = [&] {
         auto set = false;
-        auto dst = cbits;
+        auto dst = nbits;
         T result{};
         for (auto i = 0u; i < size; ++i) {
           const auto curr = ((T(1) << i) & mask) != T();
@@ -200,7 +200,7 @@ template<class T>
         }
         return result;
       }();
-      return ((a & mask) * coefficient >> cbits) & ((T(1) << nbits) - T(1));
+      return ((a & mask) * coefficient >> nbits) & ((T(1) << mbits) - T(1));
     }();
   }
   __builtin_unreachable();
@@ -221,8 +221,8 @@ template<class T, u32 N = 1u, auto unknown = false>
   }
   constexpr auto H = (N * vs.size()) << 1u;
   constexpr auto N_ = N - 1u;
-  const auto clz = sizeof(max) <= sizeof(u32) ? __builtin_clz(max) : __builtin_clzl(max);
-  const auto nbits = sizeof(T) * __CHAR_BIT__ - clz - 1u;
+  const auto lz = sizeof(max) <= sizeof(u32) ? __builtin_clz(max) : __builtin_clzl(max);
+  const auto nbits = sizeof(T) * __CHAR_BIT__ - lz - 1u;
   utility::array<T, H> hashed;
   T mask = ((T(1) << nbits) - 1u);
   for (int i = nbits; i >= 0; --i) {
@@ -344,71 +344,72 @@ struct lookup {
       return {};
     } else if constexpr (entries.size() == 1u)  {
       return mappings[0].second;
-    } else if constexpr (entries.size() < 16u) {
-      using T = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      constexpr auto nbits = []() -> T {
-        T max{};
-        for (const auto& [_, v]: mappings) if (v > max) max = v;
-        return max ? (sizeof(T) * __CHAR_BIT__ - __builtin_clz(max)) : T{};
-      }();
-      if constexpr (nbits * entries.size() <= sizeof(u32) * __CHAR_BIT__) {
-        constexpr auto mask = (1u << nbits) - 1u;
-        constexpr auto shift = sizeof(T) * __CHAR_BIT__ - nbits;
-        constexpr auto magic_lut = [mask, shift] {
-          struct { T magic; T lut; } result{};
-          random::pcg gen{};
-          auto max_tries = MaxTries;
-          while (max_tries--) {
-            result.magic = gen();
-            T lut{};
-            for (const auto& [k, v] : mappings) {
-              const auto shl = T(k * result.magic) >> shift;
-              if (shl >= sizeof(T) * __CHAR_BIT__) {
-                lut = {};
-                break;
-              }
-              lut |= v << shl;
-            }
-            if (lut) {
+    } else {
+      if constexpr (entries.size() < 16u) {
+        using T = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+        constexpr auto nbits = []() -> T {
+          T max{};
+          for (const auto& [_, v]: mappings) if (v > max) max = v;
+          return max ? (sizeof(T) * __CHAR_BIT__ - __builtin_clz(max)) : T{};
+        }();
+        if constexpr (nbits * entries.size() <= sizeof(u32) * __CHAR_BIT__) {
+          constexpr auto mask = (1u << nbits) - 1u;
+          constexpr auto shift = sizeof(T) * __CHAR_BIT__ - nbits;
+          constexpr auto magic_lut = [mask, shift] {
+            struct { T magic; T lut; } result{};
+            random::pcg gen{};
+            auto max_tries = MaxTries;
+            while (max_tries--) {
+              result.magic = gen();
+              T lut{};
               for (const auto& [k, v] : mappings) {
-                if (((lut >> (T(k * result.magic) >> shift)) & mask) != v) {
+                const auto shl = T(k * result.magic) >> shift;
+                if (shl >= sizeof(T) * __CHAR_BIT__) {
                   lut = {};
                   break;
                 }
+                lut |= v << shl;
+              }
+              if (lut) {
+                for (const auto& [k, v] : mappings) {
+                  if (((lut >> (T(k * result.magic) >> shift)) & mask) != v) {
+                    lut = {};
+                    break;
+                  }
+                }
+              }
+              if (lut) {
+                result.lut = lut;
+                return result;
               }
             }
-            if (lut) {
-              result.lut = lut;
-              return result;
-            }
-          }
-          return result;
-        }();
+            return result;
+          }();
 
-        if constexpr (magic_lut.lut) {
-          return (magic_lut.lut >> ((to<key_type>(key) * magic_lut.magic) >> shift)) & mask;
+          if constexpr (magic_lut.lut) {
+            return (magic_lut.lut >> ((to<key_type>(key) * magic_lut.magic) >> shift)) & mask;
+          }
         }
       }
+      return [&] {
+        using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+        constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
+        constexpr auto size = [mask] {
+          u32 max{};
+          for (const auto& [k, _] : mappings) {
+            const auto p = pext(k, mask);
+            if (p > max) max = p;
+          }
+          return max + 1u;
+        }();
+        static constexpr auto lut = [size, mask] {
+          utility::array<mapped_type, size> lut{};
+          for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
+          return lut;
+        }();
+        return lut[pext(to<key_type>(key), mask)];
+      }();
     }
-
-    return [&] {
-      using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-      constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
-      constexpr auto size = [mask] {
-        u32 max{};
-        for (const auto& [k, _] : mappings) {
-          const auto p = pext(k, mask);
-          if (p > max) max = p;
-        }
-        return max + 1u;
-      }();
-      static constexpr auto lut = [size, mask] {
-        utility::array<mapped_type, size> lut{};
-        for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
-        return lut;
-      }();
-      return lut[pext(to<key_type>(key), mask)];
-    }();
   }
 };
 
@@ -463,9 +464,9 @@ inline constexpr auto conditional =
     }
   };
 
-template<const auto& entries> struct try_lookup;
+template<const auto& entries> struct safe_lookup;
 template<const auto& entries> requires (entries.size() == 0u)
-struct try_lookup<entries> {
+struct safe_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -479,7 +480,7 @@ struct try_lookup<entries> {
 };
 
 template<const auto& entries> requires (entries.size() == 1u)
-struct try_lookup<entries> {
+struct safe_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -495,7 +496,7 @@ struct try_lookup<entries> {
 };
 
 template<const auto& entries> requires (entries.size() > 1u)
-struct try_lookup<entries> {
+struct safe_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -504,7 +505,7 @@ struct try_lookup<entries> {
   using result_type = optional<mapped_type>;
   using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
 
-  constexpr try_lookup() {
+  constexpr safe_lookup() {
     for (const auto& [key, value] : mappings) lut[pext(key, mask)] = {key, value};
   }
 
@@ -524,7 +525,7 @@ struct try_lookup<entries> {
  * Static perfect hash lookup function (may fail)
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr detail::try_lookup<entries> try_lookup{};
+template<const auto& entries> inline constexpr detail::safe_lookup<entries> safe_lookup{};
 
 /**
  * Static [minimal] perfect hash lookup function (can't fail)
@@ -778,7 +779,7 @@ static_assert(([] {
     }
   }
 
-  // mph::try_lookup
+  // mph::safe_lookup
   {
     using mph::u32;
     using mph::utility::compressed_pair;
@@ -792,7 +793,7 @@ static_assert(([] {
           compressed_pair{u32(4), u32(2)}
         }>::value;
 
-        auto lookup = mph::try_lookup<entries>;
+        auto lookup = mph::safe_lookup<entries>;
 
         static_assert(not lookup(u32(0)));
         static_assert(not lookup(u32(1)));
@@ -810,15 +811,15 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(not mph::try_lookup<entries>(u32(0)));
-        static_assert(mph::try_lookup<entries>(u32(4)));
-        static_assert(mph::try_lookup<entries>(u32(42)));
-        static_assert(mph::try_lookup<entries>(u32(100)));
+        static_assert(not mph::safe_lookup<entries>(u32(0)));
+        static_assert(mph::safe_lookup<entries>(u32(4)));
+        static_assert(mph::safe_lookup<entries>(u32(42)));
+        static_assert(mph::safe_lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::try_lookup<entries>(u32(0)));
-        static_assert(2 == *mph::try_lookup<entries>(u32(4)));
-        static_assert(87 == *mph::try_lookup<entries>(u32(42)));
-        static_assert(100 == *mph::try_lookup<entries>(u32(100)));
+        static_assert(0 == *mph::safe_lookup<entries>(u32(0)));
+        static_assert(2 == *mph::safe_lookup<entries>(u32(4)));
+        static_assert(87 == *mph::safe_lookup<entries>(u32(42)));
+        static_assert(100 == *mph::safe_lookup<entries>(u32(100)));
       }
 
       {
@@ -830,13 +831,13 @@ static_assert(([] {
           compressed_pair{color::blue, 2},
         }>::value;
 
-        static_assert(mph::try_lookup<entries>(color::red));
-        static_assert(mph::try_lookup<entries>(color::green));
-        static_assert(mph::try_lookup<entries>(color::blue));
+        static_assert(mph::safe_lookup<entries>(color::red));
+        static_assert(mph::safe_lookup<entries>(color::green));
+        static_assert(mph::safe_lookup<entries>(color::blue));
 
-        static_assert(0 == *mph::try_lookup<entries>(color::red));
-        static_assert(1 == *mph::try_lookup<entries>(color::green));
-        static_assert(2 == *mph::try_lookup<entries>(color::blue));
+        static_assert(0 == *mph::safe_lookup<entries>(color::red));
+        static_assert(1 == *mph::safe_lookup<entries>(color::green));
+        static_assert(2 == *mph::safe_lookup<entries>(color::blue));
       }
     }
 
@@ -851,15 +852,15 @@ static_assert(([] {
           compressed_pair{to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(not mph::try_lookup<entries>(""));
-        static_assert(mph::try_lookup<entries>("BTC"));
-        static_assert(mph::try_lookup<entries>("ETH"));
-        static_assert(mph::try_lookup<entries>("XRP"));
+        static_assert(not mph::safe_lookup<entries>(""));
+        static_assert(mph::safe_lookup<entries>("BTC"));
+        static_assert(mph::safe_lookup<entries>("ETH"));
+        static_assert(mph::safe_lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::try_lookup<entries>(""));
-        static_assert(1 == *mph::try_lookup<entries>("BTC"));
-        static_assert(2 == *mph::try_lookup<entries>("ETH"));
-        static_assert(3 == *mph::try_lookup<entries>("XRP"));
+        static_assert(0 == *mph::safe_lookup<entries>(""));
+        static_assert(1 == *mph::safe_lookup<entries>("BTC"));
+        static_assert(2 == *mph::safe_lookup<entries>("ETH"));
+        static_assert(3 == *mph::safe_lookup<entries>("XRP"));
       }
     }
   }

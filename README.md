@@ -1,7 +1,7 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/d8fbvcqd8">![build](https://img.shields.io/badge/build-blue.svg)</a>
-<a href="https://godbolt.org/z/Wq6bxf656">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
+<a href="https://godbolt.org/z/fs1E8rjvY">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/hj5PTeocs">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
 
@@ -28,7 +28,7 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
 
-### Hello world (https://godbolt.org/z/8Mn5h1jrc)
+### Hello world (https://godbolt.org/z/hj5PTeocs)
 
 ```cpp
 enum class color { red, green, blue };
@@ -39,23 +39,54 @@ constexpr auto colors = std::array{
   std::pair{"blue"sv, color::blue},
 };
 
-static_assert(color::green == *mph::try_lookup<colors>("green"));
-static_assert(color::red   == *mph::try_lookup<colors>("red"));
-static_assert(color::blue  == *mph::try_lookup<colors>("blue"));
+static_assert(color::green == mph::lookup<colors>("green"));
+static_assert(color::red   == mph::lookup<colors>("red"));
+static_assert(color::blue  == mph::lookup<colors>("blue"));
 
-std::print("{}", *mph::try_lookup<colors>("green"sv));
+std::print("{}", mph::lookup<colors>("green"sv)); // prints 1
 ```
 
-```
-$CXX -std=c++20                -DNDEBUG -O3 && ./a.out # prints 1
-$CXX -std=c++20 -mbmi2         -DNDEBUG -O3 && ./a.out # prints 1
-$CXX -std=c++20 -march=skylake -DNDEBUG -O3 && ./a.out # prints 1
+> `mph::lookup` assumes only valid input and returns mapped value direclty.
+> `mph::safe_lookup` doesn't assume valid input and returns optional mapped value.
+
+```cpp
+static_assert(not mph::safe_lookup<colors>("unknown"));
+
+static_assert(mph::safe_lookup<colors>("green"));
+static_assert(mph::safe_lookup<colors>("red"));
+static_assert(mph::safe_lookup<colors>("blue"));
+
+std::print("{}", *mph::safe_lookup<colors>("green"sv)); // prints 1
 ```
 
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/Wq6bxf656)
+### Performance (https://godbolt.org/z/ndr5K8n8K)
+
+```cpp
+int main(int argc, const char**)
+  static constexpr std::array ids{
+    std::pair{54u, 91u},
+    std::pair{64u, 324u},
+    std::pair{91u, 234u},
+  };
+
+  return mph::lookup<ids>(argc);
+}
+```
+
+```cpp
+main(int): // g++ -DNDEBUG -std=c++20 -O3
+  imull   $1275516394, %edi, %eax
+  shrl    $23, %eax
+  movl    $24029728, %ecx
+  shrxl   %eax, %ecx, %eax
+  andl    $511, %eax
+  retq
+```
+
+### Performance (https://godbolt.org/z/aE3117Goh)
 
 ```cpp
 int main(int argc, const char**)
@@ -66,73 +97,29 @@ int main(int argc, const char**)
     std::pair{234u, 64u},
     std::pair{91u, 234u},
   };
-
-  static_assert(not mph::try_lookup<ids>(0u));
-  static_assert(mph::try_lookup<ids>(54u));
-  static_assert(mph::try_lookup<ids>(32u));
-  static_assert(mph::try_lookup<ids>(64u));
-  static_assert(mph::try_lookup<ids>(234u));
-  static_assert(mph::try_lookup<ids>(91u));
-
-  return *mph::try_lookup<ids>(argc);
+  return mph::lookup<ids>(argc);
 }
 ```
 
 ```cpp
-main(int): // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
-  movl $7, %edx
-  xorl %eax, %eax
-  pext %edx, %edi, %edx
-  movl %edx, %edx
-  cmpl %edi, lookup(,%rdx,8)
-  cmove lookup+4(,%rdx,8), %eax
-  ret
-
-lookup: # size = 2^popcount(mask) of {key, value}
-  .long   64
-  .long   324
-  .zero   8
-  .long   234
-  .long   64
-  .long   91
-  .long   234
-  .long   324
-  .long   54
-  .zero   8
-  .long   54
-  .long   91
-  .zero   8
-```
-
-```cpp
-Iterations:        100
-Instructions:      600
-Total Cycles:      154
-Total uOps:        800
-
-Dispatch Width:    6
-uOps Per Cycle:    5.19
-IPC:               3.90
-Block RThroughput: 1.3
-
-Instruction Info:
-[1]: #uOps
-[2]: Latency
-[3]: RThroughput
-[4]: MayLoad
-
-[1]    [2]    [3]    [4]    Instructions:
- 1      1     0.25          mov   edx, 7
- 1      0     0.17          xor   eax, eax
- 1      3     1.00          pext  edx, edi, edx
- 1      1     0.25          mov   edx, edx
- 2      6     0.50    *     cmp   dword ptr [8*rdx + lookup<ids, 1u, 0u>], edi
- 2      6     0.50    *     cmove eax, dword ptr [8*rdx + lookup<ids, 1u, 0u>+4]
+main(int): // g++ -DNDEBUG -std=c++20 -O3
+  andl    $7, %edi
+  leaq    lookup(%rip), %rax
+  movl    (%rax,%rdi,4), %eax
+  retq
+lookup:
+ .long   324
+ .long   0
+ .long   64
+ .long   234
+ .long   54
+ .long   0
+ .long   91
 ```
 
 ---
 
-### Performance (https://godbolt.org/z/cMbhdPoWd)
+### Performance (https://godbolt.org/z/qMYehY11x)
 
 ```cpp
 int main(int, const char** argv) {
@@ -146,7 +133,7 @@ int main(int, const char** argv) {
     std::pair{"TSLA    "sv, 7},
   };
 
-  return *mph::try_lookup<symbols>(
+  return *mph::safe_lookup<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -170,7 +157,7 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/c361MvTMa)
+### Performance (https://godbolt.org/z/KccchW6G9)
 
 ```cpp
 int main(int, const char** argv) {
@@ -182,7 +169,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return *mph::try_lookup<symbols>(
+  return *mph::safe_lookup<symbols>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
 }
@@ -200,46 +187,6 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movzbl  4(%rdx,%rcx,8), %eax
   cmovnel %esi, %eax
   retq
-
-lookup:
-  ...
-```
-
----
-
-### Performance (https://godbolt.org/z/cPMsMf9E8)
-
-```cpp
-int main(int, const char** argv) {
-  static constexpr std::array symbols{
-    "BTC "sv, "ETH "sv, "BNB "sv,
-    "SOL "sv, "XRP "sv, "DOGE"sv,
-    "TON "sv, "ADA "sv, "SHIB"sv,
-    "AVAX"sv, "LINK"sv, "BCH "sv,
-  };
-
-  static constexpr auto lookup = mph::try_lookup<symbols>;
-  static constexpr auto probability = 100; // input keys are always valid
-
-  [[assume(std::find(symbols.cbegin(),
-                     symbols.cend(),
-                     std::string_view(argv[1])) != symbols.cend())]];
-
-  return *lookup.operator()<probability>(
-    std::span<const char, 4>(argv[1], argv[1]+4)
-  );
-}
-```
-
-```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
-  movq 8(%rsi), %rax
-  movl $789, %edx
-  movl (%rax), %eax
-  pext %edx, %eax, %eax
-  movl %eax, %eax
-  movzbl lookup(%rax), %eax
-  ret
 
 lookup:
   ...
@@ -363,7 +310,7 @@ namespace mph {
  * Static perfect hash lookup function (may fail)
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr /*unspecified*/ try_lookup{};
+template<const auto& entries> inline constexpr /*unspecified*/ safe_lookup{};
 
 /**
  * Static [minimal] perfect hash lookup function (can't fail)
@@ -376,7 +323,7 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
 > Configuration
 
 ```cpp
-#define MPH 3'0'1       // Current library version (SemVer)
+#define MPH 4'0'0       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
                         // keys if the read is close to the page boundry (4096u)
@@ -397,7 +344,7 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
     ```cpp
     template<const auto& entries>
       requires (entries.size() > 10'000)
-    inline constexpr auto mph::try_lookup = [](const auto& key) -> optional { ... }
+    inline constexpr auto mph::safe_lookup = [](const auto& key) -> optional { ... }
     ```
 
 - How `mph` is working under the hood?
@@ -406,33 +353,34 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
       The following is a pseudo code of the `lookup` algorithm for minimal perfect hash table.
 
     ```python
-    def lookup[entries: array](key : any)
+    def lookup[entries: array](key : any):
       # 0. magic and lut for entries [compile-time]
-      nbits = sizeof(u32) * CHAR_BIT - std::countl_zero(max(entries.second))
+      nbits = sizeof(u32) * CHAR_BIT - countl_zero(max(entries.second))
       mask = (1u << nbits) - 1u;
-      shift = sizeof(u32) * __CHAR_BIT__ - nbits;
+      shift = sizeof(u32) * CHAR_BIT - nbits;
       max_tries = 1'000'000
-      random::pcg gen{};
       lut = {};
       while (max_tries--)
-        magic = gen();
-        for (k, v : entries) lut |= v << (k * magic >> shift);
-        for (k, v : entries)
+        magic = rand();
+        for k, v in entries:
+          lut |= v << (k * magic >> shift);
+
+        for k, v in entries:
           if (((lut >> (k * magic >> shift) & mask) != v)
             lut = {}
             break
 
       if not lut:
-        return try_lookup[entries](key);
+        return safe_lookup[entries](key);
 
       # 1. lookup [run-time]
       return (lut >> ((key * magic) >> shift)) & mask;
     ```
 
-      The following is a pseudo code of the `try_lookup` algorithm for perfect hash table.
+    > The following is a pseudo code of the `safe_lookup` algorithm for perfect hash table.
 
     ```python
-    def try_lookup[entries: array](key : any):
+    def safe_lookup[entries: array](key : any):
       # 0. find mask which uniquely identifies all keys [compile-time]
       mask = 0b111111...
 
