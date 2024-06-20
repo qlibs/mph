@@ -78,7 +78,7 @@ int main(int argc, const char**)
 ```
 
 ```cpp
-main(int): // g++ -DNDEBUG -std=c++20 -O3
+main: // g++ -DNDEBUG -std=c++20 -O3
   imull   $1275516394, %edi, %eax
   shrl    $23, %eax
   movl    $24029728, %ecx
@@ -103,7 +103,7 @@ int main(int argc, const char**)
 ```
 
 ```cpp
-main(int): // g++ -DNDEBUG -std=c++20 -O3
+main: // g++ -DNDEBUG -std=c++20 -O3
   andl    $7, %edi
   leaq    lookup(%rip), %rax
   movl    (%rax,%rdi,4), %eax
