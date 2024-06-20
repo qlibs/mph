@@ -308,16 +308,18 @@ time $CXX -std=c++20 -O3 mph_int_64.cpp -c            # 0.090s
 ```cpp
 namespace mph {
 /**
- * Static perfect hash lookup function (may fail)
+ * Static perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr /*unspecified*/ safe_lookup{};
+template<const auto& entries>
+[[nodiscard]] constexpr auto safe_lookup(const auto& key) -> optional;
 
 /**
- * Static [minimal] perfect hash lookup function (can't fail)
+ * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
+template<const auto& entries>
+[[nodiscard]] constexpr auto lookup(const auto& key);
 } // namespace mph
 ```
 

@@ -518,13 +518,13 @@ struct safe_lookup<entries> {
 } // namespace detail
 
 /**
- * Static perfect hash lookup function (may fail)
+ * Static perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries> inline constexpr detail::safe_lookup<entries> safe_lookup{};
 
 /**
- * Static [minimal] perfect hash lookup function (can't fail)
+ * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries> inline constexpr detail::lookup<entries> lookup{};
