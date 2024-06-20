@@ -361,8 +361,8 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
       shift = sizeof(u32) * CHAR_BIT - nbits;
       max_tries = 1'000'000
       lut = {};
-      while (max_tries--)
-        magic = rand();
+      while (max_tries--):
+        magic = rand()
         for k, v in entries:
           lut |= v << (k * magic >> shift);
 
