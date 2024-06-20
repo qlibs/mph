@@ -39,11 +39,11 @@ constexpr auto colors = std::array{
   std::pair{"blue"sv, color::blue},
 };
 
-static_assert(color::green == *mph::try$lookup<colors>("green"));
-static_assert(color::red   == *mph::try$lookup<colors>("red"));
-static_assert(color::blue  == *mph::try$lookup<colors>("blue"));
+static_assert(color::green == *mph::try_lookup<colors>("green"));
+static_assert(color::red   == *mph::try_lookup<colors>("red"));
+static_assert(color::blue  == *mph::try_lookup<colors>("blue"));
 
-std::print("{}", *mph::try$lookup<colors>("green"sv));
+std::print("{}", *mph::try_lookup<colors>("green"sv));
 ```
 
 ```
@@ -67,14 +67,14 @@ int main(int argc, const char**)
     std::pair{91u, 234u},
   };
 
-  static_assert(not mph::try$lookup<ids>(0u));
-  static_assert(mph::try$lookup<ids>(54u));
-  static_assert(mph::try$lookup<ids>(32u));
-  static_assert(mph::try$lookup<ids>(64u));
-  static_assert(mph::try$lookup<ids>(234u));
-  static_assert(mph::try$lookup<ids>(91u));
+  static_assert(not mph::try_lookup<ids>(0u));
+  static_assert(mph::try_lookup<ids>(54u));
+  static_assert(mph::try_lookup<ids>(32u));
+  static_assert(mph::try_lookup<ids>(64u));
+  static_assert(mph::try_lookup<ids>(234u));
+  static_assert(mph::try_lookup<ids>(91u));
 
-  return *mph::try$lookup<ids>(argc);
+  return *mph::try_lookup<ids>(argc);
 }
 ```
 
@@ -146,7 +146,7 @@ int main(int, const char** argv) {
     std::pair{"TSLA    "sv, 7},
   };
 
-  return *mph::try$lookup<symbols>(
+  return *mph::try_lookup<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -182,7 +182,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return *mph::try$lookup<symbols>(
+  return *mph::try_lookup<symbols>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
 }
@@ -218,7 +218,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  static constexpr auto lookup = mph::try$lookup<symbols>;
+  static constexpr auto lookup = mph::try_lookup<symbols>;
   static constexpr auto probability = 100; // input keys are always valid
 
   [[assume(std::find(symbols.cbegin(),
@@ -363,7 +363,7 @@ namespace mph {
  * Static perfect hash lookup function (may fail)
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr /*unspecified*/ try$lookup{};
+template<const auto& entries> inline constexpr /*unspecified*/ try_lookup{};
 
 /**
  * Static [minimal] perfect hash lookup function (can't fail)
@@ -397,7 +397,7 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
     ```cpp
     template<const auto& entries>
       requires (entries.size() > 10'000)
-    inline constexpr auto mph::try$lookup = [](const auto& key) -> optional { ... }
+    inline constexpr auto mph::try_lookup = [](const auto& key) -> optional { ... }
     ```
 
 - How `mph` is working under the hood?
@@ -408,7 +408,7 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
     ```python
     ```
 
-      The following is a pseudo code of the `try$lookup` algorithm for perfect hash table.
+      The following is a pseudo code of the `try_lookup` algorithm for perfect hash table.
 
     ```python
     def lookup[kv: array](key : any):

@@ -461,9 +461,9 @@ inline constexpr auto conditional =
     }
   };
 
-template<const auto& entries> struct try$lookup;
+template<const auto& entries> struct try_lookup;
 template<const auto& entries> requires (entries.size() == 0u)
-struct try$lookup<entries> {
+struct try_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -477,7 +477,7 @@ struct try$lookup<entries> {
 };
 
 template<const auto& entries> requires (entries.size() == 1u)
-struct try$lookup<entries> {
+struct try_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -493,7 +493,7 @@ struct try$lookup<entries> {
 };
 
 template<const auto& entries> requires (entries.size() > 1u)
-struct try$lookup<entries> {
+struct try_lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -502,7 +502,7 @@ struct try$lookup<entries> {
   using result_type = optional<mapped_type>;
   using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
 
-  constexpr try$lookup() {
+  constexpr try_lookup() {
     for (const auto& [key, value] : mappings) lut[pext(key, mask)] = {key, value};
   }
 
@@ -522,7 +522,7 @@ struct try$lookup<entries> {
  * Static perfect hash lookup function (may fail)
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr detail::try$lookup<entries> try$lookup{};
+template<const auto& entries> inline constexpr detail::try_lookup<entries> try_lookup{};
 
 /**
  * Static [minimal] perfect hash lookup function (can't fail)
@@ -776,7 +776,7 @@ static_assert(([] {
     }
   }
 
-  // mph::try$lookup
+  // mph::try_lookup
   {
     using mph::u32;
     using mph::utility::compressed_pair;
@@ -790,7 +790,7 @@ static_assert(([] {
           compressed_pair{u32(4), u32(2)}
         }>::value;
 
-        auto lookup = mph::try$lookup<entries>;
+        auto lookup = mph::try_lookup<entries>;
 
         static_assert(not lookup(u32(0)));
         static_assert(not lookup(u32(1)));
@@ -808,15 +808,15 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(not mph::try$lookup<entries>(u32(0)));
-        static_assert(mph::try$lookup<entries>(u32(4)));
-        static_assert(mph::try$lookup<entries>(u32(42)));
-        static_assert(mph::try$lookup<entries>(u32(100)));
+        static_assert(not mph::try_lookup<entries>(u32(0)));
+        static_assert(mph::try_lookup<entries>(u32(4)));
+        static_assert(mph::try_lookup<entries>(u32(42)));
+        static_assert(mph::try_lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::try$lookup<entries>(u32(0)));
-        static_assert(2 == *mph::try$lookup<entries>(u32(4)));
-        static_assert(87 == *mph::try$lookup<entries>(u32(42)));
-        static_assert(100 == *mph::try$lookup<entries>(u32(100)));
+        static_assert(0 == *mph::try_lookup<entries>(u32(0)));
+        static_assert(2 == *mph::try_lookup<entries>(u32(4)));
+        static_assert(87 == *mph::try_lookup<entries>(u32(42)));
+        static_assert(100 == *mph::try_lookup<entries>(u32(100)));
       }
 
       {
@@ -828,13 +828,13 @@ static_assert(([] {
           compressed_pair{color::blue, 2},
         }>::value;
 
-        static_assert(mph::try$lookup<entries>(color::red));
-        static_assert(mph::try$lookup<entries>(color::green));
-        static_assert(mph::try$lookup<entries>(color::blue));
+        static_assert(mph::try_lookup<entries>(color::red));
+        static_assert(mph::try_lookup<entries>(color::green));
+        static_assert(mph::try_lookup<entries>(color::blue));
 
-        static_assert(0 == *mph::try$lookup<entries>(color::red));
-        static_assert(1 == *mph::try$lookup<entries>(color::green));
-        static_assert(2 == *mph::try$lookup<entries>(color::blue));
+        static_assert(0 == *mph::try_lookup<entries>(color::red));
+        static_assert(1 == *mph::try_lookup<entries>(color::green));
+        static_assert(2 == *mph::try_lookup<entries>(color::blue));
       }
     }
 
@@ -849,15 +849,15 @@ static_assert(([] {
           compressed_pair{to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(not mph::try$lookup<entries>(""));
-        static_assert(mph::try$lookup<entries>("BTC"));
-        static_assert(mph::try$lookup<entries>("ETH"));
-        static_assert(mph::try$lookup<entries>("XRP"));
+        static_assert(not mph::try_lookup<entries>(""));
+        static_assert(mph::try_lookup<entries>("BTC"));
+        static_assert(mph::try_lookup<entries>("ETH"));
+        static_assert(mph::try_lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::try$lookup<entries>(""));
-        static_assert(1 == *mph::try$lookup<entries>("BTC"));
-        static_assert(2 == *mph::try$lookup<entries>("ETH"));
-        static_assert(3 == *mph::try$lookup<entries>("XRP"));
+        static_assert(0 == *mph::try_lookup<entries>(""));
+        static_assert(1 == *mph::try_lookup<entries>("BTC"));
+        static_assert(2 == *mph::try_lookup<entries>("ETH"));
+        static_assert(3 == *mph::try_lookup<entries>("XRP"));
       }
     }
   }
