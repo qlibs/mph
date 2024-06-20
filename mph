@@ -50,16 +50,6 @@ struct array {
   T data_[Size];
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
-
-// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-template<u32 Size> [[nodiscard]] constexpr auto fnv(const char (&str)[Size]) noexcept -> u32 {
-  u32 hash = 2166136261u;
-  for (auto i = 0u; i < Size; ++i) {
-    hash ^= str[i];
-    hash *= 16777619u;
-  }
-  return hash;
-}
 } // namespace utility
 
 namespace type_traits {
@@ -86,10 +76,6 @@ template<auto v> inline constexpr constant<v> constant_v{};
 namespace random {
 // https://www.pcg-random.org
 struct pcg {
-  constexpr pcg(u64 seed = utility::fnv(__TIME__), u64 increment = 1442695040888963407u) noexcept
-    : state{seed + increment}
-  { }
-
   [[nodiscard]] constexpr auto operator()() noexcept -> u32 {
     u64 old_state = state;
     state = old_state * 6364136223846793005u + increment;
@@ -97,9 +83,8 @@ struct pcg {
     u32 rot = u32(old_state >> 59u);
     return (xor_shifted >> rot) | (xor_shifted << ((-rot) & 31));
   }
-
-  u64 state{};
-  u64 increment{};
+  u64 increment{1442695040888963407u};
+  u64 state{0x4d595df4d0f33173 + increment};
 };
 } // namespace random
 
@@ -349,7 +334,7 @@ struct lookup {
   using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
   using result_type = mapped_type;
 
-  template<u32 MaxTries = 100'000>
+  template<u32 MaxTries = 100'000, class TRandom = random::pcg>
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
     if constexpr (entries.size() == 0u)  {
       return {};
@@ -368,10 +353,10 @@ struct lookup {
           constexpr auto shift = sizeof(T) * __CHAR_BIT__ - nbits;
           constexpr auto magic_lut = [mask, shift] {
             struct { T magic; T lut; } result{};
-            random::pcg gen{};
             auto max_tries = MaxTries;
+            TRandom random{};
             while (max_tries--) {
-              result.magic = gen();
+              result.magic = random();
               T lut{};
               for (const auto& [k, v] : mappings) {
                 const auto shl = T(k * result.magic) >> shift;
@@ -598,14 +583,6 @@ static_assert(([] {
     static_assert(42u == mph::type_traits::constant<42u>::value);
     static_assert('X' == mph::type_traits::constant<'X'>::value);
     static_assert('X' == mph::type_traits::constant_v<'X'>);
-  }
-
-  // mph::utility::fnv
-  {
-    static_assert(mph::utility::fnv("foo") == mph::utility::fnv("foo"));
-    static_assert(mph::utility::fnv("bar") == mph::utility::fnv("bar"));
-    static_assert(mph::utility::fnv("bar") != mph::utility::fnv("foo"));
-    static_assert(mph::utility::fnv("foo") != mph::utility::fnv("bar"));
   }
 
   // mph::type_traits::conditional_t
