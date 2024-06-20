@@ -17,7 +17,7 @@
 
 - Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
-- Self verification upon include (can be disabled by `NTEST` - see [FAQ](#faq))
+- Self verification upon include (can be disabled by `-DNTEST` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
@@ -363,7 +363,7 @@ template<const auto& entries>
       shift = sizeof(u32) * CHAR_BIT - nbits;
       max_tries = 1'000'000
       lut = {};
-      while (max_tries--):
+      while max_tries--:
         magic = rand()
         for k, v in entries:
           lut |= v << (k * magic >> shift);
@@ -400,11 +400,12 @@ template<const auto& entries>
       assert unique(masked)
       assert std::countl_zero(mask)
 
-      lookup = array(typeof(entries[0]), 2^popcount(mask)) # static constexpr + alignment
+      # 1. create lookup table [compile-time]
+      lookup = array(typeof(entries[0]), 2^popcount(mask))
       for k, v in entries:
         lookup[pext(k, mask)] = (k, v)
 
-      # 1. lookup [run-time] / if key is a string convert to integral first (memcpy)
+      # 2. lookup [run-time] # if key is a string convert to integral first (memcpy)
         # word: 00101011
         # mask: 11100001
         #    &: 000____1
@@ -481,7 +482,7 @@ template<const auto& entries>
 
 - How to disable running tests at compile-time?
 
-    > When `NTEST` is defined static_asserts tests won't be executed upon inclusion.
+    > When `-DNTEST` is defined static_asserts tests won't be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
 - How to integrate with CMake/CPM?
