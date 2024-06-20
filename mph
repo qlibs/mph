@@ -338,7 +338,7 @@ struct lookup {
   using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
   using result_type = mapped_type;
 
-  template<u32 MaxTries = 10'000>
+  template<u32 MaxTries = 100'000>
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
     if constexpr (entries.size() == 0u)  {
       return {};

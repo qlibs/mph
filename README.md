@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/fs1E8rjvY">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/dqK8Mj5xx">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/hj5PTeocs">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -47,6 +47,7 @@ std::print("{}", mph::lookup<colors>("green"sv)); // prints 1
 ```
 
 > `mph::lookup` assumes only valid input and returns mapped value direclty.
+
 > `mph::safe_lookup` doesn't assume valid input and returns optional mapped value.
 
 ```cpp
@@ -196,11 +197,11 @@ lookup:
 
 ### Examples
 
-- [feature] `lookup` customization point - https://godbolt.org/z/K9bdWGMdW
+- [feature] `lookup` customization point - https://godbolt.org/z/dnc4x8hTT
 - [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
-- [example] branchless dispatcher - https://godbolt.org/z/Yn911sfax
-- [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/r1x7jj16W
-- [performance] `string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/Kfff75x18
+- [example] branchless dispatcher - https://godbolt.org/z/Y36h36has
+- [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/qaj8nqfeM
+- [performance] `string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/9E7nns8PW
 
 ---
 
