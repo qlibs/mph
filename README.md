@@ -406,30 +406,51 @@ template<const auto& entries> inline constexpr /*unspecified*/ lookup{};
       The following is a pseudo code of the `lookup` algorithm for minimal perfect hash table.
 
     ```python
+    def lookup[entries: array](key : any)
+      # 0. magic and lut for entries [compile-time]
+      nbits = sizeof(u32) * CHAR_BIT - std::countl_zero(max(entries.second))
+      mask = (1u << nbits) - 1u;
+      shift = sizeof(u32) * __CHAR_BIT__ - nbits;
+      max_tries = 1'000'000
+      random::pcg gen{};
+      lut = {};
+      while (max_tries--)
+        magic = gen();
+        for (k, v : entries) lut |= v << (k * magic >> shift);
+        for (k, v : entries)
+          if (((lut >> (k * magic >> shift) & mask) != v)
+            lut = {}
+            break
+
+      if not lut:
+        return try_lookup[entries](key);
+
+      # 1. lookup [run-time]
+      return (lut >> ((key * magic) >> shift)) & mask;
     ```
 
       The following is a pseudo code of the `try_lookup` algorithm for perfect hash table.
 
     ```python
-    def lookup[kv: array](key : any):
+    def try_lookup[entries: array](key : any):
       # 0. find mask which uniquely identifies all keys [compile-time]
-      mask = ~typeof(kv[0][0]) # 0b111111...
+      mask = 0b111111...
 
       for i in range(nbits(mask)):
         masked = []
         mask.unset(i)
 
-        for k, v in kv:
+        for k, v in entries:
           masked.append(k & mask)
 
         if not unique(masked):
           mask.set(i)
 
       assert unique(masked)
-      assert mask != ~typeof(kv[0][0])
+      assert std::countl_zero(mask)
 
-      lookup = array(typeof(kv[0]), 2^popcount(mask)) # static constexpr + alignment
-      for k, v in kv:
+      lookup = array(typeof(entries[0]), 2^popcount(mask)) # static constexpr + alignment
+      for k, v in entries:
         lookup[pext(k, mask)] = (k, v)
 
       # 1. lookup [run-time] / if key is a string convert to integral first (memcpy)
