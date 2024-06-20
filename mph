@@ -143,7 +143,7 @@ template<class T>
       #if defined(MPH_PAGE_SIZE)
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
       if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
-        return [&data] [[gnu::cold]] { // unlikely path
+        return [&data] [[gnu::cold]] {
           T t{};
           __builtin_memcpy(&t, data.data(), data.size());
           return t;
@@ -151,7 +151,10 @@ template<class T>
       }
       #endif
       T t;
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Warray-bounds"
       __builtin_memcpy(&t, data.data(), sizeof(t));
+      #pragma GCC diagnostic pop
       const auto index = T(data.size() * __CHAR_BIT__);
       #if defined(__BMI2__)
       if constexpr (sizeof(t) <= sizeof(u32)) {
@@ -163,7 +166,10 @@ template<class T>
         return t & ((T(1) << index) - T(1));
     }
   } else { // unsafe
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Warray-bounds"
     return *reinterpret_cast<const T*>(data);
+    #pragma GCC diagnostic pop
   }
   __builtin_unreachable();
 }
