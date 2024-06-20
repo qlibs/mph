@@ -391,22 +391,24 @@ struct lookup {
       }
     }
 
-    using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-    constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
-    constexpr auto size = [mask] {
-      u32 max{};
-      for (const auto& [k, _] : mappings) {
-        const auto p = pext(k, mask);
-        if (p > max) max = p;
-      }
-      return max + 1u;
+    return [&] {
+      using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+      constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
+      constexpr auto size = [mask] {
+        u32 max{};
+        for (const auto& [k, _] : mappings) {
+          const auto p = pext(k, mask);
+          if (p > max) max = p;
+        }
+        return max + 1u;
+      }();
+      static constexpr auto lut = [size, mask] {
+        utility::array<mapped_type, size> lut{};
+        for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
+        return lut;
+      }();
+      return lut[pext(to<key_type>(key), mask)];
     }();
-    constexpr auto lut = [size, mask] {
-      utility::array<mapped_type, size> lut{};
-      for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
-      return lut;
-    }();
-    return lut[pext(to<key_type>(key), mask)];
   }
 };
 
