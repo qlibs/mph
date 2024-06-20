@@ -6,7 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 3'0'1 // SemVer
+#define MPH 4'0'0 // SemVer
 #pragma GCC system_header
 
 /**
@@ -45,6 +45,16 @@ struct array {
   T data_[Size];
 };
 template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
+
+// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+template<u32 Size> [[nodiscard]] constexpr auto fnv(const char (&str)[Size]) noexcept -> u32 {
+  u32 hash = 2166136261u;
+  for (auto i = 0u; i < Size; ++i) {
+    hash ^= str[i];
+    hash *= 16777619u;
+  }
+  return hash;
+}
 } // namespace utility
 
 namespace type_traits {
@@ -67,6 +77,26 @@ template<auto v> struct constant {
 };
 template<auto v> inline constexpr constant<v> constant_v{};
 } // namespace type_traits
+
+namespace random {
+// https://www.pcg-random.org
+struct pcg {
+  constexpr pcg(u64 seed = utility::fnv(__TIME__), u64 increment = 1442695040888963407u) noexcept
+    : state{seed + increment}
+  { }
+
+  [[nodiscard]] constexpr auto operator()() noexcept -> u32 {
+    u64 old_state = state;
+    state = old_state * 6364136223846793005u + increment;
+    u32 xor_shifted = ((old_state >> 18u) ^ old_state) >> 27u;
+    u32 rot = u32(old_state >> 59u);
+    return (xor_shifted >> rot) | (xor_shifted << ((-rot) & 31));
+  }
+
+  u64 state{};
+  u64 increment{};
+};
+} // namespace random
 
 template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
@@ -176,7 +206,7 @@ template<class T>
   __builtin_unreachable();
 }
 
-template<class T, u32 N, auto unknown = false>
+template<class T, u32 N = 1u, auto unknown = false>
 [[nodiscard]] constexpr auto mask(const auto& entries) noexcept -> T {
   utility::array<T, decltype(entries){}.size()> vs;
   T max{};
@@ -300,6 +330,99 @@ template<const auto& entries>
   }
 }
 
+template<const auto& entries>
+struct lookup {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using result_type = mapped_type;
+
+  template<u32 MaxTries = 10'000>
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    if constexpr (entries.size() == 0u)  {
+      return {};
+    } else if constexpr (entries.size() == 1u)  {
+      return mappings[0].second;
+    } else if constexpr (entries.size() < 16u) {
+      using T = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+      constexpr auto nbits = []() -> T {
+        T max{};
+        for (const auto& [_, v]: mappings) if (v > max) max = v;
+        return max ? (sizeof(T) * __CHAR_BIT__ - __builtin_clz(max)) : T{};
+      }();
+      if constexpr (nbits * entries.size() <= sizeof(u32) * __CHAR_BIT__) {
+        constexpr auto mask = (1u << nbits) - 1u;
+        constexpr auto shift = sizeof(T) * __CHAR_BIT__ - nbits;
+        constexpr auto magic_lut = [mask, shift] {
+          struct { T magic; T lut; } result{};
+          random::pcg gen{};
+          auto max_tries = MaxTries;
+          while (max_tries--) {
+            result.magic = gen();
+            T lut{};
+            for (const auto& [k, v] : mappings) {
+              const auto shl = T(k * result.magic) >> shift;
+              if (shl >= sizeof(T) * __CHAR_BIT__) {
+                lut = {};
+                break;
+              }
+              lut |= v << shl;
+            }
+            if (lut) {
+              for (const auto& [k, v] : mappings) {
+                if (((lut >> (T(k * result.magic) >> shift)) & mask) != v) {
+                  lut = {};
+                  break;
+                }
+              }
+            }
+            if (lut) {
+              result.lut = lut;
+              return result;
+            }
+          }
+          return result;
+        }();
+
+        if constexpr (magic_lut.lut) {
+          return (magic_lut.lut >> ((to<key_type>(key) * magic_lut.magic) >> shift)) & mask;
+        }
+      }
+    }
+
+    using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+    constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
+    constexpr auto size = [mask] {
+      u32 max{};
+      for (const auto& [k, _] : mappings) {
+        const auto p = pext(k, mask);
+        if (p > max) max = p;
+      }
+      return max + 1u;
+    }();
+    constexpr auto lut = [size, mask] {
+      utility::array<mapped_type, size> lut{};
+      for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
+      return lut;
+    }();
+    return lut[pext(to<key_type>(key), mask)];
+  }
+};
+
+template<class T>
+struct optional {
+  using value_type = T;
+  constexpr optional() noexcept = default;
+  constexpr optional(const value_type value, const bool flag = true) noexcept
+    : value(value), flag(flag)
+  { }
+  [[nodiscard]] constexpr operator bool() const noexcept { return flag; }
+  [[nodiscard]] constexpr auto operator*() const noexcept { return value; }
+  T value{};
+  bool flag{};
+};
+
 template<u8 probability> requires (probability >= 0u and probability <= 100u)
 inline constexpr auto conditional =
   []<class T>([[maybe_unused]] const bool cond, [[maybe_unused]] const T lhs, [[maybe_unused]] const T rhs) {
@@ -338,22 +461,9 @@ inline constexpr auto conditional =
     }
   };
 
-template<class T>
-struct optional {
-  using value_type = T;
-  constexpr optional() noexcept = default;
-  constexpr optional(const value_type value, const bool flag = true) noexcept
-    : value(value), flag(flag)
-  { }
-  [[nodiscard]] constexpr operator bool() const noexcept { return flag; }
-  [[nodiscard]] constexpr auto operator*() const noexcept { return value; }
-  T value{};
-  bool flag{};
-};
-
-template<const auto& entries, u32 bucket_size, u32 n_lookups> struct lookup;
-template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() == 0u)
-struct lookup<entries, bucket_size, n_lookups> {
+template<const auto& entries> struct try$lookup;
+template<const auto& entries> requires (entries.size() == 0u)
+struct try$lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -366,8 +476,8 @@ struct lookup<entries, bucket_size, n_lookups> {
   }
 };
 
-template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() == 1u)
-struct lookup<entries, bucket_size, n_lookups> {
+template<const auto& entries> requires (entries.size() == 1u)
+struct try$lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -382,8 +492,8 @@ struct lookup<entries, bucket_size, n_lookups> {
   }
 };
 
-template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size == 1u and n_lookups == 1u)
-struct lookup<entries, bucket_size, n_lookups> {
+template<const auto& entries> requires (entries.size() > 1u)
+struct try$lookup<entries> {
   static constexpr auto mappings = detail::mappings<entries>();
 
   using key_type = typename type_traits::value_type_t<mappings>::first_type;
@@ -392,7 +502,7 @@ struct lookup<entries, bucket_size, n_lookups> {
   using result_type = optional<mapped_type>;
   using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
 
-  constexpr lookup() {
+  constexpr try$lookup() {
     for (const auto& [key, value] : mappings) lut[pext(key, mask)] = {key, value};
   }
 
@@ -403,123 +513,22 @@ struct lookup<entries, bucket_size, n_lookups> {
     return conditional<probability>(lhs == rhs, result_type(value), result_type());
   }
 
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
+  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
   utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
-
-template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size == 1u and n_lookups == 2u)
-struct lookup<entries, bucket_size, n_lookups> {
-  static constexpr auto mappings = detail::mappings<entries>();
-
-  using key_type = typename type_traits::value_type_t<mappings>::first_type;
-  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
-  using lookup_type = decltype([] {
-         if constexpr (entries.size() < u8{}-1u) { return u8{}; }
-    else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
-    else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
-    else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
-    else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
-  }());
-  using result_type = optional<mapped_type>;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-
-  constexpr lookup() {
-    for (auto i = 0u; const auto& [key, value] : mappings) lut[pext(key, mask)] = i++;
-  }
-
-  template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    auto&& lhs = to<key_type>(key);
-    auto&& [rhs, value] = mappings[lut[pext(lhs, mask)]];
-    return conditional<probability>(lhs == rhs, result_type(value), result_type());
-  }
-
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
-  utility::array<lookup_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
-};
-
-#if defined(__BMI2__)
-template<const auto& entries, u32 bucket_size, u32 n_lookups> requires (entries.size() > 1u and bucket_size > 1u and n_lookups == 2u)
-struct lookup<entries, bucket_size, n_lookups> {
-  static constexpr auto mappings = detail::mappings<entries>();
-
-  using key_type = typename type_traits::value_type_t<mappings>::first_type;
-  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
-  using result_type = optional<mapped_type>;
-  using key_mapped_type = utility::compressed_pair<key_type, mapped_type>;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-
-  constexpr lookup() {
-    for (auto i = 0u; i < buckets.size(); ++i) {
-      if (const auto& [mask, offset] = metadata.first[i]; buckets[i][0].first) {
-        for (const auto& [key, value] : buckets[i]) {
-          if (not key) break;
-          lut[offset + pext(key, mask)] = {key, value};
-        }
-      }
-    }
-  }
-
-  template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    auto&& lhs = to<key_type>(key);
-    auto&& [mask, offset] = metadata.first[pext(lhs, lookup::mask)];
-    auto&& [rhs, value] = *static_cast<const key_mapped_type*>(&lut[offset + pext(lhs, mask)]);
-    return conditional<probability>(lhs == rhs, result_type(value), result_type());
-  }
-
-  static constexpr const auto mask = type_traits::constant_v<detail::mask<mask_type, bucket_size>(mappings)>;
-  static constexpr const auto buckets = [] {
-    utility::array<utility::array<key_mapped_type, bucket_size>, mask_type(1) << __builtin_popcountl(mask)> buckets{};
-    for (const auto& [key, value] : mappings) {
-      auto& bucket = buckets[pext(key, mask)];
-      auto n = 0u;
-      while (bucket[n].first) n++;
-      bucket[n] = {key, value};
-    }
-    return buckets;
-
-  }();
-  static constexpr const auto metadata = [] {
-    using metadata_type = utility::compressed_pair<mask_type, u32>;
-    utility::array<metadata_type, buckets.size()> metadata{};
-    typename metadata_type::second_type offset{};
-    for (auto i = 0u; i < buckets.size(); ++i) {
-      if (const auto& bucket = buckets[i]; bucket[0].first) {
-        const mask_type mask = detail::mask<key_type, 1u, true>(bucket);
-        metadata[i] = {mask, offset};
-        offset += (mask_type(1) << __builtin_popcountl(mask));
-      }
-    }
-    return utility::compressed_pair{metadata, offset};
-  }();
-
-  utility::array<key_mapped_type, metadata.second> lut{};
-};
-#endif
 } // namespace detail
 
 /**
- * Static perfect hash lookup function
- *
+ * Static perfect hash lookup function (may fail)
  * @tparam entries constexpr array of keys or key/value pairs
- * @tparam bucket_size size of the bucket
- *         (smaller bucket size equals less lookups but larger size)
- *         [default: deduced based on entries size <1u,)]
- * @tparam n_lookups how many lookups
- *         (less lookups equals less memory access but larger size)
- *         [default: deduced based on bucket_size <1u, 2u>]
  */
-template<
-  const auto& entries,
-  u32 bucket_size = [](u32 size) {
-    if (size <= 1024u) return 1u;
-    if (size <= 2048u) return 4u;
-    if (size <= 4096u) return 8u;
-    return 16u;
-  }(entries.size()),
-  u32 n_lookups = (bucket_size > 1u ? 2u : 1u)
-> inline constexpr detail::lookup<entries, bucket_size, n_lookups> lookup{};
+template<const auto& entries> inline constexpr detail::try$lookup<entries> try$lookup{};
+
+/**
+ * Static [minimal] perfect hash lookup function (can't fail)
+ * @tparam entries constexpr array of keys or key/value pairs
+ */
+template<const auto& entries> inline constexpr detail::lookup<entries> lookup{};
 } // namespace mph
 
 #if not defined(NTEST)
@@ -577,6 +586,14 @@ static_assert(([] {
     static_assert('X' == mph::type_traits::constant_v<'X'>);
   }
 
+  // mph::utility::fnv
+  {
+    static_assert(mph::utility::fnv("foo") == mph::utility::fnv("foo"));
+    static_assert(mph::utility::fnv("bar") == mph::utility::fnv("bar"));
+    static_assert(mph::utility::fnv("bar") != mph::utility::fnv("foo"));
+    static_assert(mph::utility::fnv("foo") != mph::utility::fnv("bar"));
+  }
+
   // mph::type_traits::conditional_t
   {
     using mph::u32;
@@ -584,6 +601,12 @@ static_assert(([] {
 
     static_assert(sizeof(u32) == sizeof(mph::type_traits::conditional_t<true, u32, u64>));
     static_assert(sizeof(u64) == sizeof(mph::type_traits::conditional_t<false, u32, u64>));
+  }
+
+  // mph::random
+  {
+    mph::random::pcg random{};
+    expect(random() != random());
   }
 
   // mph::detail::pext
@@ -705,6 +728,70 @@ static_assert(([] {
 
         auto lookup = mph::lookup<entries>;
 
+        static_assert(2 == lookup(u32(4)));
+      }
+
+      {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{u32(4), u32(2)},
+          compressed_pair{u32(42), u32(87)},
+          compressed_pair{u32(100), u32(100)},
+        }>::value;
+
+        static_assert(2 == mph::lookup<entries>(u32(4)));
+        static_assert(87 == mph::lookup<entries>(u32(42)));
+        static_assert(100 == mph::lookup<entries>(u32(100)));
+      }
+
+      {
+        enum class color { red, green, blue };
+
+        constexpr const auto& entries = constant<array{
+          compressed_pair{color::red, 0},
+          compressed_pair{color::green, 1},
+          compressed_pair{color::blue, 2},
+        }>::value;
+
+        static_assert(0 == mph::lookup<entries>(color::red));
+        static_assert(1 == mph::lookup<entries>(color::green));
+        static_assert(2 == mph::lookup<entries>(color::blue));
+      }
+    }
+
+    // string-like
+    {
+      using mph::to;
+
+      {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{to<u32>("BTC"), 1},
+          compressed_pair{to<u32>("ETH"), 2},
+          compressed_pair{to<u32>("XRP"), 3},
+        }>::value;
+
+        static_assert(1 == mph::lookup<entries>("BTC"));
+        static_assert(2 == mph::lookup<entries>("ETH"));
+        static_assert(3 == mph::lookup<entries>("XRP"));
+      }
+    }
+  }
+
+  // mph::try$lookup
+  {
+    using mph::u32;
+    using mph::utility::compressed_pair;
+    using mph::utility::array;
+    using mph::type_traits::constant;
+
+    // integral
+    {
+      {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{u32(4), u32(2)}
+        }>::value;
+
+        auto lookup = mph::try$lookup<entries>;
+
         static_assert(not lookup(u32(0)));
         static_assert(not lookup(u32(1)));
         static_assert(lookup(u32(4)));
@@ -721,32 +808,15 @@ static_assert(([] {
           compressed_pair{u32(100), u32(100)},
         }>::value;
 
-        static_assert(not mph::lookup<entries>(u32(0)));
-        static_assert(mph::lookup<entries>(u32(4)));
-        static_assert(mph::lookup<entries>(u32(42)));
-        static_assert(mph::lookup<entries>(u32(100)));
+        static_assert(not mph::try$lookup<entries>(u32(0)));
+        static_assert(mph::try$lookup<entries>(u32(4)));
+        static_assert(mph::try$lookup<entries>(u32(42)));
+        static_assert(mph::try$lookup<entries>(u32(100)));
 
-        static_assert(0 == *mph::lookup<entries>(u32(0)));
-        static_assert(2 == *mph::lookup<entries>(u32(4)));
-        static_assert(87 == *mph::lookup<entries>(u32(42)));
-        static_assert(100 == *mph::lookup<entries>(u32(100)));
-
-        static_assert(0 == *mph::lookup<entries, 1u, 2u>(u32(0)));
-        static_assert(2 == *mph::lookup<entries, 1u, 2u>(u32(4)));
-        static_assert(87 == *mph::lookup<entries, 1u, 2u>(u32(42)));
-        static_assert(100 == *mph::lookup<entries, 1u, 2u>(u32(100)));
-
-        #if defined(__BMI2__)
-        static_assert(not mph::lookup<entries, 2u>(u32(0)));
-        static_assert(mph::lookup<entries, 2u>(u32(4)));
-        static_assert(mph::lookup<entries, 2u>(u32(42)));
-        static_assert(mph::lookup<entries, 2u>(u32(100)));
-
-        static_assert(0 == *mph::lookup<entries, 2u>(u32(0)));
-        static_assert(2 == *mph::lookup<entries, 2u>(u32(4)));
-        static_assert(87 == *mph::lookup<entries, 2u>(u32(42)));
-        static_assert(100 == *mph::lookup<entries, 2u>(u32(100)));
-        #endif
+        static_assert(0 == *mph::try$lookup<entries>(u32(0)));
+        static_assert(2 == *mph::try$lookup<entries>(u32(4)));
+        static_assert(87 == *mph::try$lookup<entries>(u32(42)));
+        static_assert(100 == *mph::try$lookup<entries>(u32(100)));
       }
 
       {
@@ -758,13 +828,13 @@ static_assert(([] {
           compressed_pair{color::blue, 2},
         }>::value;
 
-        static_assert(mph::lookup<entries>(color::red));
-        static_assert(mph::lookup<entries>(color::green));
-        static_assert(mph::lookup<entries>(color::blue));
+        static_assert(mph::try$lookup<entries>(color::red));
+        static_assert(mph::try$lookup<entries>(color::green));
+        static_assert(mph::try$lookup<entries>(color::blue));
 
-        static_assert(0 == *mph::lookup<entries>(color::red));
-        static_assert(1 == *mph::lookup<entries>(color::green));
-        static_assert(2 == *mph::lookup<entries>(color::blue));
+        static_assert(0 == *mph::try$lookup<entries>(color::red));
+        static_assert(1 == *mph::try$lookup<entries>(color::green));
+        static_assert(2 == *mph::try$lookup<entries>(color::blue));
       }
     }
 
@@ -779,33 +849,15 @@ static_assert(([] {
           compressed_pair{to<u32>("XRP"), 3},
         }>::value;
 
-        static_assert(not mph::lookup<entries>(""));
-        static_assert(mph::lookup<entries>("BTC"));
-        static_assert(mph::lookup<entries>("ETH"));
-        static_assert(mph::lookup<entries>("XRP"));
+        static_assert(not mph::try$lookup<entries>(""));
+        static_assert(mph::try$lookup<entries>("BTC"));
+        static_assert(mph::try$lookup<entries>("ETH"));
+        static_assert(mph::try$lookup<entries>("XRP"));
 
-        static_assert(0 == *mph::lookup<entries>(""));
-        static_assert(1 == *mph::lookup<entries>("BTC"));
-        static_assert(2 == *mph::lookup<entries>("ETH"));
-        static_assert(3 == *mph::lookup<entries>("XRP"));
-
-        static_assert(0 == *mph::lookup<entries, 1u, 2u>(""));
-        static_assert(1 == *mph::lookup<entries, 1u, 2u>("BTC"));
-        static_assert(2 == *mph::lookup<entries, 1u, 2u>("ETH"));
-        static_assert(3 == *mph::lookup<entries, 1u, 2u>("XRP"));
-
-        #if defined(__BMI2__)
-        constexpr auto lookup = mph::lookup<entries, 2u>;
-        static_assert(not lookup(""));
-        static_assert(lookup("BTC"));
-        static_assert(lookup("ETH"));
-        static_assert(lookup("XRP"));
-
-        static_assert(0 == *lookup(""));
-        static_assert(1 == *lookup("BTC"));
-        static_assert(2 == *lookup("ETH"));
-        static_assert(3 == *lookup("XRP"));
-        #endif
+        static_assert(0 == *mph::try$lookup<entries>(""));
+        static_assert(1 == *mph::try$lookup<entries>("BTC"));
+        static_assert(2 == *mph::try$lookup<entries>("ETH"));
+        static_assert(3 == *mph::try$lookup<entries>("XRP"));
       }
     }
   }
