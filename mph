@@ -13,10 +13,15 @@
  * [Minimal] Static perfect hash library (https://github.com/boost-ext/mph)
  */
 namespace mph::inline v3_0_1 {
+using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
+using i16  = __INT16_TYPE__;
 using u16  = __UINT16_TYPE__;
+using i32  = __INT32_TYPE__;
 using u32  = __UINT32_TYPE__;
+using i64  = __INT64_TYPE__;
 using u64  = __UINT64_TYPE__;
+using i128 = __int128;
 using u128 = unsigned __int128;
 
 namespace utility {
@@ -349,7 +354,7 @@ struct lookup {
         using T = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
         constexpr auto nbits = []() -> T {
           T max{};
-          for (const auto& [_, v]: mappings) if (v > max) max = v;
+          for (const auto& [_, v]: mappings) if (T(v) > max) max = T(v);
           return max ? (sizeof(T) * __CHAR_BIT__ - __builtin_clz(max)) : T{};
         }();
         if constexpr (nbits * entries.size() <= sizeof(u32) * __CHAR_BIT__) {
@@ -372,7 +377,7 @@ struct lookup {
               }
               if (lut) {
                 for (const auto& [k, v] : mappings) {
-                  if (((lut >> (T(k * result.magic) >> shift)) & mask) != v) {
+                  if (((lut >> (T(k * result.magic) >> shift)) & mask) != T(v)) {
                     lut = {};
                     break;
                   }
@@ -395,7 +400,7 @@ struct lookup {
         using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
         constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
         constexpr auto size = [mask] {
-          u32 max{};
+          key_type max{};
           for (const auto& [k, _] : mappings) {
             const auto p = pext(k, mask);
             if (p > max) max = p;
