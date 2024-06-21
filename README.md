@@ -369,12 +369,11 @@ template<const auto& entries>
           lut |= v << (k * magic >> shift);
 
         for k, v in entries:
-          if (((lut >> (k * magic >> shift) & mask) != v)
+          if (lut >> (k * magic >> shift) & mask) != v:
             lut = {}
             break
 
-      if not lut:
-        return safe_lookup[entries](key);
+      assert lut
 
       # 1. lookup [run-time]
       return (lut >> ((key * magic) >> shift)) & mask;
