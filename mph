@@ -12,7 +12,7 @@
 /**
  * [Minimal] Static perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v3_0_1 {
+namespace mph::inline v4_0_0 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
@@ -326,89 +326,6 @@ template<const auto& entries>
   }
 }
 
-template<const auto& entries>
-struct lookup {
-  static constexpr auto mappings = detail::mappings<entries>();
-
-  using key_type = typename type_traits::value_type_t<mappings>::first_type;
-  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
-  using result_type = mapped_type;
-
-  template<u32 MaxTries = 100'000, class TRandom = random::pcg>
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    if constexpr (entries.size() == 0u)  {
-      return {};
-    } else if constexpr (entries.size() == 1u)  {
-      return mappings[0].second;
-    } else {
-      if constexpr (entries.size() < 16u) {
-        using T = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-        constexpr auto nbits = []() -> T {
-          T max{};
-          for (const auto& [_, v]: mappings) if (T(v) > max) max = T(v);
-          return max ? (sizeof(T) * __CHAR_BIT__ - __builtin_clz(max)) : T{};
-        }();
-        if constexpr (nbits * entries.size() <= sizeof(u32) * __CHAR_BIT__) {
-          constexpr auto mask = (1u << nbits) - 1u;
-          constexpr auto shift = sizeof(T) * __CHAR_BIT__ - nbits;
-          constexpr auto magic_lut = [mask, shift] {
-            struct { T magic; T lut; } result{};
-            auto max_tries = MaxTries;
-            TRandom random{};
-            while (max_tries--) {
-              result.magic = random();
-              T lut{};
-              for (const auto& [k, v] : mappings) {
-                const auto shl = T(k * result.magic) >> shift;
-                if (shl >= sizeof(T) * __CHAR_BIT__) {
-                  lut = {};
-                  break;
-                }
-                lut |= v << shl;
-              }
-              if (lut) {
-                for (const auto& [k, v] : mappings) {
-                  if (((lut >> (T(k * result.magic) >> shift)) & mask) != T(v)) {
-                    lut = {};
-                    break;
-                  }
-                }
-              }
-              if (lut) {
-                result.lut = lut;
-                return result;
-              }
-            }
-            return result;
-          }();
-
-          if constexpr (magic_lut.lut) {
-            return (magic_lut.lut >> ((to<key_type>(key) * magic_lut.magic) >> shift)) & mask;
-          }
-        }
-      }
-      return [&] {
-        using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-        constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
-        constexpr auto size = [mask] {
-          key_type max{};
-          for (const auto& [k, _] : mappings) {
-            const auto p = pext(k, mask);
-            if (p > max) max = p;
-          }
-          return max + 1u;
-        }();
-        static constexpr auto lut = [size, mask] {
-          utility::array<mapped_type, size> lut{};
-          for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
-          return lut;
-        }();
-        return lut[pext(to<key_type>(key), mask)];
-      }();
-    }
-  }
-};
-
 template<class T>
 struct optional {
   using value_type = T;
@@ -460,6 +377,147 @@ inline constexpr auto conditional =
     }
   };
 
+template<const auto& entries, u32 MaxTries = 100'000, class TRandom = random::pcg>
+struct magic_lut_lookup {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using lut_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  using result_type = mapped_type;
+
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    return (metadata.lut >> ((to<key_type>(key) * metadata.magic) >> shift)) & mask;
+  }
+
+  static constexpr auto nbits = [] {
+    lut_type max{};
+    for (const auto& [_, v]: mappings) if (lut_type(v) > max) max = lut_type(v);
+    return max ? (sizeof(lut_type) * __CHAR_BIT__ - __builtin_clz(max)) : lut_type{};
+  }();
+  static constexpr auto mask = (1u << nbits) - 1u;
+  static constexpr auto shift = sizeof(lut_type) * __CHAR_BIT__ - nbits;
+  static constexpr auto metadata = [] {
+    struct { lut_type magic; lut_type lut; } result{};
+    if constexpr (nbits * entries.size() <= sizeof(lut_type) * __CHAR_BIT__) {
+      TRandom random{};
+      auto max_tries = MaxTries;
+      while (max_tries--) {
+        result.magic = random();
+        lut_type lut{};
+        for (const auto& [k, v] : mappings) {
+          const auto shl = lut_type(k * result.magic) >> shift;
+          if (shl >= sizeof(lut_type) * __CHAR_BIT__) {
+            lut = {};
+            break;
+          }
+          lut |= v << shl;
+        }
+        if (lut) {
+          for (const auto& [k, v] : mappings) {
+            if (((lut >> (lut_type(k * result.magic) >> shift)) & mask) != lut_type(v)) {
+              lut = {};
+              break;
+            }
+          }
+        }
+        if (lut) {
+          result.lut = lut;
+          return result;
+        }
+      }
+    }
+    return result;
+  }();
+};
+
+template<const auto& entries>
+struct pext_lookup {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  using result_type = mapped_type;
+
+  constexpr pext_lookup() {
+    for (const auto& [k, v] : mappings) lut[pext(k, mask)] = v;
+  }
+
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    return lut[pext(to<key_type>(key), mask)];
+  }
+
+  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
+  static constexpr auto size = [] {
+    key_type max{};
+    for (const auto& [k, _] : mappings) {
+      const auto p = pext(k, mask);
+      if (p > max) max = p;
+    }
+    return max + 1u;
+  }();
+  utility::array<mapped_type, size> lut{};
+};
+
+template<const auto& entries>
+struct pext_safe_lookup {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using key_mapped_type = utility::compressed_pair<key_type, mapped_type>;
+  using result_type = optional<mapped_type>;
+  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+
+  constexpr pext_safe_lookup() {
+    for (const auto& [key, value] : mappings) lut[pext(key, mask)] = {key, value};
+  }
+
+  template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
+  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    auto&& lhs = to<key_type>(key);
+    auto&& [rhs, value] = lut[pext(lhs, mask)];
+    return conditional<probability>(lhs == rhs, result_type(value), result_type());
+  }
+
+  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
+  utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
+};
+
+template<const auto& entries> struct lookup;
+template<const auto& entries> requires (entries.size() == 0u)
+struct lookup<entries> {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using result_type = mapped_type;
+
+  [[nodiscard]] constexpr auto operator()([[maybe_unused]] const auto& key) const noexcept -> result_type {
+    return {};
+  }
+};
+
+template<const auto& entries> requires (entries.size() == 1u)
+struct lookup<entries> {
+  static constexpr auto mappings = detail::mappings<entries>();
+
+  using key_type = typename type_traits::value_type_t<mappings>::first_type;
+  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
+  using result_type = mapped_type;
+
+  [[nodiscard]] constexpr auto operator()([[maybe_unused]] const auto& key) const noexcept -> result_type {
+    return mappings[0].second;
+  }
+};
+
+template<const auto& entries> requires (entries.size() > 1u and bool(magic_lut_lookup<entries>::metadata.lut))
+struct lookup<entries> : magic_lut_lookup<entries> { };
+
+template<const auto& entries> requires (entries.size() > 1u and not bool(magic_lut_lookup<entries>::metadata.lut))
+struct lookup<entries> : pext_lookup<entries> { };
+
 template<const auto& entries> struct safe_lookup;
 template<const auto& entries> requires (entries.size() == 0u)
 struct safe_lookup<entries> {
@@ -492,42 +550,20 @@ struct safe_lookup<entries> {
 };
 
 template<const auto& entries> requires (entries.size() > 1u)
-struct safe_lookup<entries> {
-  static constexpr auto mappings = detail::mappings<entries>();
-
-  using key_type = typename type_traits::value_type_t<mappings>::first_type;
-  using mapped_type = typename type_traits::value_type_t<mappings>::second_type;
-  using key_mapped_type = utility::compressed_pair<key_type, mapped_type>;
-  using result_type = optional<mapped_type>;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
-
-  constexpr safe_lookup() {
-    for (const auto& [key, value] : mappings) lut[pext(key, mask)] = {key, value};
-  }
-
-  template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
-  [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    auto&& lhs = to<key_type>(key);
-    auto&& [rhs, value] = lut[pext(lhs, mask)];
-    return conditional<probability>(lhs == rhs, result_type(value), result_type());
-  }
-
-  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(mappings)>;
-  utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
-};
+struct safe_lookup<entries> : pext_safe_lookup<entries> { };
 } // namespace detail
-
-/**
- * Static perfect hash lookup function
- * @tparam entries constexpr array of keys or key/value pairs
- */
-template<const auto& entries> inline constexpr detail::safe_lookup<entries> safe_lookup{};
 
 /**
  * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries> inline constexpr detail::lookup<entries> lookup{};
+
+/**
+ * Static perfect hash lookup function
+ * @tparam entries constexpr array of keys or key/value pairs
+ */
+template<const auto& entries> inline constexpr detail::safe_lookup<entries> safe_lookup{};
 } // namespace mph
 
 #if not defined(NTEST)
