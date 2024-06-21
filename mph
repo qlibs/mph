@@ -387,6 +387,8 @@ struct magic_lut_lookup {
   using result_type = mapped_type;
 
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
+    constexpr auto mask = (1u << nbits) - 1u;
+    constexpr auto shift = sizeof(lut_type) * __CHAR_BIT__ - nbits;
     return (metadata.lut >> ((to<key_type>(key) * metadata.magic) >> shift)) & mask;
   }
 
@@ -395,11 +397,11 @@ struct magic_lut_lookup {
     for (const auto& [_, v]: mappings) if (lut_type(v) > max) max = lut_type(v);
     return max ? (sizeof(lut_type) * __CHAR_BIT__ - __builtin_clz(max)) : lut_type{};
   }();
-  static constexpr auto mask = (1u << nbits) - 1u;
-  static constexpr auto shift = sizeof(lut_type) * __CHAR_BIT__ - nbits;
   static constexpr auto metadata = [] {
     struct { lut_type magic; lut_type lut; } result{};
     if constexpr (nbits * entries.size() <= sizeof(lut_type) * __CHAR_BIT__) {
+      constexpr auto mask = (1u << nbits) - 1u;
+      constexpr auto shift = sizeof(lut_type) * __CHAR_BIT__ - nbits;
       TRandom random{};
       auto max_tries = MaxTries;
       while (max_tries--) {
