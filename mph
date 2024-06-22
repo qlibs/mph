@@ -406,9 +406,9 @@ struct lookup$magic_lut {
     shift = sizeof(value_type) * __CHAR_BIT__ - nbits;
 
     random::pcg random{};
-    while (max_attempts--) {
-      magic = random();
+    while (not lut and max_attempts--) {
       [&] {
+        magic = random();
         for (const auto& [k, v] : detail::traits<entries>::mappings) {
           const auto shl = value_type(k * magic) >> shift;
           if (shl >= sizeof(value_type) * __CHAR_BIT__) {
@@ -424,7 +424,6 @@ struct lookup$magic_lut {
           }
         }
       }();
-      if (lut) return;
     }
   }
 
