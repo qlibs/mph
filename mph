@@ -529,7 +529,6 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
  * Static perfect hash find function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-
 template<const auto& entries> inline constexpr auto find =
   [$find = find$pext<entries>{}]<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)([[maybe_unused]] const auto& key) {
     using key_type = typename detail::traits<entries>::key_type;
