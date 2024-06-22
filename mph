@@ -399,8 +399,7 @@ struct lookup$magic_lut {
           }
         }
         return max ? (sizeof(value_type) * __CHAR_BIT__ - __builtin_clz(max)) : value_type{};
-      }()}
-  {
+      }()} {
     if (nbits * entries.size() > sizeof(value_type) * __CHAR_BIT__) {
       return;
     }
@@ -439,7 +438,7 @@ struct lookup$magic_lut {
     return (metadata.lut >> ((to<key_type>(key) * metadata.magic) >> shift)) & mask;
   }
 
-  [[nodiscard]] constexpr explicit operator bool() const { return metadata.lut; }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return metadata.lut; }
 
   value_type nbits{};
   value_type mask{};
@@ -458,7 +457,9 @@ struct lookup$pext {
   using result_type = mapped_type;
 
   constexpr lookup$pext() noexcept {
-    for (const auto& [k, v] : detail::traits<entries>::mappings) lut[detail::pext(k, mask)] = v;
+    for (const auto& [k, v] : detail::traits<entries>::mappings) {
+      lut[detail::pext(k, mask)] = v;
+    }
   }
 
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
@@ -486,7 +487,9 @@ struct find$pext {
   using result_type = optional<mapped_type>;
 
   constexpr find$pext() noexcept {
-    for (const auto& [key, value] : detail::traits<entries>::mappings) lut[detail::pext(key, mask)] = {key, value};
+    for (const auto& [key, value] : detail::traits<entries>::mappings) {
+      lut[detail::pext(key, mask)] = {key, value};
+    }
   }
 
   template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
@@ -514,12 +517,10 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
       return result_type{};
     } else if constexpr (entries.size() == 1u) {
       return result_type(detail::traits<entries>::mappings[0].second);
+    } else if constexpr(constexpr lookup$magic_lut<entries> lookup{max_attempts}; lookup) {
+      return lookup(key);
     } else {
-      if constexpr(constexpr const lookup$magic_lut<entries> lookup{max_attempts}; lookup) {
-        return lookup(key);
-      } else {
-        return type_traits::constant_v<lookup$pext<entries>{}>.value(key);
-      }
+      return type_traits::constant_v<lookup$pext<entries>{}>.value(key);
     }
   };
 
