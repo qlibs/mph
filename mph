@@ -439,6 +439,8 @@ struct lookup$magic_lut {
     return (metadata.lut >> ((to<key_type>(key) * metadata.magic) >> shift)) & mask;
   }
 
+  [[nodiscard]] constexpr explicit operator bool() const { return metadata.lut; }
+
   value_type nbits{};
   value_type mask{};
   value_type shift{};
@@ -513,7 +515,7 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
     } else if constexpr (entries.size() == 1u) {
       return result_type(detail::traits<entries>::mappings[0].second);
     } else {
-      if constexpr(constexpr const lookup$magic_lut<entries> lookup{max_attempts}; lookup.metadata.lut) {
+      if constexpr(constexpr const lookup$magic_lut<entries> lookup{max_attempts}; lookup) {
         return lookup(key);
       } else {
         return type_traits::constant_v<lookup$pext<entries>{}>.value(key);
