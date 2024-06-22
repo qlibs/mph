@@ -84,7 +84,7 @@ struct pcg {
     return (xor_shifted >> rot) | (xor_shifted << ((-rot) & 31u));
   }
   u64 increment{1442695040888963407u};
-  u64 state{0x4d595df4d0f33173 + increment};
+  u64 state{5573589319906701683u + increment};
 };
 } // namespace random
 
@@ -467,8 +467,9 @@ struct lookup$pext {
   static constexpr auto size = [] {
     key_type max{};
     for (const auto& [k, _] : detail::traits<entries>::mappings) {
-      const auto p = detail::pext(k, mask);
-      if (p > max) max = p;
+      if (const auto p = detail::pext(k, mask); p > max) {
+        max = p;
+      }
     }
     return max + 1u;
   }();
