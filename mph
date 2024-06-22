@@ -402,6 +402,10 @@ struct lookup$magic_lut {
       return max ? (sizeof(value_type) * __CHAR_BIT__ - __builtin_clz(max)) : value_type{};
     }();
 
+    if (nbits * entries.size() > sizeof(value_type) * __CHAR_BIT__) {
+      return;
+    }
+
     mask = (1u << nbits) - 1u;
     shift = sizeof(value_type) * __CHAR_BIT__ - nbits;
 
