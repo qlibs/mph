@@ -393,7 +393,7 @@ struct lookup$magic_lut {
   using value_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   using result_type = mapped_type;
 
-  constexpr explicit lookup$magic_lut(u32 max_attempts) noexcept
+  constexpr explicit lookup$magic_lut(u32 max_attempts = 100'000) noexcept
     : nbits{[] {
         value_type max{};
         for (const auto& [_, v]: detail::traits<entries>::mappings) {
@@ -508,7 +508,7 @@ struct find$pext {
  * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto lookup =
+template<const auto& entries> inline constexpr auto lookup =
   [$lookup = lookup$pext<entries>{}]([[maybe_unused]] const auto& key) {
     using key_type = typename detail::traits<entries>::key_type;
     using mapped_type = typename detail::traits<entries>::mapped_type;
@@ -518,7 +518,7 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
       return result_type{};
     } else if constexpr (entries.size() == 1u) {
       return result_type(detail::traits<entries>::mappings[0].second);
-    } else if constexpr(constexpr lookup$magic_lut<entries> lookup{max_attempts}; lookup) {
+    } else if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
       return lookup(key);
     } else {
       return $lookup(key);

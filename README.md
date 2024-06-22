@@ -310,7 +310,7 @@ namespace mph {
  * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries, u32 max_attempts = 100'000>
+template<const auto& entries>
 inline constexpr auto lookup = [](const auto& key) { ... };
 
 /**
@@ -355,12 +355,11 @@ inline constexpr auto find = []<u8 probability = 50u>(const auto& key) { ... };
       The following is a pseudo code of the `lookup` algorithm for minimal perfect hash table.
 
     ```python
-    def lookup[entries: array](key : any):
+    def lookup[entries: array](key : any, max_attempts = 100'000):
       # 0. magic and lut for entries [compile-time]
       nbits = sizeof(u32) * CHAR_BIT - countl_zero(max(entries.second))
       mask = (1u << nbits) - 1u;
       shift = sizeof(u32) * CHAR_BIT - nbits;
-      max_attempts = 1'000'000
       lut = {};
       while max_attempts--:
         magic = rand()
