@@ -1,6 +1,6 @@
 <a href="http://www.boost.org/LICENSE_1_0.txt" target="_blank">![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)</a>
 <a href="https://github.com/boost-ext/mph/releases" target="_blank">![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)</a>
-<a href="https://godbolt.org/z/xY8M4jEd1">![build](https://img.shields.io/badge/build-blue.svg)</a>
+<a href="https://godbolt.org/z/rbnzEhfK3">![build](https://img.shields.io/badge/build-blue.svg)</a>
 <a href="https://godbolt.org/z/49cMhWqch">![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)</a>
 
 ---------------------------------------
@@ -199,8 +199,7 @@ lookup:
 - [feature] `lookup/find` customization point - https://godbolt.org/z/dnc4x8hTT
 - [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
 - [example] branchless dispatcher - https://godbolt.org/z/nb9M9zcqh
-- [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/dPPnTxoac
-- [performance] `string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/o8sfYoreK
+- [performance] `enum_to_string/string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/dPPnTxoac/https://godbolt.org/z/o8sfYoreK
 
 ---
 
