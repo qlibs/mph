@@ -417,7 +417,7 @@ struct lookup$magic_lut {
           lut = {};
           break;
         }
-        lut |= v << shl;
+        lut |= value_type(v) << shl;
       }
       if (lut) {
         for (const auto& [k, v] : detail::traits<entries>::mappings) {

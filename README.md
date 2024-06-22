@@ -119,7 +119,7 @@ lookup:
 
 ---
 
-### Performance (https://godbolt.org/z/qMYehY11x)
+### Performance (https://godbolt.org/z/ob6ejGEsh)
 
 ```cpp
 int main(int, const char** argv) {
@@ -157,7 +157,7 @@ lookup:
   ...
 ```
 
-### Performance (https://godbolt.org/z/KccchW6G9)
+### Performance (https://godbolt.org/z/Tds7sG16n)
 
 ```cpp
 int main(int, const char** argv) {
@@ -198,7 +198,7 @@ lookup:
 
 - [feature] `lookup/find` customization point - https://godbolt.org/z/dnc4x8hTT
 - [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
-- [example] branchless dispatcher - https://godbolt.org/z/Y36h36has
+- [example] branchless dispatcher - https://godbolt.org/z/nb9M9zcqh
 - [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/qaj8nqfeM
 - [performance] `string_to_enum` (https://wg21.link/P2996) - https://godbolt.org/z/9E7nns8PW
 
