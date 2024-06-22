@@ -360,9 +360,9 @@ inline constexpr auto find = []<u8 probability = 50u>(const auto& key) { ... };
       nbits = sizeof(u32) * CHAR_BIT - countl_zero(max(entries.second))
       mask = (1u << nbits) - 1u;
       shift = sizeof(u32) * CHAR_BIT - nbits;
-      max_tries = 1'000'000
+      max_attempts = 1'000'000
       lut = {};
-      while max_tries--:
+      while max_attempts--:
         magic = rand()
         for k, v in entries:
           lut |= v << (k * magic >> shift);
