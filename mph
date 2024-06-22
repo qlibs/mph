@@ -390,7 +390,7 @@ struct lookup$magic_lut {
   using value_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   using result_type = mapped_type;
 
-  constexpr lookup$magic_lut(u32 max_attempts) noexcept
+  constexpr explicit lookup$magic_lut(u32 max_attempts) noexcept
     : nbits{[] {
         value_type max{};
         for (const auto& [_, v]: detail::traits<entries>::mappings) {
@@ -443,10 +443,7 @@ struct lookup$magic_lut {
   value_type nbits{};
   value_type mask{};
   value_type shift{};
-  struct {
-    value_type magic;
-    value_type lut;
-  } metadata{};
+  struct { value_type magic; value_type lut; } metadata{};
 };
 
 template<const auto& entries>

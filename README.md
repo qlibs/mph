@@ -311,14 +311,14 @@ namespace mph {
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries, u32 max_attempts = 100'000>
-inline constexpr auto lookup = [](const auto& key);
+inline constexpr auto lookup = [](const auto& key) { ... };
 
 /**
  * Static perfect hash find function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries> inline constexpr auto find =
-  []<u32 probability = 50u> requires (probability >= 0u and probability <= 100u)(const auto& key);
+template<const auto& entries>
+inline constexpr auto find = []<u32 probability = 50u>(const auto& key) { ... };
 } // namespace mph
 ```
 
