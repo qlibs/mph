@@ -48,17 +48,16 @@ std::print("{}", mph::lookup<colors>("green"sv)); // prints 1
 
 > `mph::lookup` assumes only valid input and returns mapped value direclty.
 
-> `mph::find` doesn't assume valid input and returns optional of mapped value.
-
 ```cpp
 static_assert(not mph::find<colors>("unknown"));
-
 static_assert(mph::find<colors>("green"));
 static_assert(mph::find<colors>("red"));
 static_assert(mph::find<colors>("blue"));
 
 std::print("{}", *mph::find<colors>("green"sv)); // prints 1
 ```
+
+> `mph::find` doesn't assume valid input and returns optional of mapped value.
 
 ---
 
