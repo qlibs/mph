@@ -218,24 +218,27 @@ template<class T>
   else if constexpr (requires { mask.value; }) {
     // https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
     // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
-    return [&] {
-      constexpr auto mbits = __builtin_popcountl(mask);
-      constexpr auto lz = sizeof(mask.value) <= sizeof(u32) ? __builtin_clz(mask) : __builtin_clzl(mask);
-      constexpr auto nbits = size - mbits - lz;
-      constexpr auto coefficient = [&] {
-        auto set = false;
-        auto dst = nbits;
-        T result{};
-        for (auto i = 0u; i < size; ++i) {
-          const auto curr = ((T(1) << i) & mask) != T();
-          if (curr and not set) result = result | (T(1) << (dst - i));
-          dst += curr;
-          set = curr;
-        }
-        return result;
-      }();
-      return ((a & mask) * coefficient >> nbits) & ((T(1) << mbits) - T(1));
+    constexpr auto clz = [](auto x) {
+      decltype(x) n{};
+      if (not x) return decltype(x)(sizeof(x) * __CHAR_BIT__);
+      while (x >>= 1u) n++;
+      return n;
+    };
+    constexpr auto mbits = __builtin_popcountl(mask);
+    constexpr auto nbits = size - mbits - clz(mask.value);
+    constexpr auto coefficient = [&] {
+      auto set = false;
+      auto dst = nbits;
+      T result{};
+      for (auto i = 0u; i < size; ++i) {
+        const auto curr = ((T(1) << i) & mask) != T();
+        if (curr and not set) result = result | (T(1) << (dst - i));
+        dst += curr;
+        set = curr;
+      }
+      return result;
     }();
+    return ((a & mask) * coefficient >> nbits) & ((T(1) << mbits) - T(1));
   }
   __builtin_unreachable();
 }
@@ -506,7 +509,7 @@ struct find$pext {
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto lookup =
-  []([[maybe_unused]] const auto& key) {
+  [$lookup = lookup$pext<entries>{}]([[maybe_unused]] const auto& key) {
     using key_type = typename detail::traits<entries>::key_type;
     using mapped_type = typename detail::traits<entries>::mapped_type;
     using result_type = mapped_type;
@@ -518,7 +521,7 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
     } else if constexpr(constexpr lookup$magic_lut<entries> lookup{max_attempts}; lookup) {
       return lookup(key);
     } else {
-      return type_traits::constant_v<lookup$pext<entries>{}>.value(key);
+      return $lookup(key);
     }
   };
 
@@ -526,8 +529,9 @@ template<const auto& entries, u32 max_attempts = 100'000> inline constexpr auto 
  * Static perfect hash find function
  * @tparam entries constexpr array of keys or key/value pairs
  */
+
 template<const auto& entries> inline constexpr auto find =
-  []<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)([[maybe_unused]] const auto& key) {
+  [$find = find$pext<entries>{}]<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)([[maybe_unused]] const auto& key) {
     using key_type = typename detail::traits<entries>::key_type;
     using mapped_type = typename detail::traits<entries>::mapped_type;
     using result_type = optional<mapped_type>;
@@ -539,7 +543,7 @@ template<const auto& entries> inline constexpr auto find =
       auto&& [rhs, value] = detail::traits<entries>::mappings[0];
       return conditional<probability>(lhs == rhs, result_type(value), result_type());
     } else {
-      return type_traits::constant_v<find$pext<entries>{}>.value.template operator()<probability>(key);
+      return $find.template operator()<probability>(key);
     }
   };
 } // namespace mph
