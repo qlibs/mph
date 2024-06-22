@@ -22,7 +22,7 @@
 - Minimal [API](#api)
 - Optimized run-time execution (see [performance](#performance) / [benchmarks](#benchmarks))
 - Fast compilation times (see [compilation](#compilation))
-- Limitations (see [FAQ](#faq))
+- Trade-offs (see [FAQ](#faq))
 
 ### Requirements
 
@@ -335,7 +335,7 @@ inline constexpr auto find = []<u8 probability = 50u>(const auto& key) { ... };
 
 ### FAQ
 
-- Limitations?
+- Trade-offs?
 
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [benchmarks](#benchmarks)).
 
