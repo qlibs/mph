@@ -196,7 +196,7 @@ lookup:
 
 ### Examples
 
-- [feature] `lookup` customization point - https://godbolt.org/z/dnc4x8hTT
+- [feature] `lookup/find` customization point - https://godbolt.org/z/dnc4x8hTT
 - [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
 - [example] branchless dispatcher - https://godbolt.org/z/Y36h36has
 - [performance] `enum_to_string` (https://wg21.link/P2996) - https://godbolt.org/z/qaj8nqfeM
