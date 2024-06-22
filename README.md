@@ -107,6 +107,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3
   leaq    lookup(%rip), %rax
   movl    (%rax,%rdi,4), %eax
   retq
+
 lookup:
  .long   324
  .long   0
