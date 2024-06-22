@@ -48,16 +48,16 @@ std::print("{}", mph::lookup<colors>("green"sv)); // prints 1
 
 > `mph::lookup` assumes only valid input and returns mapped value direclty.
 
-> `mph::safe_lookup` doesn't assume valid input and returns optional mapped value.
+> `mph::find` doesn't assume valid input and returns optional of mapped value.
 
 ```cpp
-static_assert(not mph::safe_lookup<colors>("unknown"));
+static_assert(not mph::find<colors>("unknown"));
 
-static_assert(mph::safe_lookup<colors>("green"));
-static_assert(mph::safe_lookup<colors>("red"));
-static_assert(mph::safe_lookup<colors>("blue"));
+static_assert(mph::find<colors>("green"));
+static_assert(mph::find<colors>("red"));
+static_assert(mph::find<colors>("blue"));
 
-std::print("{}", *mph::safe_lookup<colors>("green"sv)); // prints 1
+std::print("{}", *mph::find<colors>("green"sv)); // prints 1
 ```
 
 ---
@@ -134,7 +134,7 @@ int main(int, const char** argv) {
     std::pair{"TSLA    "sv, 7},
   };
 
-  return *mph::safe_lookup<symbols>(
+  return *mph::find<symbols>(
     std::span<const char, 8>(argv[1], argv[1]+8)
   );
 }
@@ -170,7 +170,7 @@ int main(int, const char** argv) {
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
 
-  return *mph::safe_lookup<symbols>(
+  return *mph::find<symbols>(
     std::span<const char, 4>(argv[1], argv[1]+4)
   );
 }
@@ -308,25 +308,25 @@ time $CXX -std=c++20 -O3 mph_int_64.cpp -c            # 0.090s
 ```cpp
 namespace mph {
 /**
- * Static perfect hash lookup function
- * @tparam entries constexpr array of keys or key/value pairs
- */
-template<const auto& entries>
-[[nodiscard]] constexpr auto safe_lookup(const auto& key) -> optional;
-
-/**
  * Static [minimal] perfect hash lookup function
  * @tparam entries constexpr array of keys or key/value pairs
  */
-template<const auto& entries>
-[[nodiscard]] constexpr auto lookup(const auto& key);
+template<const auto& entries, u32 max_attempts = 100'000>
+inline constexpr auto lookup = [](const auto& key);
+
+/**
+ * Static perfect hash find function
+ * @tparam entries constexpr array of keys or key/value pairs
+ */
+template<const auto& entries> inline constexpr auto find =
+  []<u32 probability = 50u> requires (probability >= 0u and probability <= 100u)(const auto& key);
 } // namespace mph
 ```
 
 > Configuration
 
 ```cpp
-#define MPH 4'0'0       // Current library version (SemVer)
+#define MPH 4'0'1       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
                         // keys if the read is close to the page boundry (4096u)
@@ -347,7 +347,7 @@ template<const auto& entries>
     ```cpp
     template<const auto& entries>
       requires (entries.size() > 10'000)
-    inline constexpr auto mph::safe_lookup = [](const auto& key) -> optional { ... }
+    inline constexpr auto mph::find = [](const auto& key) -> optional { ... }
     ```
 
 - How `mph` is working under the hood?
@@ -379,10 +379,10 @@ template<const auto& entries>
       return (lut >> ((key * magic) >> shift)) & mask;
     ```
 
-    > The following is a pseudo code of the `safe_lookup` algorithm for perfect hash table.
+    > The following is a pseudo code of the `find` algorithm for perfect hash table.
 
     ```python
-    def safe_lookup[entries: array](key : any):
+    def find[entries: array](key : any):
       # 0. find mask which uniquely identifies all keys [compile-time]
       mask = 0b111111...
 
