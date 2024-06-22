@@ -393,60 +393,53 @@ struct lookup$magic_lut {
   using value_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   using result_type = mapped_type;
 
-  constexpr explicit lookup$magic_lut(u32 max_attempts = 100'000) noexcept
-    : nbits{[] {
-        value_type max{};
-        for (const auto& [_, v]: detail::traits<entries>::mappings) {
-          if (value_type(v) > max) {
-            max = value_type(v);
-          }
-        }
-        return max ? (sizeof(value_type) * __CHAR_BIT__ - __builtin_clz(max)) : value_type{};
-      }()} {
-    if (nbits * entries.size() > sizeof(value_type) * __CHAR_BIT__) {
-      return;
-    }
+  constexpr explicit lookup$magic_lut(u32 max_attempts = 100'000) noexcept {
+    const auto nbits = [] {
+      value_type max{};
+      for (const auto& [_, v]: detail::traits<entries>::mappings) {
+        if (value_type(v) > max) max = value_type(v);
+      }
+      return max ? (sizeof(value_type) * __CHAR_BIT__ - __builtin_clz(max)) : value_type{};
+    }();
 
     mask = (1u << nbits) - 1u;
     shift = sizeof(value_type) * __CHAR_BIT__ - nbits;
 
     random::pcg random{};
     while (max_attempts--) {
-      metadata.magic = random();
-      value_type lut{};
-      for (const auto& [k, v] : detail::traits<entries>::mappings) {
-        const auto shl = value_type(k * metadata.magic) >> shift;
-        if (shl >= sizeof(value_type) * __CHAR_BIT__) {
-          lut = {};
-          break;
-        }
-        lut |= value_type(v) << shl;
-      }
-      if (lut) {
+      magic = random();
+      [&] {
         for (const auto& [k, v] : detail::traits<entries>::mappings) {
-          if (((lut >> (value_type(k * metadata.magic) >> shift)) & mask) != value_type(v)) {
+          const auto shl = value_type(k * magic) >> shift;
+          if (shl >= sizeof(value_type) * __CHAR_BIT__) {
             lut = {};
-            break;
+            return;
+          }
+          lut |= value_type(v) << shl;
+        }
+        for (const auto& [k, v] : detail::traits<entries>::mappings) {
+          if (((lut >> (value_type(k * magic) >> shift)) & mask) != value_type(v)) {
+            lut = {};
+            return;
           }
         }
-      }
-      if (lut) {
-        metadata.lut = lut;
-        break;
-      }
+      }();
+      if (lut) return;
     }
   }
 
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    return (metadata.lut >> ((to<key_type>(key) * metadata.magic) >> shift)) & mask;
+    return (lut >> ((to<key_type>(key) * magic) >> shift)) & mask;
   }
 
-  [[nodiscard]] constexpr explicit operator bool() const noexcept { return metadata.lut; }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept {
+    return mask and shift and magic and lut;
+  }
 
-  value_type nbits{};
   value_type mask{};
   value_type shift{};
-  struct { value_type magic; value_type lut; } metadata{};
+  value_type magic{};
+  value_type lut{};
 };
 
 template<const auto& entries>
