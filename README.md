@@ -320,7 +320,7 @@ inline constexpr auto lookup = [](const auto& key) { ... };
  */
 template<const auto& entries>
 inline constexpr auto find = []<u8 probability = 50u>(const auto& key) { ... };
-} // namespace mph
+}
 ```
 
 > Configuration
