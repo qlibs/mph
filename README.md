@@ -372,7 +372,7 @@ inline constexpr auto find = []<u8 probability = 50u>(const auto& key) { ... };
             lut = {}
             break
 
-      assert lut
+      assert magic != 0 and lut != 0 and shift != 0 and mask != 0
 
       # 1. lookup [run-time]
       return (lut >> ((key * magic) >> shift)) & mask;
