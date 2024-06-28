@@ -286,11 +286,11 @@ lookup:
 
 #### enum_to_string
 
-![https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark_enum_to_string.png](https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark.ipynb)
+![https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark.ipynb](https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark_enum_to_string.png)
 
 #### string_to_enum
 
-![https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark_string_to_enum.png](https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark.ipynb)
+![https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark.ipynb](https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark_string_to_enum.png)
 
 <a name="compilation"></a>
 ### Compilation-times
