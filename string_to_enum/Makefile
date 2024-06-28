@@ -6,7 +6,7 @@
 # http://www.boost.org/LICENSE_1_0.txt)
 #
 CXX?=g++
-CXXFLAGS?=-std=c++20 -Ofast -DNDEBUG -DNTEST -march=native -static -s
+CXXFLAGS?=-std=c++20 -Ofast -DNDEBUG -DNTEST -march=native
 LDDFLAGS?=
 TMP?=/dev/shm
 
