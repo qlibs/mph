@@ -327,7 +327,8 @@ inline constexpr auto lookup = [](const auto& key) { ... };
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries>
-inline constexpr auto find = []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) { ... };
+inline constexpr auto find =
+    []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) { ... };
 }
 ```
 
@@ -355,7 +356,8 @@ inline constexpr auto find = []<u8 probability = 50u>(const auto& key, const aut
     ```cpp
     template<const auto& entries>
       requires (entries.size() > 10'000)
-    inline constexpr auto mph::find = [](const auto& key, const auto& unknown = {}) -> optional { ... }
+    inline constexpr auto mph::find =
+        [](const auto& key, const auto& unknown = {}) -> optional { ... }
     ```
 
 - How `mph` is working under the hood?
