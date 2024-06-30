@@ -6,7 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 4'0'1 // SemVer
+#define MPH 5'0'0 // SemVer
 #pragma GCC system_header
 
 #if __has_include(<experimental/simd>)
@@ -16,7 +16,7 @@
 /**
  * [Minimal] Static perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v4_0_1 {
+namespace mph::inline v5_0_0 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
@@ -532,8 +532,9 @@ struct find$simd {
   }
 
   static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type, BucketSize>(detail::traits<entries>::mappings)>;
-  utility::array<key_type, BucketSize * (mask_type(1) << __builtin_popcountl(mask))> keys{};
-  utility::array<mapped_type, BucketSize * (mask_type(1) << __builtin_popcountl(mask))> values{};
+  static constexpr auto size = BucketSize * (mask_type(1) << __builtin_popcountl(mask));
+  utility::array<key_type, size> keys{};
+  utility::array<mapped_type, size> values{};
 };
 #endif
 
@@ -563,7 +564,11 @@ template<const auto& entries> inline constexpr auto lookup =
  */
 template<const auto& entries> inline constexpr auto find =
   []<u8 probability = 50u>
-    requires (probability >= 0u and probability <= 100u) ([[maybe_unused]] const auto& key, [[maybe_unused]] const auto&... ts) {
+    requires (probability >= 0u and probability <= 100u)
+    #if not __has_include(<experimental/simd>)
+    and requires entries.size() <= 64u
+    #endif
+    ([[maybe_unused]] const auto& key, [[maybe_unused]] const auto&... ts) {
     using key_type = typename detail::traits<entries>::key_type;
     using mapped_type = typename detail::traits<entries>::mapped_type;
     using result_type = optional<mapped_type>;
@@ -579,7 +584,7 @@ template<const auto& entries> inline constexpr auto find =
     }
     #if __has_include(<experimental/simd>)
     else {
-      constexpr auto bucket_size = std::experimental::simd_size_v<key_type>;
+      constexpr auto bucket_size = std::experimental::simd_size_v<key_type, std::experimental::simd_abi::native<key_type>>;
       return type_traits::constant_t<find$simd<entries, bucket_size>>::value.template
         operator()<probability>(key, ts...);
     }

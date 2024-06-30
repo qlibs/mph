@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set))
+- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
 
 ### Hello world (https://godbolt.org/z/zdo5bz3T6)
 
@@ -320,7 +320,13 @@ namespace mph {
  * @tparam entries constexpr array of keys or key/value pairs
  */
 template<const auto& entries>
-inline constexpr auto lookup = [](const auto& key) { ... };
+inline constexpr auto lookup = [](const auto& key) {
+  if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
+    return lookup(key);
+  } else {
+    return lookup$pext<entries>(key);
+  }
+};
 
 /**
  * Static perfect hash find function
@@ -328,14 +334,23 @@ inline constexpr auto lookup = [](const auto& key) { ... };
  */
 template<const auto& entries>
 inline constexpr auto find =
-    []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) { ... };
+  []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) -> optional {
+    if constexpr (entries.size() == 0u) {
+      return unknown;
+    } else if constexpr (entries.size() <= 64u) {
+      return find$pext<entries>.operator()<probability>(key, unknown);
+    else {
+      constexpr auto bucket_size = simd_size_v<key_type, simd_abi::native<key_type>>;
+      return find$simd<entries, bucket_size>.operator()<probability>(key, ts...);
+    }
+  };
 } // namespace mph
 ```
 
 > Configuration
 
 ```cpp
-#define MPH 4'0'1       // Current library version (SemVer)
+#define MPH 5'0'0       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
                         // keys if the read is close to the page boundry (4096u)
@@ -349,13 +364,13 @@ inline constexpr auto find =
 
     > `mph` supports different types of key/value pairs and thousands of key/value pairs, but not millions - (see [benchmarks](#benchmarks)).
 
-  - All keys have to fit into `std::uint128_t`, that includes strings.
+  - All keys have to fit into `uint128_t`, that includes strings.
   - If the above criteria are not satisfied `mph` will [SFINAE](https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error) away `lookup` function.
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined `lookup` implementation), for example:
 
     ```cpp
     template<const auto& entries>
-      requires (entries.size() > 10'000)
+      requires (entries.size() > 1'000'000)
     inline constexpr auto mph::find =
         [](const auto& key, const auto& unknown = {}) -> optional { ... }
     ```
@@ -366,7 +381,7 @@ inline constexpr auto find =
       The following is a pseudo code of the `lookup` algorithm for minimal perfect hash table.
 
     ```python
-    def lookup[entries: array](key : any, max_attempts = 100'000):
+    def lookup$magic_lut[entries: array](key : any, max_attempts = 100'000):
       # 0. magic and lut for entries [compile-time]
       nbits = sizeof(u32) * CHAR_BIT - countl_zero(max(entries.second))
       mask = (1u << nbits) - 1u;
@@ -391,7 +406,24 @@ inline constexpr auto find =
     > The following is a pseudo code of the `find` algorithm for perfect hash table.
 
     ```python
-    def find[entries: array](key : any):
+    # word: 00101011
+    # mask: 11100001
+    #    &: 000____1
+    # pext: ____0001 # intel/intrinsics-guide/index.html#text=pext
+    def pext(a : uN, mask : uN):
+      dst, m, k = ([], 0, 0)
+
+      while m < nbits(a):
+        if mask[m] == 1:
+          dst.append(a[m])
+          k += 1
+        m += 1
+
+      return uN(dst)
+    ```
+
+    ```python
+    def find$pext[entries: array](key : any, unknown: any):
       # 0. find mask which uniquely identifies all keys [compile-time]
       mask = 0b111111...
 
@@ -406,38 +438,61 @@ inline constexpr auto find =
           mask.set(i)
 
       assert unique(masked)
-      assert std::countl_zero(mask)
+      assert mask != ~mask{}
 
       # 1. create lookup table [compile-time]
-      lookup = array(typeof(entries[0]), 2^popcount(mask))
+      lookup = array(typeof(entries[0]), 2**popcount(mask))
       for k, v in entries:
         lookup[pext(k, mask)] = (k, v)
 
       # 2. lookup [run-time] # if key is a string convert to integral first (memcpy)
-        # word: 00101011
-        # mask: 11100001
-        #    &: 000____1
-        # pext: ____0001 # intel/intrinsics-guide/index.html#text=pext
-        def pext(a : uN, mask : uN):
-          dst, m, k = ([], 0, 0)
-
-          while m < nbits(a):
-            if mask[m] == 1:
-              dst.append(a[m])
-              k += 1
-            m += 1
-
-          return uN(dst)
-
       k, v = lookup[pext(key, mask)]
 
-      if k == key:
+      if k == key: # cmove
         return v
       else:
-        return 0
+        return unknown
     ```
 
-- How to tweak `lookup` performance for my data/use case?
+    ```python
+    def find$simd[entries: array](key : any, unknown: any):
+      # 0. find mask which uniquely identifies all keys [compile-time]
+      mask = 0b111111...
+      bucket_size = simd_size_v<entries[0].first, native>
+
+      for i in range(nbits(mask)):
+        masked = []
+        mask.unset(i)
+
+        for k, v in entries:
+          masked.append(k & mask)
+
+        if not unique(masked, bucket_size):
+          mask.set(i)
+
+      assert unique(masked, bucket_size)
+      assert mask != ~mask{}
+
+      # 1. create lookup table [compile-time]
+      keys   = array(typeof(entries[0].first), bucket_size * 2**popcount(mask))
+      values = array(typeof(entries[0].second), bucket_size * 2**popcount(mask))
+      for k, v in entries:
+        slot = pext(k, mask)
+        while (keys[slot]) slot++;
+        keys[slot] = k
+        values[slot] = v
+
+      # 2. lookup [run-time] # if key is a string convert to integral first (memcpy)
+      index = bucket_size * pext(key, mask)
+      match = k == keys[&index] # simd element-wise comparison
+
+      if any_of(match):
+        return values[index + find_first_set(match)]
+      else:
+        return unknown
+    ```
+
+- How to tweak `lookup/find` performance for my data/use case?
 
     > Always measure!
 
@@ -446,7 +501,7 @@ inline constexpr auto find =
   - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 and 16. That will make the lookup table smaller and getting the value will have one instruction less.
   - Experiment with different `probability` values to optimize lookups. Especially benefitial if it's known that input keys are always coming from predefined `entries` (probability = 100) as it will avoid the comparison.
-  - Consider passing cache size alignment (`std::hardware_destructive_interference_size` - usually `64u`) to the `lookup`. That will align the underlying lookup table.
+  - Consider passing cache size alignment (`hardware_destructive_interference_size` - usually `64u`) to the `lookup`. That will align the underlying lookup table.
 
 - How to fix compilation error `constexpr evaluation hit maximum step limit`?
 
