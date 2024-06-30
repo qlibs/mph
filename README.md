@@ -371,7 +371,7 @@ inline constexpr auto find =
       return find$pext<entries>.operator()<probability>(key, unknown);
     else {
       constexpr auto bucket_size = simd_size_v<key_type, simd_abi::native<key_type>>;
-      return find$simd<entries, bucket_size>.operator()<probability>(key, ts...);
+      return find$simd<entries, bucket_size>.operator()<probability>(key, unknown);
     }
   };
 } // namespace mph
