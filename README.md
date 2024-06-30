@@ -118,6 +118,42 @@ lookup:
  .long   91
 ```
 
+### Performance (https://godbolt.org/z/35oYfaWGo)
+
+```cpp
+int main(int argc, const char**)
+  static constexpr std::array ids{
+    std::pair{27629, 1},
+    std::pair{6280, 2},
+    // ...
+    std::pair{33691, 128},
+  };
+  return *mph::find<ids>(argc);
+}
+```
+
+```cpp
+main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
+  vpbroadcastd    %edi, %zmm0
+  shll            $4, %edi
+  movzbl          %dil, %ecx
+  leaq            find<ids, 16u>
+  vpcmpeqd        (%rdx,%rcx,4), %zmm0, %k0
+  kmovw           %k0, %esi
+  kortestw        %k0, %k0
+  rep             bsfq %rax, %rax
+  movl            $64, %eax
+  addl            %eax, %ecx
+  xorl            %eax, %eax
+  testw           %si, %si
+  cmovnel         1024(%rdx,%rcx,4), %eax
+  vzeroupper
+  retq
+
+find<ids, 16u>:
+  ...
+```
+
 ---
 
 ### Performance (https://godbolt.org/z/ob6ejGEsh)
