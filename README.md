@@ -26,7 +26,7 @@
 
 ### Requirements
 
-- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
+- C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), [optional] ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
 
 ### Hello world (https://godbolt.org/z/zdo5bz3T6)
 
