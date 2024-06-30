@@ -314,30 +314,10 @@ find:
 |  1.93 | 519,047,110.39 | 0.3% | 0.02 | `random_uints_5.mph`
 ```
 
-#### enum_to_string
-
-![https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark.ipynb](https://github.com/boost-ext/mph/blob/benchmark/enum_to_string/benchmark_enum_to_string.png)
-
-#### string_to_enum
-
-![https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark.ipynb](https://github.com/boost-ext/mph/blob/benchmark/string_to_enum/benchmark_string_to_enum.png)
-
 <a name="compilation"></a>
-### Compilation-times
+### Benchmarks (https://boost-ext.github.io/mph/perfect_hashing)
 
-> [include] (https://godbolt.org/z/zKPP8xPfG)
-
-```cpp
-time $CXX -x c++ -O3 -std=c++20 mph -c -DNTEST        # 0.017s
-time $CXX -x c++ -O3 -std=c++20 mph -c                # 0.056s
-```
-
-> [64 integral keys] (https://godbolt.org/z/j8zWof5no)
-
-```cpp
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c -DNTEST    # 0.043s
-time $CXX -std=c++20 -O3 mph_int_64.cpp -c            # 0.090s
-```
+![https://github.com/boost-ext/mph/blob/benchmark/perfect_hashing/benchmark.ipynb](https://github.com/boost-ext/mph/blob/benchmark/perfect_hashing/benchmark.png)
 
 ---
 
