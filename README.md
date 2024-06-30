@@ -137,7 +137,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
   vpbroadcastd    %edi, %zmm0
   shll            $4, %edi
   movzbl          %dil, %ecx
-  leaq            find<ids, 16u>
+  leaq            find
   vpcmpeqd        (%rdx,%rcx,4), %zmm0, %k0
   kmovw           %k0, %esi
   kortestw        %k0, %k0
@@ -150,7 +150,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
   vzeroupper
   retq
 
-find<ids, 16u>:
+find:
   ...
 ```
 
