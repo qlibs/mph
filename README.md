@@ -65,19 +65,18 @@ std::print("{}", *mph::find<colors>("green"sv)); // prints 1
 ### Performance (https://godbolt.org/z/ndr5K8n8K)
 
 ```cpp
-int main(int argc, const char**)
+int lookup(int id) {
   static constexpr std::array ids{
     std::pair{54u, 91u},
     std::pair{64u, 324u},
     std::pair{91u, 234u},
   };
-
-  return mph::lookup<ids>(argc);
+  return mph::lookup<ids>(id);
 }
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3
+lookup: // g++ -DNDEBUG -std=c++20 -O3
   imull   $1275516394, %edi, %eax
   shrl    $23, %eax
   movl    $24029728, %ecx
@@ -89,7 +88,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3
 ### Performance (https://godbolt.org/z/aE3117Goh)
 
 ```cpp
-int main(int argc, const char**)
+int lookup(int id) {
   static constexpr std::array ids{
     std::pair{54u, 91u},
     std::pair{324u, 54u},
@@ -97,12 +96,12 @@ int main(int argc, const char**)
     std::pair{234u, 64u},
     std::pair{91u, 234u},
   };
-  return mph::lookup<ids>(argc);
+  return mph::lookup<ids>(id);
 }
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3
+lookup: // g++ -DNDEBUG -std=c++20 -O3
   andl    $7, %edi
   leaq    lookup(%rip), %rax
   movl    (%rax,%rdi,4), %eax
@@ -121,19 +120,19 @@ lookup:
 ### Performance (https://godbolt.org/z/35oYfaWGo)
 
 ```cpp
-int main(int argc, const char**)
+int find(int id) {
   static constexpr std::array ids{
     std::pair{27629, 1},
     std::pair{6280, 2},
     // ...
     std::pair{33691, 128},
   };
-  return *mph::find<ids>(argc);
+  return *mph::find<ids>(id);
 }
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
+find: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
   vpbroadcastd    %edi, %zmm0
   shll            $4, %edi
   movzbl          %dil, %ecx
@@ -159,7 +158,7 @@ find:
 ### Performance (https://godbolt.org/z/ob6ejGEsh)
 
 ```cpp
-int main(int, const char** argv) {
+int find(std::span<const char, 8> str) {
   static constexpr auto symbols = std::array{
     std::pair{"AMZN    "sv, 1},
     std::pair{"AAPL    "sv, 2},
@@ -169,10 +168,7 @@ int main(int, const char** argv) {
     std::pair{"NVDA    "sv, 6},
     std::pair{"TSLA    "sv, 7},
   };
-
-  return *mph::find<symbols>(
-    std::span<const char, 8>(argv[1], argv[1]+8)
-  );
+  return *mph::find<symbols>(str);
 }
 ```
 
@@ -180,7 +176,7 @@ int main(int, const char** argv) {
 main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    $1031, %ecx
-  leaq    lookup(%rip), %rdx
+  leaq    find(%rip), %rdx
   xorl    %esi, %esi
   movq    (%rax), %rax
   pextq   %rcx, %rax, %rcx
@@ -190,14 +186,15 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   cmovnel %esi, %eax
   retq
 
-lookup:
+find:
   ...
 ```
 
-### Performance (https://godbolt.org/z/Tds7sG16n)
+### Performance (https://godbolt.org/z/9ecGP9Efj)
 
 ```cpp
-int main(int, const char** argv) {
+int find(std::string_view str) {
+  using std::literals::operator""sv;
   // values assigned from 0..N-1
   static constexpr std::array symbols{
     "BTC "sv, "ETH "sv, "BNB "sv,
@@ -205,27 +202,24 @@ int main(int, const char** argv) {
     "TON "sv, "ADA "sv, "SHIB"sv,
     "AVAX"sv, "LINK"sv, "BCH "sv,
   };
-
-  return *mph::find<symbols>(
-    std::span<const char, 4>(argv[1], argv[1]+4)
-  );
+  return *mph::find<symbols>(str);
 }
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
-  movq    8(%rsi), %rax
+find: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
+  shll    $3, %edi
+  bzhil   %edi, (%rsi), %eax
   movl    $789, %ecx
-  leaq    lookup(%rip), %rdx
-  xorl    %esi, %esi
-  movl    (%rax), %eax
   pextl   %ecx, %eax, %ecx
+  leaq    find(%rip), %rdx
+  xorl    %esi, %esi
   cmpl    (%rdx,%rcx,8), %eax
   movzbl  4(%rdx,%rcx,8), %eax
   cmovnel %esi, %eax
   retq
 
-lookup:
+find:
   ...
 ```
 
