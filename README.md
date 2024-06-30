@@ -369,8 +369,7 @@ inline constexpr auto find =
   - In such case different backup policy should be used instead (which can be also used as customization point for user-defined `lookup` implementation), for example:
 
     ```cpp
-    template<const auto& entries>
-      requires (entries.size() > 1'000'000)
+    template<const auto& entries> requires (entries.size() > 1'000'000)
     inline constexpr auto mph::find =
         [](const auto& key, const auto& unknown = {}) -> optional { ... }
     ```
