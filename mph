@@ -551,7 +551,7 @@ template<const auto& entries> inline constexpr auto lookup =
       return result_type{};
     } else if constexpr (entries.size() == 1u) {
       return result_type(detail::traits<entries>::mappings[0].second);
-    } else if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
+    } else if constexpr (constexpr lookup$magic_lut<entries> lookup{}; lookup) {
       return lookup(key);
     } else {
       return type_traits::constant_t<lookup$pext<entries>>::value(key);

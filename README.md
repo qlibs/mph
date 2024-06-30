@@ -173,7 +173,7 @@ int find(std::span<const char, 8> str) {
 ```
 
 ```cpp
-main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
+find: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   movq    8(%rsi), %rax
   movl    $1031, %ecx
   leaq    find(%rip), %rdx
@@ -500,6 +500,8 @@ inline constexpr auto find =
       else:
         return unknown
     ```
+
+    > More information - https://krzysztof-jusiak.github.io/talks/cpponsea2024
 
 - How to tweak `lookup/find` performance for my data/use case?
 
