@@ -124,7 +124,7 @@ int find(int id) {
   static constexpr std::array ids{
     std::pair{27629, 1},
     std::pair{6280, 2},
-    // ...
+    // 1..128 pairs...
     std::pair{33691, 128},
   };
   return *mph::find<ids>(id);
@@ -150,7 +150,7 @@ find: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2 -mavx512f
   retq
 
 find:
-  ...
+  ... // see godbolt
 ```
 
 ---
@@ -187,7 +187,7 @@ main: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   retq
 
 find:
-  ...
+  ... // see godbolt
 ```
 
 ### Performance (https://godbolt.org/z/9ecGP9Efj)
@@ -220,7 +220,7 @@ find: // g++ -DNDEBUG -std=c++20 -O3 -mbmi2
   retq
 
 find:
-  ...
+  ... // see godbolt
 ```
 
 ---
