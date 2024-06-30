@@ -199,7 +199,7 @@ lookup:
 
 - [feature] `lookup/find` customization point - https://godbolt.org/z/dnc4x8hTT
 - [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
-- [example] branchless dispatcher - https://godbolt.org/z/nb9M9zcqh
+- [example] `branchless dispatcher` - https://godbolt.org/z/nb9M9zcqh
 - [performance - https://wg21.link/P2996] `enum_to_string` - https://godbolt.org/z/dPPnTxoac
 - [performance - https://wg21.link/P2996] `string_to_enum` - https://godbolt.org/z/o8sfYoreK
 
