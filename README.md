@@ -317,7 +317,7 @@ find:
 <a name="compilation"></a>
 ### Benchmarks (https://boost-ext.github.io/mph/perfect_hashing)
 
-![https://github.com/boost-ext/mph/blob/benchmark/perfect_hashing/benchmark.ipynb](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark.png)
+[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark.png)](https://boost-ext.github.io/mph/perfect_hashing)
 
 ---
 
