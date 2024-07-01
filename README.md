@@ -512,7 +512,7 @@ inline constexpr auto find =
   - For strings, consider aligning the input data and passing it with compile-time size via `span`, `array`.
   - If all strings length is less than 4 that will be more optimized than if all string length will be less than 8 and 16. That will make the lookup table smaller and getting the value will have one instruction less.
   - Experiment with different `probability` values to optimize lookups. Especially benefitial if it's known that input keys are always coming from predefined `entries` (probability = 100) as it will avoid the comparison.
-  - Consider passing cache size alignment (`hardware_destructive_interference_size` - usually `64u`) to the `lookup`. That will align the underlying lookup table.
+  - Consider passing cache size alignment (`hardware_destructive_interference_size` - usually `64u`) to the `lookup/find`. That will align the underlying lookup table.
 
 - How to fix compilation error `constexpr evaluation hit maximum step limit`?
 
