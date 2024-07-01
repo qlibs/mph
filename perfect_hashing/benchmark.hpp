@@ -7,9 +7,6 @@
 //
 #pragma once
 
-#ifndef NTEST
-#define NTEST
-#endif
 #include <mph>
 #include <chrono>
 #include <vector>
@@ -34,7 +31,7 @@ void timeit(const auto& fn) {
   std::cout << checksum << ":" << std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count() / double(1e9) << std::endl;
 }
 
-template<u32 Size, double Probability, u64 Seed, auto N = 100'000, const auto& input = DATA>
+template<u32 Size, double Probability, u64 Seed, template<class, class, const auto&> class Benchmark, auto N = 100'000, const auto& input = DATA>
 [[nodiscard]] auto int_to_int(auto fn) {
   using key_type = decltype(input[0].first);
   using mapped_type = decltype(input[0].second);
@@ -48,17 +45,18 @@ template<u32 Size, double Probability, u64 Seed, auto N = 100'000, const auto& i
   std::vector<key_type> lookups(Size * N);
   for (auto i = 0u; i < lookups.size(); ++i) lookups[i] = data[(i % 100) < (Probability * 100)][i];
 
+  Benchmark<key_type, mapped_type, input> benchmark{};
   timeit([&]{
     u64 checksum{};
     for (const auto& lookup: lookups) {
-      checksum += (fn.template operator()<input>(lookup) != mapped_type{});
+      checksum += (benchmark(lookup) != mapped_type{});
     }
     return checksum;
   });
 }
 
-template<u32 Size, double Probability, u64 Seed, auto N = 100'000, const auto& input = DATA>
-[[nodiscard]] auto str_to_int(auto fn) {
+template<u32 Size, double Probability, u64 Seed, template<class, class, const auto&> class Benchmark, auto N = 100'000, const auto& input = DATA>
+[[nodiscard]] auto str_to_int() {
   using key_type = decltype(input[0].first);
   using mapped_type = decltype(input[0].second);
   std::mt19937_64 gen{Seed};
@@ -71,10 +69,11 @@ template<u32 Size, double Probability, u64 Seed, auto N = 100'000, const auto& i
   std::vector<std::string_view> lookups(Size * N);
   for (auto i = 0u; i < lookups.size(); ++i) lookups[i] = data[(i % 100) < (Probability * 100)][i];
 
+  Benchmark<key_type, mapped_type, input> benchmark{};
   timeit([&]{
     u64 checksum{};
     for (const auto& lookup: lookups) {
-      checksum += fn.template operator()<input>(lookup);
+      checksum += benchmark(lookup);
     }
     return checksum;
   });

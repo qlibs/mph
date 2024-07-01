@@ -28,7 +28,7 @@ gperf:
 
 %:
 	${CXX} \
-	-I. -I.. -I ~/Projects/boost-1.85 ${CXXFLAGS} ${CONSTEXPR_LIMIT} \
+	-I. -I.. -I ~/Projects/boost-1.85 ${CXXFLAGS} -DNTEST ${CONSTEXPR_LIMIT} \
 	-DSIZE=${SIZE} \
 	-DPROBABILITY=${PROBABILITY} \
 	-DSEED=${SEED} \

@@ -7,21 +7,19 @@
 //
 #include <benchmark.hpp>
 
-template <const auto& entries>
-constexpr auto find(auto value) {
-  const auto switch_case = [value]<auto I = 0>(auto self) {
-    if constexpr (I == entries.size()) {
-      return decltype(entries[0].second){};
-    } else {
-      switch (value) {
-        default: return self.template operator()<I + 1>(self);
-        case entries[I].first: return entries[I].second;
+template<class T, class TMapped, const auto& entries>
+struct find {
+  auto operator()(auto value) const {
+    const auto switch_case = [value]<auto I = 0>(auto self) {
+      if constexpr (I == entries.size()) {
+        return decltype(entries[0].second){};
+      } else {
+        switch (value) {
+          default: return self.template operator()<I + 1>(self);
+          case entries[I].first: return entries[I].second;
+        }
       }
-    }
-  };
-  return switch_case(switch_case);
-}
-
-int main() {
-  BENCHMARK<SIZE, PROBABILITY, SEED>([]<const auto& entries>(auto value) { return find<entries>(value); });
-}
+    };
+    return switch_case(switch_case);
+  }
+};

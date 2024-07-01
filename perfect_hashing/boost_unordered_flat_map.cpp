@@ -8,15 +8,16 @@
 #include <benchmark.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 
-template<const auto& entries>
-auto find(auto value) {
-  static const auto values = []<auto... Ns>(std::index_sequence<Ns...>) {
-    return boost::unordered_flat_map{entries[Ns]...};
-  }(std::make_index_sequence<entries.size()>{});
-  const auto it = values.find(value);
-  return it != values.end() ? it->second : decltype(it->second){};
-}
+template<class T, class TMapped, const auto& entries>
+struct find {
+  auto operator()(auto value) const {
+    const auto it = map.find(value);
+    return it != map.end() ? it->second : decltype(it->second){};
+  }
+ private:
+  boost::unordered_flat_map<T, TMapped> map{entries.begin(), entries.end()};
+};
 
 int main() {
-  BENCHMARK<SIZE, PROBABILITY, SEED>([]<const auto& entries>(auto value) { return find<entries>(value); });
+  BENCHMARK<SIZE, PROBABILITY, SEED, find>();
 }

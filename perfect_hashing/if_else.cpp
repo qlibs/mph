@@ -7,17 +7,19 @@
 //
 #include <benchmark.hpp>
 
-template<const auto& entries, auto I = 0>
-auto find(auto value) -> decltype(entries[0].second) {
-  if constexpr (I == entries.size()) {
-    return {};
-  } else if (value == entries[I].first) {
-    return entries[I].second;
-  } else {
-    return find<entries, I + 1>(value);
+template<class T, class TMapped, const auto& entries>
+struct find {
+  template<auto I = 0> auto operator()(auto value) const -> TMapped {
+    if constexpr (I == entries.size()) {
+      return {};
+    } else if (value == entries[I].first) {
+      return entries[I].second;
+    } else {
+      return operator()<I + 1>(value);
+    }
   }
-}
+};
 
 int main() {
-  BENCHMARK<SIZE, PROBABILITY, SEED>([]<const auto& entries>(auto value) { return find<entries>(value); });
+  BENCHMARK<SIZE, PROBABILITY, SEED, find>();
 }

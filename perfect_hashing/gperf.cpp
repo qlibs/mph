@@ -8,15 +8,17 @@
 #include <benchmark.hpp>
 #include "/dev/shm/gperf.hpp"
 
-template<const auto& entries>
-auto find(auto value) {
-  if (auto ptr = Perfect_Hash::find(value.data(), value.size())) {
-    return ptr->value;
-  } else {
-    return decltype(ptr->value){};
+template<class T, class TMapped, const auto& entries>
+struct find {
+  auto operator()(auto value) const -> TMapped {
+    if (auto ptr = Perfect_Hash::find(value.data(), value.size())) {
+      return ptr->value;
+    } else {
+      return {};
+    }
   }
-}
+};
 
 int main() {
-  BENCHMARK<SIZE, PROBABILITY, SEED>([]<const auto& entries>(auto value) { return find<entries>(value); });
+  BENCHMARK<SIZE, PROBABILITY, SEED, find>();
 }

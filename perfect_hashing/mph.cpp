@@ -6,16 +6,15 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #include <benchmark.hpp>
-#ifndef NTEST
-#define NTEST
-#endif
 #include <mph>
 
-template<const auto& entries>
-auto find(auto value) {
-  return *mph::find<entries>(value);
-}
+template<class T, class TMapped, const auto& entries>
+struct find {
+  auto operator()(auto value) const {
+    return *mph::find<entries>(value);
+  }
+};
 
 int main() {
-  BENCHMARK<SIZE, PROBABILITY, SEED>([]<const auto& entries>(auto value) { return find<entries>(value); });
+  BENCHMARK<SIZE, PROBABILITY, SEED, find>();
 }
