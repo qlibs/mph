@@ -32,7 +32,7 @@ void timeit(const auto& fn) {
 }
 
 template<u32 Size, double Probability, u64 Seed, template<class, class, const auto&> class Benchmark, auto N = 100'000, const auto& input = DATA>
-[[nodiscard]] auto int_to_int(auto fn) {
+[[nodiscard]] auto int_to_int() {
   using key_type = decltype(input[0].first);
   using mapped_type = decltype(input[0].second);
   std::mt19937_64 gen{Seed};

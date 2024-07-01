@@ -11,9 +11,9 @@ LDDFLAGS?=
 TMP?=/dev/shm
 
 ifeq ($(findstring clang++,$(CXX)),clang++)
-    CXXFLAGS := ${CXXFLAGS} -fconstexpr-steps=1000000000 -ftemplate-depth=1024
+  CXXFLAGS := ${CXXFLAGS} -fconstexpr-steps=1000000000 -ftemplate-depth=1024
 else ifeq ($(findstring g++,$(CXX)),g++)
-    CXXFLAGS := ${CXXFLAGS} -fconstexpr-ops-limit=10000000000 -ftemplate-depth=1024
+  CXXFLAGS := ${CXXFLAGS} -fconstexpr-ops-limit=10000000000 -ftemplate-depth=1024
 endif
 
 gperf:
@@ -35,5 +35,5 @@ gperf:
 	-DBENCHMARK=${BENCHMARK} \
 	$*.cpp ${LDDFLAGS} -o ${TMP}/$*
 
-all:
+benchmark:
 	jupyter notebook -ip 0.0.0.0 --no-browser benchmark.ipynb
