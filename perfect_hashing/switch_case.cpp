@@ -9,17 +9,25 @@
 
 template<class T, class TMapped, const auto& entries>
 struct find {
-  auto operator()(auto value) const {
-    const auto switch_case = [value]<auto I = 0>(auto self) {
+  auto operator()(auto value) const -> TMapped {
+    const auto switch_case = [value]<auto I = 0>(auto self) -> TMapped {
       if constexpr (I == entries.size()) {
-        return decltype(entries[0].second){};
+        return {};
       } else {
         switch (value) {
-          default: return self.template operator()<I + 1>(self);
-          case entries[I].first: return entries[I].second;
+          default: {
+            return self.template operator()<I + 1>(self);
+          }
+          case entries[I].first: {
+            return entries[I].second;
+          }
         }
       }
     };
     return switch_case(switch_case);
   }
 };
+
+int main() {
+  BENCHMARK<SIZE, PROBABILITY, SEED, find>();
+}
