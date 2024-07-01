@@ -317,8 +317,8 @@ find:
 <a name="compilation"></a>
 ### Benchmarks (https://boost-ext.github.io/mph/perfect_hashing)
 
-[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmar2.png)](https://boost-ext.github.io/mph/perfect_hashing)
-[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark.png)](https://boost-ext.github.io/mph/perfect_hashing)
+[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark_int_to_int.png)](https://boost-ext.github.io/mph/perfect_hashing)
+[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark_str_to_int.png)](https://boost-ext.github.io/mph/perfect_hashing)
 
 ---
 
