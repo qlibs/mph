@@ -364,7 +364,7 @@ inline constexpr auto find =
 #define MPH 5'0'0       // Current library version (SemVer)
 #define MPH_PAGE_SIZE   // [default: not defined]
                         // If defined safe memcpy will be used for string-like
-                        // keys if the read is close to the page boundry (4096u)
+                        // keys if the read is approaching the page boundry (4096u)
 ```
 
 ---
