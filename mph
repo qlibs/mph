@@ -206,7 +206,7 @@ namespace detail {
 template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
   // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
-  if (constexpr T size = sizeof(T) * __CHAR_BIT__; __builtin_is_constant_evaluated()) {
+  if (constexpr T size = sizeof(T) * __CHAR_BIT__; __builtin_is_constant_evaluated() and not requires { mask.value; }) {
     T result{};
     T m = mask;
     auto k = 0u;
@@ -243,7 +243,7 @@ template<class T>
       }
       return result;
     }();
-    return ((a & mask) * coefficient >> nbits) & ((T(1) << mbits) - T(1));
+    return (((a & mask) * coefficient) >> nbits) & ((T(1) << mbits) - T(1));
   }
   __builtin_unreachable();
 }
@@ -566,7 +566,7 @@ template<const auto& entries> inline constexpr auto find =
   []<u8 probability = 50u>
     requires (probability >= 0u and probability <= 100u)
     #if not __has_include(<experimental/simd>)
-    and requires entries.size() <= 64u
+    and requires (entries.size() <= 64u)
     #endif
     ([[maybe_unused]] const auto& key, [[maybe_unused]] const auto&... ts) {
     using key_type = typename detail::traits<entries>::key_type;
@@ -865,6 +865,22 @@ static_assert(([] {
         static_assert(2 == *mph::find<entries>(u32(4)));
         static_assert(87 == *mph::find<entries>(u32(42)));
         static_assert(100 == *mph::find<entries>(u32(100)));
+      }
+
+      {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{u32(9), u32(0)},
+          compressed_pair{u32(6), u32(1)},
+          compressed_pair{u32(14), u32(2)},
+          compressed_pair{u32(11), u32(3)},
+        }>::value;
+
+        static_assert(not mph::find<entries>(u32(0)));
+
+        static_assert(0 == *mph::find<entries>(u32(9)));
+        static_assert(1 == *mph::find<entries>(u32(6)));
+        static_assert(2 == *mph::find<entries>(u32(14)));
+        static_assert(3 == *mph::find<entries>(u32(11)));
       }
 
       {
