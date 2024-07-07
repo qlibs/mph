@@ -6,7 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #ifndef MPH
-#define MPH 5'0'0 // SemVer
+#define MPH 5'0'1 // SemVer
 #pragma GCC system_header
 
 #if __has_include(<experimental/simd>)
@@ -16,7 +16,7 @@
 /**
  * [Minimal] Static perfect hash library (https://github.com/boost-ext/mph)
  */
-namespace mph::inline v5_0_0 {
+namespace mph::inline v5_0_1 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
