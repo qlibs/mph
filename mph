@@ -6,7 +6,7 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
-#ifdef DOC
+#ifdef README
 // -->
 [![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)](http://www.boost.org/LICENSE_1_0.txt)
 [![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)](https://github.com/boost-ext/mph/releases)
@@ -595,8 +595,7 @@ inline constexpr auto find =
 
     > https://lemire.me/blog, http://0x80.pl, https://easyperf.net, https://www.jabperf.com, https://johnnysswlab.com, [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [cmph](https://cmph.sourceforge.net/papers), [smasher](https://github.com/rurban/smhasher), [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119), [hash functions](https://nullprogram.com/blog/2018/07/31)
 <!--
-#endif // DOC
-
+#else
 #ifndef MPH
 #define MPH 5'0'1 // SemVer
 #pragma GCC system_header
@@ -757,7 +756,7 @@ template<class T>
         }
       }(data);
     } else {
-      #if defined(MPH_PAGE_SIZE)
+      #ifdef MPH_PAGE_SIZE
       // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
       if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
         return [&data] [[gnu::cold]] {
@@ -773,7 +772,7 @@ template<class T>
       __builtin_memcpy(&t, data.data(), sizeof(t));
       #pragma GCC diagnostic pop
       const auto index = T(data.size() * __CHAR_BIT__);
-      #if defined(__BMI2__)
+      #ifdef __BMI2__
       if constexpr (sizeof(t) <= sizeof(u32)) {
         return __builtin_ia32_bzhi_si(t, index);
       } else if constexpr (sizeof(t) <= sizeof(u64)) {
@@ -794,7 +793,7 @@ template<class T>
 namespace detail {
 template<class T, T size = sizeof(T) * __CHAR_BIT__>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto pext(const T a, const auto mask) noexcept -> T {
-  #if defined(__BMI2__)
+  #ifdef __BMI2__
   // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=pext
   if (__builtin_is_constant_evaluated()) {
     T result{};
@@ -1528,3 +1527,4 @@ static_assert(([] {
 }(), true));
 #endif // NTEST
 #endif // MPH
+#endif // README
