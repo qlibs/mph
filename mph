@@ -11,7 +11,7 @@
 [![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)](http://www.boost.org/LICENSE_1_0.txt)
 [![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)](https://github.com/boost-ext/mph/releases)
 [![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/rbnzEhfK3)
-[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/49cMhWqch)
+[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jE9E1brde)
 
 ---------------------------------------
 
@@ -38,7 +38,7 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), [optional] ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
 
-### Hello world (https://godbolt.org/z/zdo5bz3T6)
+### Hello world (https://godbolt.org/z/MYbd3sqd7)
 
 ```cpp
 enum class color { red, green, blue };
@@ -72,7 +72,7 @@ std::print("{}", *mph::find<colors>("green"sv)); // prints 1
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/ndr5K8n8K)
+### Performance (https://godbolt.org/z/rqYj9a1cr)
 
 ```cpp
 int lookup(int id) {
@@ -95,7 +95,7 @@ lookup: // g++ -DNDEBUG -std=c++20 -O3
   retq
 ```
 
-### Performance (https://godbolt.org/z/aE3117Goh)
+### Performance (https://godbolt.org/z/vv6W4nGfb)
 
 ```cpp
 int lookup(int id) {
@@ -127,7 +127,7 @@ lookup:
  .long   91
 ```
 
-### Performance (https://godbolt.org/z/35oYfaWGo)
+### Performance (https://godbolt.org/z/qMzxKK4sd)
 
 ```cpp
 int find(int id) {
@@ -165,7 +165,7 @@ find:
 
 ---
 
-### Performance (https://godbolt.org/z/ob6ejGEsh)
+### Performance (https://godbolt.org/z/KaKzf7Pax)
 
 ```cpp
 int find(std::span<const char, 8> str) {
@@ -200,7 +200,7 @@ find:
   ... // see godbolt
 ```
 
-### Performance (https://godbolt.org/z/9ecGP9Efj)
+### Performance (https://godbolt.org/z/fdMPsYWjE)
 
 ```cpp
 int find(std::string_view str) {
@@ -237,9 +237,9 @@ find:
 
 ### Examples
 
-- [feature] `lookup/find` customization point - https://godbolt.org/z/dnc4x8hTT
-- [feature] `to` customization point - https://godbolt.org/z/Evhc57dGK
-- [example] `branchless dispatcher` - https://godbolt.org/z/nb9M9zcqh
+- [feature] `lookup/find` customization point - https://godbolt.org/z/enqeGxKK9
+- [feature] `to` customization point - https://godbolt.org/z/jTMx4n6j3
+- [example] `branchless dispatcher` - https://godbolt.org/z/5PTE3ercE
 - [performance - https://wg21.link/P2996] `enum_to_string` - https://godbolt.org/z/ojohP6j7f
 - [performance - https://wg21.link/P2996] `string_to_enum` - https://godbolt.org/z/83vGhY7M8
 
