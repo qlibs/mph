@@ -9,7 +9,7 @@
 #ifdef README
 // -->
 [![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)](http://www.boost.org/LICENSE_1_0.txt)
-[![Version](https://badge.fury.io/gh/boost-ext%2Fmph.svg)](https://github.com/boost-ext/mph/releases)
+[![Version](https://badge.fury.io/gh/qlibs%2Fmph.svg)](https://github.com/qlibs/mph/releases)
 [![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/rbnzEhfK3)
 [![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jE9E1brde)
 
@@ -25,7 +25,7 @@
 
 ### Features
 
-- Single header (https://raw.githubusercontent.com/boost-ext/mph/main/mph)
+- Single header (https://raw.githubusercontent.com/qlibs/mph/main/mph)
     - Easy integration (see [FAQ](#faq))
 - Self verification upon include (can be disabled by `-DNTEST` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
@@ -246,7 +246,7 @@ find:
 ---
 
 <a name="benchmarks"></a>
-### Benchmarks (https://github.com/boost-ext/mph/tree/benchmark)
+### Benchmarks (https://github.com/qlibs/mph/tree/benchmark)
 
 > `clang++ -std=c++20 -O3 -DNDEBUG -mbmi2 benchmark.cpp`
 
@@ -325,10 +325,10 @@ find:
 ```
 
 <a name="compilation"></a>
-### Benchmarks (https://boost-ext.github.io/mph/perfect_hashing)
+### Benchmarks (https://qlibs.github.io/mph/perfect_hashing)
 
-[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark_int_to_int.png)](https://boost-ext.github.io/mph/perfect_hashing)
-[![Benchmark](https://raw.githubusercontent.com/boost-ext/mph/benchmark/perfect_hashing/benchmark_str_to_int.png)](https://boost-ext.github.io/mph/perfect_hashing)
+[![Benchmark](https://raw.githubusercontent.com/qlibs/mph/benchmark/perfect_hashing/benchmark_int_to_int.png)](https://qlibs.github.io/mph/perfect_hashing)
+[![Benchmark](https://raw.githubusercontent.com/qlibs/mph/benchmark/perfect_hashing/benchmark_str_to_int.png)](https://qlibs.github.io/mph/perfect_hashing)
 
 ---
 
@@ -575,7 +575,7 @@ inline constexpr auto find =
     ```
     CPMAddPackage(
       Name mph
-      GITHUB_REPOSITORY boost-ext/mph
+      GITHUB_REPOSITORY qlibs/mph
       GIT_TAG v3.0.1
     )
     add_library(mph INTERFACE)
