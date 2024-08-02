@@ -10,8 +10,8 @@
 // -->
 [![Boost Licence](http://img.shields.io/badge/license-boost-blue.svg)](http://www.boost.org/LICENSE_1_0.txt)
 [![Version](https://badge.fury.io/gh/qlibs%2Fmph.svg)](https://github.com/qlibs/mph/releases)
-[![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/rbnzEhfK3)
-[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jE9E1brde)
+[![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/cnPv5TxhY)
+[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jcPPsbEvK)
 
 ---------------------------------------
 
@@ -37,7 +37,7 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), [optional] ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
 
-### Hello world (https://godbolt.org/z/MYbd3sqd7)
+### Hello world (https://godbolt.org/z/dzd6o3Pxo)
 
 ```cpp
 enum class color { red, green, blue };
