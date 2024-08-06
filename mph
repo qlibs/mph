@@ -590,7 +590,7 @@ inline constexpr auto find =
     CPMAddPackage(
       Name mph
       GITHUB_REPOSITORY qlibs/mph
-      GIT_TAG v3.0.1
+      GIT_TAG v5.0.1
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
