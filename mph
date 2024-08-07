@@ -724,7 +724,7 @@ inline constexpr auto conditional =
     }
   };
 
-template<class T, u32 PageSize = {}>
+template<class T, u32 PageSize = u32{}>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if (__builtin_is_constant_evaluated()) {
     if constexpr (requires { data.data(); data.size(); }) {
