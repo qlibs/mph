@@ -724,7 +724,7 @@ inline constexpr auto conditional =
     }
   };
 
-template<class T, u32 PageSize = u32{}>
+template<class T>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if (__builtin_is_constant_evaluated()) {
     if constexpr (requires { data.data(); data.size(); }) {
@@ -761,16 +761,16 @@ template<class T, u32 PageSize = u32{}>
         }
       }(data);
     } else {
-      if constexpr (PageSize) {
-        // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-        if ((u64(data.data()) & (PageSize - 1ul)) > (PageSize - sizeof(T))) [[unlikely]] {
-          return [&data] [[gnu::cold]] {
-            T t{};
-            __builtin_memcpy(&t, data.data(), data.size());
-            return t;
-          }();
-        }
+      #if defined (MPH_PAGE_SIZE)
+      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
+        return [&data] [[gnu::cold]] {
+          T t{};
+          __builtin_memcpy(&t, data.data(), data.size());
+          return t;
+        }();
       }
+      #endif
       T t;
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Warray-bounds"
