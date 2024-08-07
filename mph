@@ -21,7 +21,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-#ifdef README
+#if 0
 // -->
 [![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
 [![Version](https://badge.fury.io/gh/qlibs%2Fmph.svg)](https://github.com/qlibs/mph/releases)
@@ -382,15 +382,6 @@ inline constexpr auto find =
 } // namespace mph
 ```
 
-> Configuration
-
-```cpp
-#define MPH 5'0'1       // Current library version (SemVer)
-#define MPH_PAGE_SIZE   // [default: not defined]
-                        // If defined safe memcpy will be used for string-like
-                        // keys if the read is approaching the page boundry (4096u)
-```
-
 ---
 
 ### FAQ
@@ -609,9 +600,9 @@ inline constexpr auto find =
 
     > https://lemire.me/blog, http://0x80.pl, https://easyperf.net, https://www.jabperf.com, https://johnnysswlab.com, [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing), [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf), [cmph](https://cmph.sourceforge.net/papers), [smasher](https://github.com/rurban/smhasher), [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119), [hash functions](https://nullprogram.com/blog/2018/07/31)
 <!--
-#else
-#ifndef MPH
-#define MPH 5'0'1 // SemVer
+#endif
+
+#pragma once
 #pragma GCC system_header
 
 #if __has_include(<experimental/simd>)
@@ -703,7 +694,7 @@ inline constexpr auto conditional =
     } else if constexpr (probability == 100u) {
       return lhs;
     } else if constexpr (probability == 50u) {
-      #if __has_builtin(__builtin_unpredictable)
+        #if __has_builtin(__builtin_unpredictable)
         if (__builtin_is_constant_evaluated()) {
           return cond ? lhs : rhs;
         } else if (__builtin_unpredictable(cond)) {
@@ -711,7 +702,7 @@ inline constexpr auto conditional =
         } else {
           return rhs;
         }
-      #else
+        #else
         constexpr auto underlying = [](const auto value) {
           if constexpr (__is_enum(decltype(value))) {
             return static_cast<__underlying_type(decltype(value))>(value);
@@ -726,14 +717,14 @@ inline constexpr auto conditional =
         } else {
           return __builtin_expect_with_probability(cond, 1, .5f) ? lhs : rhs;
         }
-      #endif
+        #endif
     } else {
       return __builtin_expect_with_probability(cond, 1,
         [] { return float(probability) / float(100u); }()) ? lhs : rhs;
     }
   };
 
-template<class T>
+template<class T, u32 PageSize = {}>
 [[nodiscard]] [[gnu::always_inline]] constexpr auto to(const auto& data) noexcept -> T {
   if (__builtin_is_constant_evaluated()) {
     if constexpr (requires { data.data(); data.size(); }) {
@@ -770,16 +761,16 @@ template<class T>
         }
       }(data);
     } else {
-      #ifdef MPH_PAGE_SIZE
-      // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
-      if ((u64(data.data()) & (MPH_PAGE_SIZE - 1ul)) > (MPH_PAGE_SIZE - sizeof(T))) [[unlikely]] {
-        return [&data] [[gnu::cold]] {
-          T t{};
-          __builtin_memcpy(&t, data.data(), data.size());
-          return t;
-        }();
+      if constexpr (PageSize) {
+        // https://github.com/bminor/glibc/blob/master/sysdeps/generic/memcopy.h#L162
+        if ((u64(data.data()) & (PageSize - 1ul)) > (PageSize - sizeof(T))) [[unlikely]] {
+          return [&data] [[gnu::cold]] {
+            T t{};
+            __builtin_memcpy(&t, data.data(), data.size());
+            return t;
+          }();
+        }
       }
-      #endif
       T t;
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Warray-bounds"
@@ -1540,5 +1531,3 @@ static_assert(([] {
   }
 }(), true));
 #endif // NTEST
-#endif // MPH
-#endif // README
