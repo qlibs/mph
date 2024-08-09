@@ -23,16 +23,16 @@
 //
 #if 0
 // -->
-[![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
-[![Version](https://badge.fury.io/gh/qlibs%2Fmph.svg)](https://github.com/qlibs/mph/releases)
-[![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/cnPv5TxhY)
-[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jcPPsbEvK)
-
----------------------------------------
+**QLibs++**
 
 ## MPH: [Minimal] Static perfect hash library
 
 > https://en.wikipedia.org/wiki/Perfect_hash_function
+
+[![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
+[![Version](https://badge.fury.io/gh/qlibs%2Fmph.svg)](https://github.com/qlibs/mph/releases)
+[![build](https://img.shields.io/badge/build-blue.svg)](https://godbolt.org/z/cnPv5TxhY)
+[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jcPPsbEvK)
 
 ### Use case
 
