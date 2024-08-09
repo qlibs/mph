@@ -23,7 +23,7 @@
 //
 #if 0
 // -->
-**Qlibs++**
+[Overview](#Overview) / [Examples](#Examples) / [API](#API) / [FAQ](#FAQ)
 
 ## MPH: [Minimal] Static perfect hash library
 
@@ -52,7 +52,9 @@
 
 - C++20 ([gcc-12+, clang-15+](https://godbolt.org/z/WraE4q1dE)) / [optional] ([bmi2](https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set)), [optional] ([simd](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)),
 
-### Hello world (https://godbolt.org/z/dzd6o3Pxo)
+### Overview
+
+> Hello world (https://godbolt.org/z/dzd6o3Pxo)
 
 ```cpp
 enum class color { red, green, blue };
@@ -86,7 +88,7 @@ std::print("{}", *mph::find<colors>("green"sv)); // prints 1
 ---
 
 <a name="performance"></a>
-### Performance (https://godbolt.org/z/rqYj9a1cr)
+> Performance (https://godbolt.org/z/rqYj9a1cr)
 
 ```cpp
 int lookup(int id) {
@@ -109,7 +111,7 @@ lookup: // g++ -DNDEBUG -std=c++20 -O3
   retq
 ```
 
-### Performance (https://godbolt.org/z/vv6W4nGfb)
+> Performance (https://godbolt.org/z/vv6W4nGfb)
 
 ```cpp
 int lookup(int id) {
@@ -141,7 +143,7 @@ lookup:
  .long   91
 ```
 
-### Performance (https://godbolt.org/z/qMzxKK4sd)
+> Performance (https://godbolt.org/z/qMzxKK4sd)
 
 ```cpp
 int find(int id) {
@@ -179,7 +181,7 @@ find:
 
 ---
 
-### Performance (https://godbolt.org/z/KaKzf7Pax)
+> Performance (https://godbolt.org/z/KaKzf7Pax)
 
 ```cpp
 int find(std::span<const char, 8> str) {
@@ -214,7 +216,7 @@ find:
   ... // see godbolt
 ```
 
-### Performance (https://godbolt.org/z/fdMPsYWjE)
+> Performance (https://godbolt.org/z/fdMPsYWjE)
 
 ```cpp
 int find(std::string_view str) {
