@@ -587,11 +587,11 @@ inline constexpr auto find =
     )
     add_library(mph INTERFACE)
     target_include_directories(mph SYSTEM INTERFACE ${mph_SOURCE_DIR})
-    add_library(mph::mph ALIAS mph)
+    add_library(qlibs::mph ALIAS mph)
     ```
 
     ```
-    target_link_libraries(${PROJECT_NAME} mph::mph);
+    target_link_libraries(${PROJECT_NAME} qlibs::mph);
     ```
 
 - Similar projects?
@@ -653,13 +653,13 @@ template<class T, class... Ts> array(T, Ts...) -> array<T, 1u + sizeof...(Ts)>;
 
 namespace type_traits {
 namespace detail {
-template <bool> struct conditional;
-template <> struct conditional<false> { template <class, class T> using fn = T; };
-template <> struct conditional<true>  { template <class T, class> using fn = T; };
+template<bool> struct conditional;
+template<> struct conditional<false> { template <class, class T> using fn = T; };
+template<> struct conditional<true>  { template <class T, class> using fn = T; };
 template<class T> auto value_type(const T&) -> typename T::value_type;
 } // namespace detail
 
-template <bool B, class T, class F>
+template<bool B, class T, class F>
 using conditional_t = typename detail::conditional<B>::template fn<T, F>;
 
 template<const auto& v>
