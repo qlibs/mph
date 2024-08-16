@@ -577,7 +577,7 @@ inline constexpr auto find =
     > When `-DNTEST` is defined static_asserts tests wont be executed upon inclusion.
       Note: Use with caution as disabling tests means that there are no gurantees upon inclusion that given compiler/env combination works as expected.
 
-- Integration ([FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html))
+- How to integrate with [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html)?
 
     ```
     include(FetchContent)
