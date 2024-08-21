@@ -519,7 +519,7 @@ inline constexpr auto find =
         return unknown
     ```
 
-    > [More information](https://krzysztof-jusiak.github.io/talks/cpponsea2024)
+    > [More information](https://krzysztof-jusiak.github.io/talks/cpponsea-2024)
 
 - How to tweak `lookup/find` performance for my data/use case?
 
