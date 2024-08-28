@@ -358,7 +358,7 @@ namespace mph {
  */
 template<const auto& entries>
 inline constexpr auto lookup = [](const auto& key) {
-  if constexpr(constexpr lookup$gprl<entries> lookup{}; lookup) {
+  if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
     return lookup(key);
   } else {
     return lookup$pext<entries>(key);
@@ -408,7 +408,7 @@ inline constexpr auto find =
       The following is a pseudo code of the `lookup` algorithm for minimal perfect hash table.
 
     ```python
-    def lookup$gprl[entries: array](key : any, max_attempts = 100'000):
+    def lookup$magic_lut[entries: array](key : any, max_attempts = 100'000):
       # 0. magic and lut for entries [compile-time]
       nbits = sizeof(u32) * CHAR_BIT - countl_zero(max(entries.second))
       mask = (1u << nbits) - 1u;
@@ -993,13 +993,13 @@ struct optional {
 };
 
 template<const auto& entries>
-struct lookup$gprl {
+struct lookup$magic_lut {
   using key_type = typename detail::traits<entries>::key_type;
   using mapped_type = typename detail::traits<entries>::mapped_type;
   using value_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
   using result_type = mapped_type;
 
-  constexpr explicit lookup$gprl(u32 max_attempts = 100'000) noexcept {
+  constexpr explicit lookup$magic_lut(u32 max_attempts = 100'000) noexcept {
     const auto nbits = [] {
       value_type max{};
       for (const auto& [_, v]: detail::traits<entries>::mappings) {
@@ -1158,7 +1158,7 @@ template<const auto& entries> inline constexpr auto lookup =
       return result_type{};
     } else if constexpr (entries.size() == 1u) {
       return result_type(detail::traits<entries>::mappings[0].second);
-    } else if constexpr (constexpr lookup$gprl<entries> lookup{}; lookup) {
+    } else if constexpr (constexpr lookup$magic_lut<entries> lookup{}; lookup) {
       return lookup(key);
     } else {
       return type_traits::constant_t<lookup$pext<entries>>::value(key);
