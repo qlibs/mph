@@ -821,9 +821,9 @@ template<class T, T size = sizeof(T) * __CHAR_BIT__>
     // https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
     // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
     constexpr auto clz = [](auto x) {
-      decltype(x) n{};
+      decltype(x) n{sizeof(x) * __CHAR_BIT__ - 1};
       if (not x) return decltype(x)(sizeof(x) * __CHAR_BIT__);
-      while (x >>= 1u) n++;
+      while (x >>= 1u) n--;
       return n;
     };
     constexpr auto mbits = __builtin_popcountl(mask);
