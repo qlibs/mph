@@ -774,20 +774,21 @@ template<class T>
         }();
       }
       #endif
-      T t;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Warray-bounds"
-      __builtin_memcpy(&t, data.data(), sizeof(t));
-      #pragma GCC diagnostic pop
+      T t{};
+      __builtin_memcpy(&t, data.data(), data.size() < sizeof(t) ? data.size() : sizeof(t));
       const auto index = T(data.size() * __CHAR_BIT__);
       #ifdef __BMI2__
       if constexpr (sizeof(t) <= sizeof(u32)) {
         return __builtin_ia32_bzhi_si(t, index);
       } else if constexpr (sizeof(t) <= sizeof(u64)) {
         return __builtin_ia32_bzhi_di(t, index);
-      } else
+      } else {
       #endif
-        return t & ((T(1) << index) - T(1));
+        constexpr T size = sizeof(T) * __CHAR_BIT__;
+        return index >= size ? t : t & ((T(1) << index) - T(1));
+      #ifdef __BMI2__
+      }
+      #endif
     }
   } else { // unsafe
     #pragma GCC diagnostic push
