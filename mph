@@ -840,19 +840,17 @@ template<class T, T size = sizeof(T) * __CHAR_BIT__>
       }
       return result;
     }();
-    return (((a & mask) * coefficient) >> nbits) & ((T(1) << mbits) - T(1));
-  } else if (__builtin_is_constant_evaluated()) {
-    T result{};
-    T m = mask;
-    auto k = 0u;
-    for (T i{}; i < size; ++i) {
-      if (m & 1) result |= ((a >> i) & 1) << k++;
-      m >>= 1;
-    }
-    return result;
-  } else {
-    __builtin_unreachable();
+    if constexpr(constexpr auto final_mask = ((T(1) << mbits) - T(1)); ((((mask) * coefficient) >> nbits) & final_mask) == final_mask)
+      return (((a & mask) * coefficient) >> nbits) & final_mask;
+  } 
+  T result{};
+  T m = mask;
+  auto k = 0u;
+  for (T i{}; i < size; ++i) {
+    if (m & 1) result |= ((a >> i) & 1) << k++;
+    m >>= 1;
   }
+  return result;
 }
 
 template<class T, u32 N = 1u>
