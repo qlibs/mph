@@ -841,9 +841,11 @@ template<class T, T size = sizeof(T) * __CHAR_BIT__>
       }
       return result;
     }();
-    if constexpr(constexpr auto final_mask = ((T(1) << mbits) - T(1)); ((((mask) * coefficient) >> nbits) & final_mask) == final_mask)
+    if constexpr(constexpr auto final_mask = ((T(1) << mbits) - T(1));
+      ((((mask) * coefficient) >> nbits) & final_mask) == final_mask) {
       return (((a & mask) * coefficient) >> nbits) & final_mask;
-  } 
+    }
+  }
   T result{};
   T m = mask;
   auto k = 0u;
@@ -911,11 +913,11 @@ struct traits {
       }());
 
       using mapped_type = decltype([] {
-             if constexpr (entries.size() < u8{}-1u) { return u8{}; }
-        else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
-        else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
-        else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
-        else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
+             if constexpr (entries.size() < u8(u8{}-1u)) { return u8{}; }
+        else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
+        else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
+        else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -947,11 +949,11 @@ struct traits {
     } else if constexpr (not requires (u32 n) { entries[n].first; entries[n].second; }) { // array{1, 2, 3, ...}
       using key_type = type_traits::value_type_t<entries>;
       using mapped_type = decltype([] {
-             if constexpr (entries.size() < u8{}-1u) { return u8{}; }
-        else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
-        else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
-        else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
-        else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
+             if constexpr (entries.size() < u8(u8{}-1u)) { return u8{}; }
+        else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
+        else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
+        else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -1368,6 +1370,7 @@ static_assert(([] {
 
   // mph::lookup
   {
+    using mph::u16;
     using mph::u32;
     using mph::utility::compressed_pair;
     using mph::utility::array;
@@ -1383,6 +1386,22 @@ static_assert(([] {
         auto lookup = mph::lookup<entries>;
 
         static_assert(2 == lookup(u32(4)));
+      }
+
+      {
+        constexpr const auto& entries = constant<[] {
+          std::array<int, 512> a{};
+          auto count = 0;
+          for (auto &v : a) v = count++;
+          return a;
+        }()>::value;
+
+        static_assert(0 == mph::lookup<entries>(u16(0)));
+        static_assert(1 == mph::lookup<entries>(u16(1)));
+        static_assert(128 == mph::lookup<entries>(u16(128)));
+        static_assert(255 == mph::lookup<entries>(u16(255)));
+        static_assert(256 == mph::lookup<entries>(u16(256)));
+        static_assert(entries.size()-1 == mph::lookup<entries>(u16(entries.size()-1)));
       }
 
       {
