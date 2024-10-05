@@ -585,7 +585,7 @@ inline constexpr auto find =
     FetchContent_Declare(
       qlibs.mph
       GIT_REPOSITORY https://github.com/qlibs/mph
-      GIT_TAG v5.0.2
+      GIT_TAG v5.0.3
     )
 
     FetchContent_MakeAvailable(qlibs.mph)
@@ -612,7 +612,7 @@ inline constexpr auto find =
 #include <experimental/simd>
 #endif
 
-namespace mph::inline v5_0_2 {
+namespace mph::inline v5_0_3 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
