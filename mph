@@ -1184,7 +1184,7 @@ template<const auto& entries> inline constexpr auto find =
   []<u8 probability = 50u>
     requires (probability >= 0u and probability <= 100u)
     #if not __has_include(<experimental/simd>)
-    and requires (entries.size() <= 64u)
+    and (entries.size() <= 64u)
     #endif
     ([[maybe_unused]] const auto& key, [[maybe_unused]] const auto&... ts) {
     using key_type = typename detail::traits<entries>::key_type;
