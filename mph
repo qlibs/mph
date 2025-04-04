@@ -40,7 +40,7 @@
 
 ### Features
 
-- Single header (https://raw.githubusercontent.com/qlibs/mph/main/mph - for integration see [FAQ](#faq))
+- Single header (https://raw.githubusercontent.com/qlibs/mph/main/mph)
 - Self verification upon include (can be disabled by `-DNTEST` - see [FAQ](#faq))
 - Compiles cleanly with ([`-Wall -Wextra -Werror -pedantic -pedantic-errors -fno-exceptions -fno-rtti`](https://godbolt.org/z/WraE4q1dE))
 - Minimal [API](#api)
