@@ -36,7 +36,7 @@
 
 ### Use cases
 
-> A static perfect hash function maps a set of keys known in advance to a set of values with no collisions.
+> A static perfect hash function maps a set of keys known in advance to a set of values with no collisions
 
 ### Features
 
