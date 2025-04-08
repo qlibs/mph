@@ -27,12 +27,12 @@
 
 ## MPH: [Minimal] Static perfect hash library
 
-> https://en.wikipedia.org/wiki/Perfect_hash_function
-
 [![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
 [![Version](https://img.shields.io/github/v/release/qlibs/mph)](https://github.com/qlibs/mph/releases)
 [![Build](https://img.shields.io/badge/build-green.svg)](https://godbolt.org/z/MsE4nnhvc)
 [![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jcPPsbEvK)
+
+> https://en.wikipedia.org/wiki/Perfect_hash_function
 
 ### Use cases
 
