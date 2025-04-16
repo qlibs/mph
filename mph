@@ -348,35 +348,35 @@ find:
 
 ```cpp
 namespace mph::inline v5_0_5 {
-/**
- * Static [minimal] perfect hash lookup function
- * @tparam entries constexpr array of keys or key/value pairs
- */
-template<const auto& entries>
-inline constexpr auto lookup = [](const auto& key) {
-  if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
-    return lookup(key);
-  } else {
-    return lookup$pext<entries>(key);
-  }
-};
-
-/**
- * Static perfect hash find function
- * @tparam entries constexpr array of keys or key/value pairs
- */
-template<const auto& entries>
-inline constexpr auto find =
-  []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) -> optional {
-    if constexpr (entries.size() == 0u) {
-      return unknown;
-    } else if constexpr (entries.size() <= 64u) {
-      return find$pext<entries>.operator()<probability>(key, unknown);
+  /**
+   * Static [minimal] perfect hash lookup function
+   * @tparam entries constexpr array of keys or key/value pairs
+   */
+  template<const auto& entries>
+  inline constexpr auto lookup = [](const auto& key) {
+    if constexpr(constexpr lookup$magic_lut<entries> lookup{}; lookup) {
+      return lookup(key);
     } else {
-      constexpr auto bucket_size = simd_size_v<key_type, simd_abi::native<key_type>>;
-      return find$simd<entries, bucket_size>.operator()<probability>(key, unknown);
+      return lookup$pext<entries>(key);
     }
   };
+
+  /**
+   * Static perfect hash find function
+   * @tparam entries constexpr array of keys or key/value pairs
+   */
+  template<const auto& entries>
+  inline constexpr auto find =
+    []<u8 probability = 50u>(const auto& key, const auto& unknown = {}) -> optional {
+      if constexpr (entries.size() == 0u) {
+        return unknown;
+      } else if constexpr (entries.size() <= 64u) {
+        return find$pext<entries>.operator()<probability>(key, unknown);
+      } else {
+        constexpr auto bucket_size = simd_size_v<key_type, simd_abi::native<key_type>>;
+        return find$simd<entries, bucket_size>.operator()<probability>(key, unknown);
+      }
+    };
 } // namespace mph
 ```
 
