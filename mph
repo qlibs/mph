@@ -577,12 +577,12 @@ inline constexpr auto find =
 
 ### Resources
 
+> - [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119)
 > - [pefect-hashing](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing)
+> - [hash functions](https://nullprogram.com/blog/2018/07/31)
+> - [smasher](https://github.com/rurban/smhasher)
 > - [gperf](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf)
 > - [cmph](https://cmph.sourceforge.net/papers)
-> - [smasher](https://github.com/rurban/smhasher)
-> - [minimal perfect hashing](http://stevehanov.ca/blog/index.php?id=119)
-> - [hash functions](https://nullprogram.com/blog/2018/07/31)
 
 ### License
 
