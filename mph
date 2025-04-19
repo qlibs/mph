@@ -577,13 +577,13 @@ namespace mph::inline v5_0_5 {
 
 ### Resources
 
-> - [`minimal perfect hashing`](http://stevehanov.ca/blog/index.php?id=119)
-> - [`pefect hashing`](https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing)
-> - [`hash functions`](https://nullprogram.com/blog/2018/07/31)
-> - [`pthash`](https://arxiv.org/pdf/2104.10402)
-> - [`smasher`](https://github.com/rurban/smhasher)
-> - [`gperf`](https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf)
-> - [`cmph`](https://cmph.sourceforge.net/papers)
+> - Minimal Perfect Hashing - http://stevehanov.ca/blog/index.php?id=119
+> - Pefect Hashing - https://github.com/tpn/pdfs/tree/master/Perfect%20Hashing
+> - Hash Functions - https://nullprogram.com/blog/2018/07/31
+> - `gperf` - https://www.dre.vanderbilt.edu/~schmidt/PDF/C++-USENIX-90.pdf
+> - `cmph` - https://cmph.sourceforge.net/papers
+> - `pthash` - https://arxiv.org/pdf/2104.10402
+> - `smasher` - https://github.com/rurban/smhasher
 
 ### License
 
