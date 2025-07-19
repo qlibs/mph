@@ -883,6 +883,16 @@ template<class T, u32 N = 1u>
   return mask;
 }
 
+template<auto entries>
+[[nodiscard]] constexpr auto narrow_mask() noexcept {
+    static constexpr auto wide_mask = mask<u64>(entries);
+    if constexpr (wide_mask <= UINT32_MAX) {
+        return static_cast<u32>(wide_mask);
+    } else {
+        return wide_mask;
+    }
+}
+
 template<const auto& entries>
 struct traits {
   static constexpr auto mappings = [] {
@@ -1053,7 +1063,8 @@ template<const auto& entries>
 struct lookup$pext {
   using key_type = typename detail::traits<entries>::key_type;
   using mapped_type = typename detail::traits<entries>::mapped_type;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr auto mask = type_traits::constant_v<detail::narrow_mask<detail::traits<entries>::mappings>()>;
+  using mask_type = type_traits::conditional_t<sizeof(mask.value) <= sizeof(u32), u32, u64>;
   using result_type = mapped_type;
 
   constexpr lookup$pext() noexcept {
@@ -1063,10 +1074,9 @@ struct lookup$pext {
   }
 
   [[nodiscard]] constexpr auto operator()(const auto& key) const noexcept -> result_type {
-    return lut[detail::pext(to<key_type>(key), mask)];
+    return lut[detail::pext(to<mask_type>(key), mask)];
   }
 
-  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(detail::traits<entries>::mappings)>;
   static constexpr auto size = [] {
     key_type max{};
     for (const auto& [k, _] : detail::traits<entries>::mappings) {
@@ -1084,7 +1094,8 @@ struct find$pext {
   using key_type = typename detail::traits<entries>::key_type;
   using mapped_type = typename detail::traits<entries>::mapped_type;
   using key_mapped_type = utility::compressed_pair<key_type, mapped_type>;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr auto mask = type_traits::constant_v<detail::narrow_mask<detail::traits<entries>::mappings>()>;
+  using mask_type = type_traits::conditional_t<sizeof(mask.value) <= sizeof(u32), u32, u64>;
   using result_type = optional<mapped_type>;
 
   constexpr find$pext() noexcept {
@@ -1095,12 +1106,11 @@ struct find$pext {
 
   template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
   [[nodiscard]] constexpr auto operator()(const auto& key, const auto&... ts) const noexcept -> result_type {
-    auto&& lhs = to<key_type>(key);
+    auto&& lhs = to<mask_type>(key);
     auto&& [rhs, value] = lut[detail::pext(lhs, mask)];
     return conditional<probability>(lhs == rhs, result_type(value), result_type(ts...));
   }
 
-  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type>(detail::traits<entries>::mappings)>;
   utility::array<key_mapped_type, mask_type(1) << __builtin_popcountl(mask)> lut{};
 };
 
@@ -1110,7 +1120,8 @@ struct find$simd {
   using key_type = typename detail::traits<entries>::key_type;
   using mapped_type = typename detail::traits<entries>::mapped_type;
   using key_mapped_type = utility::compressed_pair<key_type, mapped_type>;
-  using mask_type = type_traits::conditional_t<sizeof(key_type) <= sizeof(u32), u32, u64>;
+  static constexpr auto mask = type_traits::constant_v<detail::narrow_mask<detail::traits<entries>::mappings>()>;
+  using mask_type = type_traits::conditional_t<sizeof(mask.value) <= sizeof(u32), u32, u64>;
   using result_type = optional<mapped_type>;
 
   constexpr find$simd() noexcept {
@@ -1124,7 +1135,7 @@ struct find$simd {
 
   template<u8 probability = 50u> requires (probability >= 0u and probability <= 100u)
   [[nodiscard]] constexpr auto operator()(const auto& key, const auto&... ts) const noexcept -> result_type {
-    auto&& value = to<key_type>(key);
+    auto&& value = to<mask_type>(key);
     auto&& index = BucketSize * detail::pext(value, mask);
     const std::experimental::fixed_size_simd<key_type, BucketSize> lhs{value};
     const std::experimental::fixed_size_simd<key_type, BucketSize> rhs{&keys[index], std::experimental::element_aligned};
@@ -1136,7 +1147,6 @@ struct find$simd {
     );
   }
 
-  static constexpr auto mask = type_traits::constant_v<detail::mask<mask_type, BucketSize>(detail::traits<entries>::mappings)>;
   static constexpr auto size = BucketSize * (mask_type(1) << __builtin_popcountl(mask));
   utility::array<key_type, size> keys{};
   utility::array<mapped_type, size> values{};
@@ -1296,6 +1306,18 @@ static_assert(([] {
     static_assert(0b11 == mph::detail::mask<u32, 1u>(array{compressed_pair{0b11, 0}, compressed_pair{0b11, 0}}));
   }
 
+  // mph::detail::narrow_mask
+  {
+    using mph::u32;
+    using mph::u64;
+    using mph::utility::array;
+    using mph::utility::compressed_pair;
+
+    static_assert(sizeof(mph::detail::narrow_mask<array{compressed_pair{u32{1}, 0}, compressed_pair{u32{1}<<1, 0}}>())==sizeof(u32));
+    static_assert(sizeof(mph::detail::narrow_mask<array{compressed_pair{u64{1}, 0}, compressed_pair{u64{1}<<32, 0}}>())==sizeof(u32));
+    static_assert(sizeof(mph::detail::narrow_mask<array{compressed_pair{u64{1}<<32, 0}, compressed_pair{u64{1}<<33, 0}}>())==sizeof(u64));
+  }
+
   // mph::datail::traits
   {
     using mph::u8;
@@ -1369,6 +1391,7 @@ static_assert(([] {
   {
     using mph::u16;
     using mph::u32;
+    using mph::u64;
     using mph::utility::compressed_pair;
     using mph::utility::array;
     using mph::type_traits::constant;
@@ -1414,6 +1437,18 @@ static_assert(([] {
       }
 
       {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{u64{4}<<32, u32(2)},
+          compressed_pair{u64{42}<<32, u32(87)},
+          compressed_pair{u64{100}<<32, u32(100)},
+        }>::value;
+
+        static_assert(2 == mph::lookup$pext<entries>{}(u64{4}<<32));
+        static_assert(87 == mph::lookup<entries>(u64{42}<<32));
+        static_assert(100 == mph::lookup<entries>(u64{100}<<32));
+      }
+
+      {
         enum class color { red, green, blue };
 
         constexpr const auto& entries = constant<array{
@@ -1449,6 +1484,7 @@ static_assert(([] {
   // mph::find
   {
     using mph::u32;
+    using mph::u64;
     using mph::utility::compressed_pair;
     using mph::utility::array;
     using mph::type_traits::constant;
@@ -1487,6 +1523,24 @@ static_assert(([] {
         static_assert(2 == *mph::find<entries>(u32(4)));
         static_assert(87 == *mph::find<entries>(u32(42)));
         static_assert(100 == *mph::find<entries>(u32(100)));
+      }
+
+      {
+        constexpr const auto& entries = constant<array{
+          compressed_pair{u64(4)<<32, u32(2)},
+          compressed_pair{u64(42)<<32, u32(87)},
+          compressed_pair{u64(100)<<32, u32(100)},
+        }>::value;
+
+        static_assert(not mph::find<entries>(u64(0)));
+        static_assert(mph::find<entries>(u64(4)<<32));
+        static_assert(mph::find<entries>(u64(42)<<32));
+        static_assert(mph::find<entries>(u64(100)<<32));
+
+        static_assert(0 == *mph::find<entries>(u64(0)));
+        static_assert(2 == *mph::find<entries>(u64(4)<<32));
+        static_assert(87 == *mph::find<entries>(u64(42)<<32));
+        static_assert(100 == *mph::find<entries>(u64(100)<<32));
       }
 
       {
